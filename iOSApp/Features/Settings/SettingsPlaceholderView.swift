@@ -1,6 +1,8 @@
 import SwiftUI
 
 struct SettingsPlaceholderView: View {
+    @EnvironmentObject private var watchSyncManager: PhoneWatchSyncManager
+
     var body: some View {
         List {
             Section("Defaults") {
@@ -9,7 +11,15 @@ struct SettingsPlaceholderView: View {
             }
 
             Section("Sync") {
-                LabeledContent("Watch", value: "Not configured")
+                LabeledContent("Watch", value: watchSyncManager.activationStateDescription)
+                if let lastSnapshotSentAt = watchSyncManager.lastSnapshotSentAt {
+                    LabeledContent("Last Snapshot", value: lastSnapshotSentAt.formatted(date: .omitted, time: .shortened))
+                }
+                if let lastErrorMessage = watchSyncManager.lastErrorMessage {
+                    Text(lastErrorMessage)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
             }
         }
         .navigationTitle("Settings")
@@ -20,4 +30,5 @@ struct SettingsPlaceholderView: View {
     NavigationStack {
         SettingsPlaceholderView()
     }
+    .environmentObject(PhoneWatchSyncManager())
 }

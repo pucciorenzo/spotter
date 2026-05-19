@@ -1,20 +1,47 @@
+import Foundation
 import SpotterShared
 import SwiftUI
 
 struct WatchDayListView: View {
+    @EnvironmentObject private var syncManager: WatchPhoneSyncManager
     let plan: WorkoutPlanDTO
 
     var body: some View {
         List(plan.days) { day in
-            VStack(alignment: .leading, spacing: 4) {
-                Text(day.name)
-                    .font(.headline)
-                Text("\(day.exercises.count) exercises")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
+            Section {
+                ForEach(day.exercises) { exercise in
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text(exerciseName(for: exercise.exerciseId))
+                            .font(.headline)
+                        Text(targetText(for: exercise))
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+                }
+            } header: {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(day.name)
+                    Text("\(day.exercises.count) exercises")
+                }
             }
         }
         .navigationTitle(plan.name)
+    }
+
+    private func exerciseName(for id: UUID) -> String {
+        syncManager.snapshot?.exercises.first(where: { $0.id == id })?.name ?? "Exercise"
+    }
+
+    private func targetText(for exercise: WorkoutExerciseDTO) -> String {
+        if let seconds = exercise.targetDurationSeconds {
+            return "\(exercise.numberOfSets) sets • \(seconds)s"
+        }
+
+        if let min = exercise.targetRepsMin, let max = exercise.targetRepsMax {
+            return "\(exercise.numberOfSets) sets • \(min)-\(max) reps"
+        }
+
+        return "\(exercise.numberOfSets) sets"
     }
 }
 
@@ -22,4 +49,5 @@ struct WatchDayListView: View {
     NavigationStack {
         WatchDayListView(plan: DemoSeedData.plans[0])
     }
+    .environmentObject(WatchPhoneSyncManager(cacheStore: WatchCacheStore()))
 }
