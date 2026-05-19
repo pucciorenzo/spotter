@@ -40,20 +40,6 @@ struct DashboardPlaceholderView: View {
                         }
                     }
 
-                    if activeWorkoutSession == nil, let nextDay, !nextPrescriptions.isEmpty {
-                        NavigationLink {
-                            HomeActiveWorkoutView(
-                                dayName: nextDay.name,
-                                exerciseName: exerciseName(for: nextPrescriptions[0].exerciseId),
-                                target: targetText(for: nextPrescriptions[0]),
-                                load: loadText(for: nextPrescriptions[0])
-                            )
-                        } label: {
-                            StartWorkoutButtonLabel()
-                        }
-                        .buttonStyle(.plain)
-                    }
-
                     LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 14) {
                         MetricCard(title: "Week", value: "\(thisWeekSessions.count)", caption: "workouts", systemImage: "calendar")
                         MetricCard(title: "Volume", value: volumeText(for: thisWeekSessions), caption: "kg logged", systemImage: "chart.bar.fill")
@@ -90,7 +76,30 @@ struct DashboardPlaceholderView: View {
                 }
                 .padding(.horizontal, 20)
                 .padding(.top, 18)
-                .padding(.bottom, 34)
+                .padding(.bottom, canStartWorkout ? 112 : 34)
+            }
+
+            if canStartWorkout, let nextDay {
+                VStack {
+                    Spacer()
+                    HStack {
+                        Spacer()
+                        NavigationLink {
+                            HomeActiveWorkoutView(
+                                dayName: nextDay.name,
+                                exerciseName: exerciseName(for: nextPrescriptions[0].exerciseId),
+                                target: targetText(for: nextPrescriptions[0]),
+                                load: loadText(for: nextPrescriptions[0])
+                            )
+                        } label: {
+                            FloatingStartWorkoutButtonLabel()
+                        }
+                        .buttonStyle(.plain)
+                        .accessibilityLabel("Start Workout")
+                    }
+                    .padding(.trailing, 22)
+                    .padding(.bottom, 28)
+                }
             }
         }
         .scrollContentBackground(.hidden)
@@ -111,6 +120,10 @@ struct DashboardPlaceholderView: View {
 
     private var activeWorkoutSession: WorkoutSessionModel? {
         sessions.first { $0.status == .inProgress }
+    }
+
+    private var canStartWorkout: Bool {
+        activeWorkoutSession == nil && nextDay != nil && !nextPrescriptions.isEmpty
     }
 
     private var headerSubtitle: String {
@@ -206,38 +219,33 @@ struct DashboardPlaceholderView: View {
     }
 }
 
-private struct StartWorkoutButtonLabel: View {
+private struct FloatingStartWorkoutButtonLabel: View {
     var body: some View {
-        HStack(spacing: 12) {
+        ZStack {
+            Circle()
+                .fill(
+                    LinearGradient(
+                        colors: [
+                            SpotterPalette.accent.opacity(0.96),
+                            SpotterPalette.accentSoft.opacity(0.78)
+                        ],
+                        startPoint: .topLeading,
+                        endPoint: .bottomTrailing
+                    )
+                )
+                .overlay {
+                    Circle()
+                        .strokeBorder(.white.opacity(0.20), lineWidth: 1)
+                }
+                .shadow(color: .black.opacity(0.30), radius: 24, y: 16)
+
             Image(systemName: "play.fill")
-                .font(.headline)
+                .font(.title2.weight(.semibold))
                 .symbolRenderingMode(.hierarchical)
-            Text("Start Workout")
-                .font(.headline.weight(.semibold))
-            Spacer()
-            Image(systemName: "chevron.right")
-                .font(.subheadline.weight(.semibold))
-                .foregroundStyle(SpotterPalette.textSecondary)
+                .foregroundStyle(SpotterPalette.textPrimary)
+                .offset(x: 2)
         }
-        .foregroundStyle(SpotterPalette.textPrimary)
-        .padding(.horizontal, 18)
-        .padding(.vertical, 16)
-        .background(
-            LinearGradient(
-                colors: [
-                    SpotterPalette.accent.opacity(0.92),
-                    SpotterPalette.accentSoft.opacity(0.68)
-                ],
-                startPoint: .topLeading,
-                endPoint: .bottomTrailing
-            ),
-            in: RoundedRectangle(cornerRadius: 24, style: .continuous)
-        )
-        .overlay {
-            RoundedRectangle(cornerRadius: 24, style: .continuous)
-                .strokeBorder(.white.opacity(0.18), lineWidth: 1)
-        }
-        .shadow(color: .black.opacity(0.22), radius: 22, y: 14)
+        .frame(width: 64, height: 64)
     }
 }
 
