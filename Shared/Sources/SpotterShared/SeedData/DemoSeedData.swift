@@ -10,6 +10,7 @@ public enum DemoSeedData {
         exercise("Barbell Row", primary: "Back", secondary: ["Biceps"], equipment: .barbell),
         exercise("Dumbbell Curl", primary: "Biceps", secondary: [], equipment: .dumbbell),
         exercise("Triceps Pushdown", primary: "Triceps", secondary: [], equipment: .cable),
+        exercise("Push-Up", primary: "Chest", secondary: ["Triceps", "Core"], equipment: .bodyweight, loadUnit: .bodyweight),
         exercise("Plank", primary: "Core", secondary: ["Shoulders"], equipment: .bodyweight, measurement: .duration, loadUnit: .bodyweight),
         exercise("Treadmill Run", primary: "Cardio", secondary: ["Legs"], category: .cardio, equipment: .cardioMachine, measurement: .duration, restSeconds: 60, loadUnit: .bodyweight)
     ]
@@ -17,6 +18,7 @@ public enum DemoSeedData {
     public static let plans: [WorkoutPlanDTO] = {
         let fullBodyPlanId = UUID(uuidString: "10000000-0000-0000-0000-000000000001")!
         let upperLowerPlanId = UUID(uuidString: "10000000-0000-0000-0000-000000000002")!
+        let quickTestPlanId = UUID(uuidString: "10000000-0000-0000-0000-000000000003")!
 
         return [
             WorkoutPlanDTO(
@@ -71,6 +73,24 @@ public enum DemoSeedData {
                         prescription("Deadlift", sets: 3, repsMin: 4, repsMax: 6, load: 110, rest: 180),
                         prescription("Squat", sets: 3, repsMin: 8, repsMax: 10, load: 72.5, rest: 150),
                         prescription("Treadmill Run", sets: 1, duration: 900, load: nil, rest: 60)
+                    ])
+                ],
+                isActive: true,
+                isArchived: false,
+                createdAt: referenceDate,
+                updatedAt: referenceDate
+            ),
+            WorkoutPlanDTO(
+                id: quickTestPlanId,
+                name: "QA Quick Test",
+                description: "Short mixed workout for testing set result entry, rest timers, skips, substitutions, and history edits.",
+                goal: "Exercise the logging flow quickly.",
+                days: [
+                    day(quickTestPlanId, "Mixed Inputs", 0, [
+                        prescription("Bench Press", sets: 2, repsMin: 5, repsMax: 8, load: 40, rest: 5),
+                        prescription("Push-Up", sets: 2, repsMin: 8, repsMax: 12, load: nil, rest: 5),
+                        prescription("Plank", sets: 2, duration: 10, load: nil, rest: 5),
+                        prescription("Treadmill Run", sets: 1, duration: 15, load: nil, rest: 5)
                     ])
                 ],
                 isActive: true,

@@ -6,7 +6,9 @@ struct WatchWorkoutView: View {
     @Environment(\.dismiss) private var dismiss
     @EnvironmentObject private var syncManager: WatchPhoneSyncManager
     @StateObject private var viewModel: WatchWorkoutViewModel
+    @AppStorage("workout.promptForSetResults") private var promptForSetResults = true
     @State private var now = Date()
+    @State private var showingSetResultEntry = false
 
     init(plan: WorkoutPlanDTO, day: WorkoutDayDTO) {
         _viewModel = StateObject(wrappedValue: WatchWorkoutViewModel(plan: plan, day: day))
@@ -41,43 +43,77 @@ struct WatchWorkoutView: View {
             }
 
             if viewModel.canCompleteSet {
-                Section {
-                    if viewModel.usesDuration {
-                        CrownNumberField(
-                            title: "Duration",
-                            suffix: "s",
-                            value: $viewModel.durationValue,
-                            range: 0...3600,
-                            step: 5
-                        )
-                    } else {
-                        CrownNumberField(
-                            title: "Reps",
-                            suffix: "",
-                            value: $viewModel.repsValue,
-                            range: 0...200,
-                            step: 1
-                        )
-                    }
+                Section("Options") {
+                    Toggle("Prompt for Results", isOn: $promptForSetResults)
+                }
 
-                    if viewModel.currentExercise?.loadUnit != .bodyweight {
-                        CrownNumberField(
-                            title: "Load",
-                            suffix: viewModel.currentExercise?.loadUnit.rawValue ?? "",
-                            value: $viewModel.loadValue,
-                            range: 0...500,
-                            step: 2.5
-                        )
+                if !promptForSetResults {
+                    Section {
+                        if viewModel.usesDuration {
+                            CrownNumberField(
+                                title: "Duration",
+                                suffix: "s",
+                                value: $viewModel.durationValue,
+                                range: 0...3600,
+                                step: 5
+                            )
+                        } else {
+                            CrownNumberField(
+                                title: "Reps",
+                                suffix: "",
+                                value: $viewModel.repsValue,
+                                range: 0...200,
+                                step: 1
+                            )
+                        }
+
+                        if viewModel.currentExercise?.loadUnit != .bodyweight {
+                            CrownNumberField(
+                                title: "Load",
+                                suffix: viewModel.currentExercise?.loadUnit.rawValue ?? "",
+                                value: $viewModel.loadValue,
+                                range: 0...500,
+                                step: 2.5
+                            )
+                        }
                     }
                 }
 
                 Button {
-                    viewModel.completeCurrentSet()
+                    if promptForSetResults {
+                        showingSetResultEntry = true
+                    } else {
+                        viewModel.completeCurrentSet()
+                    }
                 } label: {
                     Label("Complete Set", systemImage: "checkmark.circle.fill")
                 }
+                .sheet(isPresented: $showingSetResultEntry) {
+                    WatchSetResultEntryView(
+                        title: "Set \(viewModel.nextSetNumber)",
+                        usesDuration: viewModel.usesDuration,
+                        loadUnit: viewModel.currentExercise?.loadUnit ?? .kg,
+                        reps: Int(viewModel.repsValue),
+                        durationSeconds: Int(viewModel.durationValue),
+                        load: viewModel.loadValue
+                    ) { reps, durationSeconds, load in
+                        viewModel.completeCurrentSet(
+                            reps: reps,
+                            durationSeconds: durationSeconds,
+                            load: load
+                        )
+                    }
+                }
 
                 Section {
+                    if !viewModel.loggedSets.isEmpty {
+                        NavigationLink {
+                            WatchLoggedSetListView(viewModel: viewModel)
+                        } label: {
+                            Label("Edit Logged Sets", systemImage: "pencil")
+                        }
+                    }
+
                     Button {
                         viewModel.skipCurrentSet()
                     } label: {
@@ -112,6 +148,14 @@ struct WatchWorkoutView: View {
                         Label("Change Exercise", systemImage: "arrow.triangle.2.circlepath")
                     }
                     .disabled(viewModel.replacementExercises.isEmpty)
+                }
+            } else if !viewModel.loggedSets.isEmpty {
+                Section {
+                    NavigationLink {
+                        WatchLoggedSetListView(viewModel: viewModel)
+                    } label: {
+                        Label("Edit Logged Sets", systemImage: "pencil")
+                    }
                 }
             }
 
@@ -172,6 +216,139 @@ struct WatchWorkoutView: View {
                 }
             }
         )
+    }
+}
+
+private struct WatchLoggedSetListView: View {
+    @ObservedObject var viewModel: WatchWorkoutViewModel
+
+    var body: some View {
+        List(viewModel.loggedSets) { log in
+            if log.completionType == .completed {
+                NavigationLink {
+                    WatchSetResultEntryView(
+                        title: "\(log.exerciseNameSnapshot) \(log.setIndex)",
+                        usesDuration: log.targetDurationSeconds != nil,
+                        loadUnit: log.completedLoadUnit,
+                        reps: log.completedReps ?? log.targetReps ?? 0,
+                        durationSeconds: log.completedDurationSeconds ?? log.targetDurationSeconds ?? 0,
+                        load: log.completedLoad ?? log.targetLoad ?? 0
+                    ) { reps, durationSeconds, load in
+                        viewModel.updateLoggedSet(
+                            log,
+                            reps: reps,
+                            durationSeconds: durationSeconds,
+                            load: load
+                        )
+                    }
+                } label: {
+                    WatchLoggedSetRow(log: log)
+                }
+            } else {
+                WatchLoggedSetRow(log: log)
+            }
+        }
+        .navigationTitle("Logged Sets")
+    }
+}
+
+private struct WatchLoggedSetRow: View {
+    let log: WorkoutSetLogDTO
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 3) {
+            Text("\(log.exerciseNameSnapshot) \(log.setIndex)")
+                .font(.headline)
+            Text(summaryText)
+                .font(.caption)
+                .foregroundStyle(.secondary)
+        }
+    }
+
+    private var summaryText: String {
+        if log.completionType == .skipped {
+            return "Skipped"
+        }
+
+        if let seconds = log.completedDurationSeconds {
+            return "\(seconds)s"
+        }
+
+        let repsText = log.completedReps.map { "\($0) reps" } ?? "Logged"
+        guard let load = log.completedLoad else {
+            return repsText
+        }
+
+        return "\(repsText) x \(format(load)) \(log.completedLoadUnit.rawValue)"
+    }
+
+    private func format(_ value: Double) -> String {
+        value.truncatingRemainder(dividingBy: 1) == 0
+            ? "\(Int(value))"
+            : String(format: "%.1f", value)
+    }
+}
+
+private struct WatchSetResultEntryView: View {
+    @Environment(\.dismiss) private var dismiss
+    let title: String
+    let usesDuration: Bool
+    let loadUnit: LoadUnit
+    let onSave: (Int?, Int?, Double?) -> Void
+
+    @State private var repsText: String
+    @State private var durationText: String
+    @State private var loadText: String
+
+    init(
+        title: String,
+        usesDuration: Bool,
+        loadUnit: LoadUnit,
+        reps: Int,
+        durationSeconds: Int,
+        load: Double,
+        onSave: @escaping (Int?, Int?, Double?) -> Void
+    ) {
+        self.title = title
+        self.usesDuration = usesDuration
+        self.loadUnit = loadUnit
+        self.onSave = onSave
+        _repsText = State(initialValue: reps == 0 ? "" : "\(reps)")
+        _durationText = State(initialValue: durationSeconds == 0 ? "" : "\(durationSeconds)")
+        _loadText = State(initialValue: load == 0 ? "" : Self.format(load))
+    }
+
+    var body: some View {
+        Form {
+            if usesDuration {
+                TextField("Seconds", text: $durationText)
+            } else {
+                TextField("Reps", text: $repsText)
+            }
+
+            if loadUnit != .bodyweight {
+                TextField(loadUnit.rawValue, text: $loadText)
+            }
+        }
+        .navigationTitle(title)
+        .toolbar {
+            ToolbarItem(placement: .confirmationAction) {
+                Button("Save") {
+                    onSave(
+                        usesDuration ? nil : Int(repsText),
+                        usesDuration ? Int(durationText) : nil,
+                        loadUnit == .bodyweight ? nil : Double(loadText.replacingOccurrences(of: ",", with: "."))
+                    )
+                    dismiss()
+                }
+            }
+        }
+    }
+
+    private static func format(_ value: Double) -> String {
+        value.truncatingRemainder(dividingBy: 1) == 0
+            ? "\(Int(value))"
+            : String(format: "%.1f", value)
     }
 }
 

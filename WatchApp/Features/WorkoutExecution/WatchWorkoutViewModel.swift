@@ -132,31 +132,57 @@ final class WatchWorkoutViewModel: ObservableObject {
         WorkoutExecutionEngine.nextIncompleteExerciseIndex(in: day, state: state) == nil
     }
 
+    var loggedSets: [WorkoutSetLogDTO] {
+        state.session.setLogs.sorted { lhs, rhs in
+            if lhs.completedAt == rhs.completedAt {
+                return lhs.setIndex < rhs.setIndex
+            }
+
+            return lhs.completedAt < rhs.completedAt
+        }
+    }
+
     func configure(snapshot: SyncSnapshot?) {
         self.snapshot = snapshot
     }
 
     func completeCurrentSet() {
+        completeCurrentSet(
+            reps: usesDuration ? nil : Int(repsValue),
+            durationSeconds: usesDuration ? Int(durationValue) : nil,
+            load: currentExercise?.loadUnit == .bodyweight ? nil : loadValue
+        )
+    }
+
+    func completeCurrentSet(reps: Int?, durationSeconds: Int?, load: Double?) {
         guard let exercise = currentExercise else {
             return
         }
-
-        let completedReps = usesDuration ? nil : Int(repsValue)
-        let completedDuration = usesDuration ? Int(durationValue) : nil
-        let completedLoad = exercise.loadUnit == .bodyweight ? nil : loadValue
 
         WorkoutExecutionEngine.appendCompletedSet(
             to: &state,
             day: day,
             exercise: exercise,
             exerciseName: exerciseName(for: exercise.exerciseId),
-            completedReps: completedReps,
-            completedDurationSeconds: completedDuration,
-            completedLoad: completedLoad
+            completedReps: reps,
+            completedDurationSeconds: durationSeconds,
+            completedLoad: exercise.loadUnit == .bodyweight ? nil : load
         )
 
         saveActiveWorkout()
         loadCurrentTargets()
+    }
+
+    func updateLoggedSet(_ log: WorkoutSetLogDTO, reps: Int?, durationSeconds: Int?, load: Double?) {
+        WorkoutExecutionEngine.updateSetLog(
+            in: &state,
+            logId: log.id,
+            completedReps: reps,
+            completedDurationSeconds: durationSeconds,
+            completedLoad: log.completedLoadUnit == .bodyweight ? nil : load
+        )
+
+        saveActiveWorkout()
     }
 
     func skipCurrentSet() {
