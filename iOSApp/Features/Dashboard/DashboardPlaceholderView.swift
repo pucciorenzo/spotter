@@ -40,6 +40,20 @@ struct DashboardPlaceholderView: View {
                         }
                     }
 
+                    if activeWorkoutSession == nil, let nextDay, !nextPrescriptions.isEmpty {
+                        NavigationLink {
+                            HomeActiveWorkoutView(
+                                dayName: nextDay.name,
+                                exerciseName: exerciseName(for: nextPrescriptions[0].exerciseId),
+                                target: targetText(for: nextPrescriptions[0]),
+                                load: loadText(for: nextPrescriptions[0])
+                            )
+                        } label: {
+                            StartWorkoutButtonLabel()
+                        }
+                        .buttonStyle(.plain)
+                    }
+
                     LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 14) {
                         MetricCard(title: "Week", value: "\(thisWeekSessions.count)", caption: "workouts", systemImage: "calendar")
                         MetricCard(title: "Volume", value: volumeText(for: thisWeekSessions), caption: "kg logged", systemImage: "chart.bar.fill")
@@ -93,6 +107,10 @@ struct DashboardPlaceholderView: View {
 
     private var nextPrescriptions: [WorkoutExerciseModel] {
         nextDay?.exercises.sorted { $0.orderIndex < $1.orderIndex } ?? []
+    }
+
+    private var activeWorkoutSession: WorkoutSessionModel? {
+        sessions.first { $0.status == .inProgress }
     }
 
     private var headerSubtitle: String {
@@ -185,6 +203,126 @@ struct DashboardPlaceholderView: View {
         value.truncatingRemainder(dividingBy: 1) == 0
             ? "\(Int(value))"
             : String(format: "%.1f", value)
+    }
+}
+
+private struct StartWorkoutButtonLabel: View {
+    var body: some View {
+        HStack(spacing: 12) {
+            Image(systemName: "play.fill")
+                .font(.headline)
+                .symbolRenderingMode(.hierarchical)
+            Text("Start Workout")
+                .font(.headline.weight(.semibold))
+            Spacer()
+            Image(systemName: "chevron.right")
+                .font(.subheadline.weight(.semibold))
+                .foregroundStyle(SpotterPalette.textSecondary)
+        }
+        .foregroundStyle(SpotterPalette.textPrimary)
+        .padding(.horizontal, 18)
+        .padding(.vertical, 16)
+        .background(
+            LinearGradient(
+                colors: [
+                    SpotterPalette.accent.opacity(0.92),
+                    SpotterPalette.accentSoft.opacity(0.68)
+                ],
+                startPoint: .topLeading,
+                endPoint: .bottomTrailing
+            ),
+            in: RoundedRectangle(cornerRadius: 24, style: .continuous)
+        )
+        .overlay {
+            RoundedRectangle(cornerRadius: 24, style: .continuous)
+                .strokeBorder(.white.opacity(0.18), lineWidth: 1)
+        }
+        .shadow(color: .black.opacity(0.22), radius: 22, y: 14)
+    }
+}
+
+private struct HomeActiveWorkoutView: View {
+    let dayName: String
+    let exerciseName: String
+    let target: String
+    let load: String
+
+    var body: some View {
+        ZStack(alignment: .bottom) {
+            SpotterBackground()
+
+            ScrollView {
+                VStack(alignment: .leading, spacing: 22) {
+                    ScreenHeader(
+                        eyebrow: dayName,
+                        title: exerciseName,
+                        subtitle: "Ready to begin. Live execution controls remain prototype-only here."
+                    )
+
+                    GlassCard {
+                        VStack(spacing: 20) {
+                            HStack {
+                                VStack(alignment: .leading, spacing: 6) {
+                                    Text("Target")
+                                        .font(.caption.weight(.semibold))
+                                        .foregroundStyle(SpotterPalette.textSecondary)
+                                    Text(target)
+                                        .font(.system(size: 30, weight: .semibold, design: .rounded))
+                                        .lineLimit(2)
+                                        .minimumScaleFactor(0.7)
+                                }
+
+                                Spacer()
+
+                                VStack(alignment: .trailing, spacing: 6) {
+                                    Text("Load")
+                                        .font(.caption.weight(.semibold))
+                                        .foregroundStyle(SpotterPalette.textSecondary)
+                                    Text(load)
+                                        .font(.system(size: 30, weight: .semibold, design: .rounded))
+                                        .monospacedDigit()
+                                        .lineLimit(1)
+                                        .minimumScaleFactor(0.7)
+                                }
+                            }
+
+                            ProgressView(value: 0.0)
+                                .tint(SpotterPalette.accentSoft)
+                        }
+                    }
+
+                    GlassCard {
+                        VStack(alignment: .leading, spacing: 14) {
+                            Text("Rest")
+                                .font(.headline)
+                            HStack(alignment: .lastTextBaseline) {
+                                Text("00:00")
+                                    .font(.system(size: 54, weight: .semibold, design: .rounded))
+                                    .monospacedDigit()
+                                Spacer()
+                                Text("not started")
+                                    .font(.caption)
+                                    .foregroundStyle(SpotterPalette.textSecondary)
+                            }
+                        }
+                    }
+                }
+                .padding(.horizontal, 20)
+                .padding(.top, 18)
+                .padding(.bottom, 132)
+            }
+
+            VStack(spacing: 10) {
+                GlassButton(title: "Complete Set", systemImage: "checkmark")
+                HStack(spacing: 10) {
+                    GlassButton(title: "Skip", systemImage: "forward.end", style: .secondary)
+                    GlassButton(title: "Swap", systemImage: "arrow.triangle.2.circlepath", style: .secondary)
+                }
+            }
+            .padding(.horizontal, 20)
+            .padding(.bottom, 18)
+        }
+        .spotterScreenChrome()
     }
 }
 
