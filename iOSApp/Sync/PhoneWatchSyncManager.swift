@@ -16,6 +16,7 @@ final class PhoneWatchSyncManager: NSObject, ObservableObject {
     private let session: WCSession?
     private var latestSnapshot: SyncSnapshot?
     private var modelContext: ModelContext?
+    private var activeWorkoutStateRepository: ActiveWorkoutStateRepositoryProtocol?
 
     override init() {
         if WCSession.isSupported() {
@@ -36,6 +37,9 @@ final class PhoneWatchSyncManager: NSObject, ObservableObject {
 
     func configure(modelContext: ModelContext) {
         self.modelContext = modelContext
+        let repository = SwiftDataActiveWorkoutStateRepository(context: modelContext)
+        activeWorkoutStateRepository = repository
+        activeWorkoutState = try? repository.loadActiveWorkout()?.state
     }
 
     func publishSnapshot(_ snapshot: SyncSnapshot) {
@@ -65,6 +69,7 @@ final class PhoneWatchSyncManager: NSObject, ObservableObject {
 
     func publishActiveWorkoutState(_ state: WorkoutExecutionState) {
         activeWorkoutState = state
+        autosaveActiveWorkoutState(state)
 
         guard let session else { return }
 
@@ -167,11 +172,23 @@ final class PhoneWatchSyncManager: NSObject, ObservableObject {
             sendLatestSnapshot(replyHandler: replyHandler)
         case .activeWorkoutUpdated:
             activeWorkoutState = try? message.decodeActiveWorkoutState(decoder: decoder)
+            if let activeWorkoutState {
+                autosaveActiveWorkoutState(activeWorkoutState)
+            }
             replyHandler?([:])
         case .workoutCompleted:
             importCompletedWorkout(from: message, replyHandler: replyHandler)
         case .snapshotResponse, .workoutAck:
             replyHandler?([:])
+        }
+    }
+
+    private func autosaveActiveWorkoutState(_ state: WorkoutExecutionState) {
+        do {
+            try activeWorkoutStateRepository?.saveActiveWorkout(state, planSnapshot: nil, daySnapshot: nil)
+            lastErrorMessage = nil
+        } catch {
+            lastErrorMessage = error.localizedDescription
         }
     }
 }

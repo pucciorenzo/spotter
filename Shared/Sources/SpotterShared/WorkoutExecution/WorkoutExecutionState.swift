@@ -167,6 +167,8 @@ public enum WorkoutExecutionEngine {
         completedReps: Int?,
         completedDurationSeconds: Int?,
         completedLoad: Double?,
+        rpe: Double? = nil,
+        rir: Int? = nil,
         completedAt date: Date = Date()
     ) {
         let setIndex = nextSetIndex(for: exercise, in: state)
@@ -190,8 +192,8 @@ public enum WorkoutExecutionEngine {
             completedLoadUnit: exercise.loadUnit,
             restPlannedSeconds: exercise.restSeconds,
             restActualSeconds: nil,
-            rpe: nil,
-            rir: nil,
+            rpe: rpe,
+            rir: rir,
             notes: "",
             completedAt: date
         )
@@ -212,6 +214,8 @@ public enum WorkoutExecutionEngine {
         completedReps: Int?,
         completedDurationSeconds: Int?,
         completedLoad: Double?,
+        rpe: Double? = nil,
+        rir: Int? = nil,
         at date: Date = Date()
     ) {
         guard let index = state.session.setLogs.firstIndex(where: { $0.id == logId }) else {
@@ -221,6 +225,8 @@ public enum WorkoutExecutionEngine {
         state.session.setLogs[index].completedReps = completedReps
         state.session.setLogs[index].completedDurationSeconds = completedDurationSeconds
         state.session.setLogs[index].completedLoad = completedLoad
+        state.session.setLogs[index].rpe = rpe
+        state.session.setLogs[index].rir = rir
         state.session.setLogs[index].completedAt = date
         state.session.updatedAt = date
     }
