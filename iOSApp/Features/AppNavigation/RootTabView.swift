@@ -6,11 +6,12 @@ struct RootTabView: View {
     @Query(sort: \ExerciseModel.name) private var exercises: [ExerciseModel]
     @Query(sort: \WorkoutPlanModel.name) private var plans: [WorkoutPlanModel]
     @StateObject private var watchSyncManager = PhoneWatchSyncManager()
+    private let dataProvider: any SpotterDataProviding = MockSpotterRepository.preview
 
     var body: some View {
         TabView {
             NavigationStack {
-                DashboardPlaceholderView()
+                TodayView(dataProvider: dataProvider)
             }
             .spotterNavigationChrome()
             .tabItem {
@@ -18,7 +19,7 @@ struct RootTabView: View {
             }
 
             NavigationStack {
-                PlanListView()
+                PlanListView(dataProvider: dataProvider)
             }
             .spotterNavigationChrome()
             .tabItem {
@@ -26,7 +27,15 @@ struct RootTabView: View {
             }
 
             NavigationStack {
-                WorkoutHistoryPlaceholderView()
+                ExerciseListView(dataProvider: dataProvider)
+            }
+            .spotterNavigationChrome()
+            .tabItem {
+                Label("Exercises", systemImage: "figure.strengthtraining.traditional")
+            }
+
+            NavigationStack {
+                ProgressScreenView(dataProvider: dataProvider)
             }
             .spotterNavigationChrome()
             .tabItem {
@@ -34,7 +43,7 @@ struct RootTabView: View {
             }
 
             NavigationStack {
-                SettingsPlaceholderView()
+                ProfileView(dataProvider: dataProvider)
             }
             .spotterNavigationChrome()
             .tabItem {

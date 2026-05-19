@@ -1,11 +1,11 @@
-import SpotterShared
-import SwiftData
 import SwiftUI
 
-struct DashboardPlaceholderView: View {
-    @Query(sort: \WorkoutPlanModel.name) private var plans: [WorkoutPlanModel]
-    @Query(sort: \ExerciseModel.name) private var exercises: [ExerciseModel]
-    @Query(sort: \WorkoutSessionModel.startedAt, order: .reverse) private var sessions: [WorkoutSessionModel]
+struct TodayView: View {
+    let dataProvider: any SpotterDataProviding
+
+    private var snapshot: SpotterTodaySnapshot {
+        dataProvider.today
+    }
 
     var body: some View {
         ZStack {
@@ -13,334 +13,216 @@ struct DashboardPlaceholderView: View {
 
             ScrollView {
                 VStack(alignment: .leading, spacing: 22) {
-                    ScreenHeader(
-                        eyebrow: "Today",
-                        title: "spotter",
-                        subtitle: headerSubtitle
-                    )
+                    TodayHeader(snapshot: snapshot)
 
-                    GlassCard {
-                        HStack(alignment: .center, spacing: 18) {
-                            VStack(alignment: .leading, spacing: 14) {
-                                Text(nextDay?.name ?? "No Active Day")
-                                    .font(.title2.weight(.semibold))
-                                Text(activePlan?.name ?? "Create or activate a plan to start.")
-                                    .font(.subheadline)
-                                    .foregroundStyle(SpotterPalette.textSecondary)
+                    if let activeWorkout = snapshot.activeWorkout {
+                        ActiveWorkoutBanner(activeWorkout: activeWorkout)
+                    }
 
-                                HStack(spacing: 10) {
-                                    MainWorkoutInfoPill(title: "\(nextPrescriptions.count) exercises", systemImage: "list.bullet")
-                                    MainWorkoutInfoPill(title: estimatedDurationText, systemImage: "timer")
-                                }
-                            }
-
-                            Spacer()
-
-                            WorkoutProgressRing(progress: weeklyProgress)
-                        }
+                    if let suggestedWorkout = snapshot.suggestedWorkout {
+                        SuggestedWorkoutCard(workout: suggestedWorkout)
+                    } else {
+                        TodayEmptyPlanCard()
                     }
 
                     LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 14) {
-                        MetricCard(title: "Week", value: "\(thisWeekSessions.count)", caption: "workouts", systemImage: "calendar")
-                        MetricCard(title: "Volume", value: volumeText(for: thisWeekSessions), caption: "kg logged", systemImage: "chart.bar.fill")
-                        MetricCard(title: "Sets", value: "\(completedSetCount(in: thisWeekSessions))", caption: "completed", systemImage: "checkmark.circle.fill")
-                        MetricCard(title: "Time", value: durationText(for: thisWeekSessions), caption: "training", systemImage: "timer")
+                        ForEach(snapshot.metrics) { metric in
+                            MetricCard(
+                                title: metric.title,
+                                value: metric.value,
+                                caption: metric.caption,
+                                systemImage: metric.systemImage
+                            )
+                        }
                     }
 
                     VStack(alignment: .leading, spacing: 12) {
-                        Text("Next Exercises")
+                        Text("Recent Workouts")
                             .font(.headline)
 
-                        GlassCard {
-                            if nextPrescriptions.isEmpty {
-                                Text("Add exercises to your active workout day.")
-                                    .font(.subheadline)
-                                    .foregroundStyle(SpotterPalette.textSecondary)
-                                    .frame(maxWidth: .infinity, alignment: .leading)
-                            } else {
-                                VStack(spacing: 4) {
-                                    ForEach(Array(nextPrescriptions.prefix(4).enumerated()), id: \.element.id) { index, prescription in
-                                        ExerciseRow(
-                                            name: exerciseName(for: prescription.exerciseId),
-                                            detail: targetText(for: prescription),
-                                            metric: loadText(for: prescription)
-                                        )
-                                        if index < min(nextPrescriptions.count, 4) - 1 {
-                                            Divider().overlay(.white.opacity(0.10))
-                                        }
-                                    }
+                        ScrollView(.horizontal, showsIndicators: false) {
+                            HStack(spacing: 14) {
+                                ForEach(snapshot.recentWorkouts) { workout in
+                                    RecentWorkoutCard(workout: workout)
                                 }
                             }
+                            .padding(.vertical, 2)
                         }
                     }
                 }
                 .padding(.horizontal, 20)
                 .padding(.top, 18)
-                .padding(.bottom, canStartWorkout ? 112 : 34)
+                .padding(.bottom, 34)
+            }
+        }
+        .navigationTitle("Today")
+        .navigationBarTitleDisplayMode(.large)
+        .spotterScreenChrome()
+    }
+}
+
+private struct TodayHeader: View {
+    let snapshot: SpotterTodaySnapshot
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            VStack(alignment: .leading, spacing: 8) {
+                Text(snapshot.greeting)
+                    .font(.largeTitle.weight(.semibold))
+                Text(snapshot.status)
+                    .font(.title3.weight(.medium))
+                    .foregroundStyle(SpotterPalette.textSecondary)
             }
 
-            if canStartWorkout, let nextDay {
-                VStack {
+            HStack(spacing: 10) {
+                TodayStatusPill(title: "\(snapshot.sessionsThisWeek) this week", systemImage: "calendar")
+                TodayStatusPill(title: snapshot.lastWorkout, systemImage: "clock")
+                TodayStatusPill(title: snapshot.recoveryStatus, systemImage: "heart")
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+}
+
+private struct SuggestedWorkoutCard: View {
+    let workout: SpotterSuggestedWorkout
+
+    var body: some View {
+        GlassCard {
+            VStack(alignment: .leading, spacing: 18) {
+                HStack(alignment: .top, spacing: 16) {
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text(workout.dayPosition)
+                            .font(.caption.weight(.semibold))
+                            .foregroundStyle(SpotterPalette.accentSoft)
+                        Text(workout.dayName)
+                            .font(.title2.weight(.semibold))
+                        Text(workout.planName)
+                            .font(.subheadline)
+                            .foregroundStyle(SpotterPalette.textSecondary)
+                    }
+
                     Spacer()
-                    HStack {
-                        Spacer()
-                        NavigationLink {
-                            HomeActiveWorkoutView(
-                                dayName: nextDay.name,
-                                exerciseName: exerciseName(for: nextPrescriptions[0].exerciseId),
-                                target: targetText(for: nextPrescriptions[0]),
-                                load: loadText(for: nextPrescriptions[0])
-                            )
-                        } label: {
-                            FloatingStartWorkoutButtonLabel()
-                        }
-                        .buttonStyle(.plain)
-                        .accessibilityLabel("Start Workout")
-                    }
-                    .padding(.trailing, 22)
-                    .padding(.bottom, 28)
-                }
-            }
-        }
-        .scrollContentBackground(.hidden)
-        .spotterScreenChrome()
-    }
 
-    private var activePlan: WorkoutPlanModel? {
-        plans.first { $0.isActive && !$0.isArchived } ?? plans.first { !$0.isArchived }
-    }
-
-    private var nextDay: WorkoutDayModel? {
-        activePlan?.days.sorted { $0.orderIndex < $1.orderIndex }.first
-    }
-
-    private var nextPrescriptions: [WorkoutExerciseModel] {
-        nextDay?.exercises.sorted { $0.orderIndex < $1.orderIndex } ?? []
-    }
-
-    private var activeWorkoutSession: WorkoutSessionModel? {
-        sessions.first { $0.status == .inProgress }
-    }
-
-    private var canStartWorkout: Bool {
-        activeWorkoutSession == nil && nextDay != nil && !nextPrescriptions.isEmpty
-    }
-
-    private var headerSubtitle: String {
-        guard let activePlan else {
-            return "Set up a plan and Spotter will keep today focused."
-        }
-
-        return "\(activePlan.name) is ready. Keep pace calm and precise."
-    }
-
-    private var estimatedDurationText: String {
-        let seconds = nextPrescriptions.reduce(0) { total, prescription in
-            total + ((prescription.numberOfSets + prescription.warmupSets) * max(prescription.restSeconds, 45))
-        }
-        let minutes = max(seconds / 60, nextPrescriptions.isEmpty ? 0 : 20)
-        return minutes == 0 ? "0 min" : "\(minutes) min"
-    }
-
-    private var weeklyProgress: Double {
-        guard let activePlan, !activePlan.days.isEmpty else { return 0 }
-        return min(Double(thisWeekSessions.count) / Double(max(activePlan.days.count, 1)), 1)
-    }
-
-    private var thisWeekSessions: [WorkoutSessionModel] {
-        guard let interval = Calendar.current.dateInterval(of: .weekOfYear, for: Date()) else {
-            return []
-        }
-
-        return sessions.filter { $0.status == .completed && interval.contains($0.startedAt) }
-    }
-
-    private func exerciseName(for id: UUID) -> String {
-        exercises.first { $0.id == id }?.name ?? "Exercise"
-    }
-
-    private func targetText(for prescription: WorkoutExerciseModel) -> String {
-        if let seconds = prescription.targetDurationSeconds {
-            return "\(prescription.numberOfSets) sets x \(seconds)s"
-        }
-
-        if let min = prescription.targetRepsMin, let max = prescription.targetRepsMax {
-            return "\(prescription.numberOfSets) sets x \(min)-\(max) reps"
-        }
-
-        if let reps = prescription.targetReps {
-            return "\(prescription.numberOfSets) sets x \(reps) reps"
-        }
-
-        return "\(prescription.numberOfSets) sets"
-    }
-
-    private func loadText(for prescription: WorkoutExerciseModel) -> String {
-        guard let load = prescription.startingLoad, load > 0 else {
-            return "\(prescription.restSeconds)s"
-        }
-
-        return "\(format(load)) \(prescription.loadUnit.rawValue)"
-    }
-
-    private func completedSetCount(in sessions: [WorkoutSessionModel]) -> Int {
-        sessions.reduce(0) { count, session in
-            count + session.setLogs.filter { $0.completionType == .completed }.count
-        }
-    }
-
-    private func volumeText(for sessions: [WorkoutSessionModel]) -> String {
-        let volume = sessions
-            .flatMap(\.setLogs)
-            .filter { $0.completionType == .completed }
-            .reduce(0.0) { total, log in
-                guard let reps = log.completedReps,
-                      let load = log.completedLoad,
-                      log.completedLoadUnit != .bodyweight else {
-                    return total
+                    WorkoutProgressRing(progress: 0.48)
                 }
 
-                return total + (Double(reps) * load)
-            }
-
-        guard volume > 0 else { return "0" }
-        return volume >= 1_000 ? String(format: "%.1fk", volume / 1_000) : format(volume)
-    }
-
-    private func durationText(for sessions: [WorkoutSessionModel]) -> String {
-        let minutes = sessions.reduce(0) { $0 + $1.durationSeconds } / 60
-        return minutes < 60 ? "\(minutes)m" : "\(minutes / 60)h \(minutes % 60)m"
-    }
-
-    private func format(_ value: Double) -> String {
-        value.truncatingRemainder(dividingBy: 1) == 0
-            ? "\(Int(value))"
-            : String(format: "%.1f", value)
-    }
-}
-
-private struct FloatingStartWorkoutButtonLabel: View {
-    var body: some View {
-        ZStack {
-            Circle()
-                .fill(
-                    LinearGradient(
-                        colors: [
-                            SpotterPalette.accent.opacity(0.96),
-                            SpotterPalette.accentSoft.opacity(0.78)
-                        ],
-                        startPoint: .topLeading,
-                        endPoint: .bottomTrailing
-                    )
-                )
-                .overlay {
-                    Circle()
-                        .strokeBorder(.white.opacity(0.20), lineWidth: 1)
-                }
-                .shadow(color: .black.opacity(0.30), radius: 24, y: 16)
-
-            Image(systemName: "play.fill")
-                .font(.title2.weight(.semibold))
-                .symbolRenderingMode(.hierarchical)
-                .foregroundStyle(SpotterPalette.textPrimary)
-                .offset(x: 2)
-        }
-        .frame(width: 64, height: 64)
-    }
-}
-
-private struct HomeActiveWorkoutView: View {
-    let dayName: String
-    let exerciseName: String
-    let target: String
-    let load: String
-
-    var body: some View {
-        ZStack(alignment: .bottom) {
-            SpotterBackground()
-
-            ScrollView {
-                VStack(alignment: .leading, spacing: 22) {
-                    ScreenHeader(
-                        eyebrow: dayName,
-                        title: exerciseName,
-                        subtitle: "Ready to begin. Live execution controls remain prototype-only here."
-                    )
-
-                    GlassCard {
-                        VStack(spacing: 20) {
-                            HStack {
-                                VStack(alignment: .leading, spacing: 6) {
-                                    Text("Target")
-                                        .font(.caption.weight(.semibold))
-                                        .foregroundStyle(SpotterPalette.textSecondary)
-                                    Text(target)
-                                        .font(.system(size: 30, weight: .semibold, design: .rounded))
-                                        .lineLimit(2)
-                                        .minimumScaleFactor(0.7)
-                                }
-
-                                Spacer()
-
-                                VStack(alignment: .trailing, spacing: 6) {
-                                    Text("Load")
-                                        .font(.caption.weight(.semibold))
-                                        .foregroundStyle(SpotterPalette.textSecondary)
-                                    Text(load)
-                                        .font(.system(size: 30, weight: .semibold, design: .rounded))
-                                        .monospacedDigit()
-                                        .lineLimit(1)
-                                        .minimumScaleFactor(0.7)
-                                }
-                            }
-
-                            ProgressView(value: 0.0)
-                                .tint(SpotterPalette.accentSoft)
-                        }
-                    }
-
-                    GlassCard {
-                        VStack(alignment: .leading, spacing: 14) {
-                            Text("Rest")
-                                .font(.headline)
-                            HStack(alignment: .lastTextBaseline) {
-                                Text("00:00")
-                                    .font(.system(size: 54, weight: .semibold, design: .rounded))
-                                    .monospacedDigit()
-                                Spacer()
-                                Text("not started")
-                                    .font(.caption)
-                                    .foregroundStyle(SpotterPalette.textSecondary)
-                            }
-                        }
-                    }
-                }
-                .padding(.horizontal, 20)
-                .padding(.top, 18)
-                .padding(.bottom, 132)
-            }
-
-            VStack(spacing: 10) {
-                GlassButton(title: "Complete Set", systemImage: "checkmark")
                 HStack(spacing: 10) {
-                    GlassButton(title: "Skip", systemImage: "forward.end", style: .secondary)
-                    GlassButton(title: "Swap", systemImage: "arrow.triangle.2.circlepath", style: .secondary)
+                    TodayStatusPill(title: "\(workout.exerciseCount) exercises", systemImage: "list.bullet")
+                    TodayStatusPill(title: workout.estimatedDuration, systemImage: "timer")
                 }
+
+                VStack(spacing: 8) {
+                    ForEach(workout.firstExercises, id: \.self) { exercise in
+                        HStack {
+                            Text(exercise)
+                                .font(.subheadline.weight(.medium))
+                            Spacer()
+                            Image(systemName: "chevron.right")
+                                .font(.caption.weight(.semibold))
+                                .foregroundStyle(SpotterPalette.textTertiary)
+                        }
+                    }
+                }
+                .foregroundStyle(SpotterPalette.textSecondary)
+
+                GlassButton(title: "Start", systemImage: "play.fill")
             }
-            .padding(.horizontal, 20)
-            .padding(.bottom, 18)
         }
-        .spotterScreenChrome()
     }
 }
 
-private struct MainWorkoutInfoPill: View {
+private struct ActiveWorkoutBanner: View {
+    let activeWorkout: SpotterActiveWorkout
+
+    var body: some View {
+        Button {
+        } label: {
+            HStack(spacing: 14) {
+                Image(systemName: "figure.strengthtraining.traditional")
+                    .font(.title3)
+                    .symbolRenderingMode(.hierarchical)
+                    .foregroundStyle(SpotterPalette.accentSoft)
+
+                VStack(alignment: .leading, spacing: 3) {
+                    Text(activeWorkout.title)
+                        .font(.headline)
+                    Text(activeWorkout.detail)
+                        .font(.caption)
+                        .foregroundStyle(SpotterPalette.textSecondary)
+                }
+
+                Spacer()
+
+                Text("Resume")
+                    .font(.subheadline.weight(.semibold))
+                    .foregroundStyle(SpotterPalette.accentSoft)
+            }
+            .padding(16)
+            .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 24, style: .continuous))
+            .overlay {
+                RoundedRectangle(cornerRadius: 24, style: .continuous)
+                    .strokeBorder(SpotterPalette.glassStroke, lineWidth: 1)
+            }
+        }
+        .buttonStyle(.plain)
+    }
+}
+
+private struct TodayEmptyPlanCard: View {
+    var body: some View {
+        GlassCard {
+            VStack(alignment: .leading, spacing: 16) {
+                Image(systemName: "list.bullet.rectangle")
+                    .font(.title)
+                    .symbolRenderingMode(.hierarchical)
+                    .foregroundStyle(SpotterPalette.accentSoft)
+
+                Text("No plan yet")
+                    .font(.title2.weight(.semibold))
+                Text("Create a plan and Spotter will keep the next workout one tap away.")
+                    .font(.subheadline)
+                    .foregroundStyle(SpotterPalette.textSecondary)
+
+                GlassButton(title: "Create Plan", systemImage: "plus")
+            }
+        }
+    }
+}
+
+private struct RecentWorkoutCard: View {
+    let workout: SpotterRecentWorkout
+
+    var body: some View {
+        GlassCard(cornerRadius: 24, padding: 16) {
+            VStack(alignment: .leading, spacing: 12) {
+                Text(workout.name)
+                    .font(.headline)
+                Text(workout.dateText)
+                    .font(.caption)
+                    .foregroundStyle(SpotterPalette.textSecondary)
+
+                HStack(spacing: 10) {
+                    Label(workout.duration, systemImage: "timer")
+                    Label(workout.volume, systemImage: "chart.bar")
+                }
+                .font(.caption.weight(.medium))
+                .foregroundStyle(SpotterPalette.textSecondary)
+            }
+            .frame(width: 190, alignment: .leading)
+        }
+    }
+}
+
+private struct TodayStatusPill: View {
     let title: String
     let systemImage: String
 
     var body: some View {
         Label(title, systemImage: systemImage)
             .font(.caption.weight(.semibold))
+            .lineLimit(1)
+            .minimumScaleFactor(0.75)
             .symbolRenderingMode(.hierarchical)
             .foregroundStyle(SpotterPalette.textPrimary)
             .padding(.horizontal, 10)
@@ -355,7 +237,7 @@ private struct MainWorkoutInfoPill: View {
 
 #Preview {
     NavigationStack {
-        DashboardPlaceholderView()
+        TodayView(dataProvider: MockSpotterRepository.preview)
             .preferredColorScheme(.dark)
     }
 }

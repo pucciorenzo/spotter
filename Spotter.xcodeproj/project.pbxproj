@@ -32,6 +32,7 @@
 		A10000000000000000000017 /* WatchWorkoutViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000000000000000000016 /* WatchWorkoutViewModel.swift */; };
 		A10000000000000000000018 /* SpotterDesignSystem.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000000000000000000017 /* SpotterDesignSystem.swift */; };
 		A10000000000000000000019 /* WatchSpotterDesignSystem.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000000000000000000018 /* WatchSpotterDesignSystem.swift */; };
+		A1000000000000000000001A /* SpotterDataProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000000000000000000019 /* SpotterDataProvider.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -83,6 +84,7 @@
 		A20000000000000000000016 /* WatchWorkoutViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WatchApp/Features/WorkoutExecution/WatchWorkoutViewModel.swift; sourceTree = "<group>"; };
 		A20000000000000000000017 /* SpotterDesignSystem.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = iOSApp/DesignSystem/SpotterDesignSystem.swift; sourceTree = "<group>"; };
 		A20000000000000000000018 /* WatchSpotterDesignSystem.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WatchApp/DesignSystem/WatchSpotterDesignSystem.swift; sourceTree = "<group>"; };
+		A20000000000000000000019 /* SpotterDataProvider.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = iOSApp/Features/AppNavigation/SpotterDataProvider.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -131,6 +133,7 @@
 				A20000000000000000000011 /* SnapshotBuilder.swift */,
 				A20000000000000000000012 /* PhoneWatchSyncManager.swift */,
 				A20000000000000000000017 /* SpotterDesignSystem.swift */,
+				A20000000000000000000019 /* SpotterDataProvider.swift */,
 			);
 			name = iOSApp;
 			sourceTree = "<group>";
@@ -262,6 +265,7 @@
 				A1000000000000000000000E /* SpotterModels.swift in Sources */,
 				A1000000000000000000000F /* SpotterRepository.swift in Sources */,
 				A10000000000000000000018 /* SpotterDesignSystem.swift in Sources */,
+				A1000000000000000000001A /* SpotterDataProvider.swift in Sources */,
 				A10000000000000000000010 /* SeedData.swift in Sources */,
 				A10000000000000000000011 /* ModelContainerProvider.swift in Sources */,
 				A10000000000000000000012 /* SnapshotBuilder.swift in Sources */,
