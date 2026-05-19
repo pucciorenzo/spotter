@@ -40,7 +40,7 @@ final class WatchWorkoutViewModel: ObservableObject {
     }
 
     var currentExercise: WorkoutExerciseDTO? {
-        let exercises = WorkoutExecutionEngine.sortedExercises(in: day)
+        let exercises = WorkoutExecutionEngine.orderedExercises(in: day, state: state)
         guard exercises.indices.contains(state.currentExerciseIndex) else {
             return nil
         }
@@ -53,7 +53,20 @@ final class WatchWorkoutViewModel: ObservableObject {
             return "Complete"
         }
 
+        if let substitution = state.substitutions.first(where: { $0.workoutExerciseId == currentExercise.id }) {
+            return substitution.replacementExerciseName
+        }
+
         return exerciseName(for: currentExercise.exerciseId)
+    }
+
+    var currentSubstitutionText: String? {
+        guard let currentExercise,
+              let substitution = state.substitutions.first(where: { $0.workoutExerciseId == currentExercise.id }) else {
+            return nil
+        }
+
+        return "Replaces \(exerciseName(for: substitution.originalExerciseId))"
     }
 
     var completedSetCount: Int {
@@ -96,6 +109,25 @@ final class WatchWorkoutViewModel: ObservableObject {
         currentExercise != nil && !isWorkoutComplete
     }
 
+    var canMoveCurrentExerciseUp: Bool {
+        state.currentExerciseIndex > 0
+    }
+
+    var canMoveCurrentExerciseDown: Bool {
+        state.currentExerciseIndex < WorkoutExecutionEngine.orderedExercises(in: day, state: state).count - 1
+    }
+
+    var replacementExercises: [ExerciseDTO] {
+        guard let snapshot,
+              let currentExercise else {
+            return []
+        }
+
+        return snapshot.exercises
+            .filter { !$0.isArchived && $0.id != effectiveExerciseId(for: currentExercise) }
+            .sorted { $0.name < $1.name }
+    }
+
     var isWorkoutComplete: Bool {
         WorkoutExecutionEngine.nextIncompleteExerciseIndex(in: day, state: state) == nil
     }
@@ -125,6 +157,61 @@ final class WatchWorkoutViewModel: ObservableObject {
 
         saveActiveWorkout()
         loadCurrentTargets()
+    }
+
+    func skipCurrentSet() {
+        guard let exercise = currentExercise else {
+            return
+        }
+
+        WorkoutExecutionEngine.appendSkippedSet(
+            to: &state,
+            day: day,
+            exercise: exercise,
+            exerciseName: currentExerciseName,
+            reason: "Skipped set"
+        )
+
+        saveActiveWorkout()
+        loadCurrentTargets()
+    }
+
+    func skipCurrentExercise() {
+        guard let exercise = currentExercise else {
+            return
+        }
+
+        WorkoutExecutionEngine.skipExercise(
+            in: &state,
+            day: day,
+            exercise: exercise,
+            exerciseName: currentExerciseName
+        )
+
+        saveActiveWorkout()
+        loadCurrentTargets()
+    }
+
+    func moveCurrentExerciseUp() {
+        moveCurrentExercise(by: -1)
+    }
+
+    func moveCurrentExerciseDown() {
+        moveCurrentExercise(by: 1)
+    }
+
+    func substituteCurrentExercise(with replacement: ExerciseDTO) {
+        guard let exercise = currentExercise else {
+            return
+        }
+
+        WorkoutExecutionEngine.substituteExercise(
+            in: &state,
+            workoutExercise: exercise,
+            replacementExercise: replacement
+        )
+
+        saveActiveWorkout()
     }
 
     func finishWorkout() {
@@ -200,6 +287,18 @@ final class WatchWorkoutViewModel: ObservableObject {
 
     private func exerciseName(for id: UUID) -> String {
         snapshot?.exercises.first(where: { $0.id == id })?.name ?? "Exercise"
+    }
+
+    private func effectiveExerciseId(for exercise: WorkoutExerciseDTO) -> UUID {
+        state.substitutions
+            .first { $0.workoutExerciseId == exercise.id }?
+            .replacementExerciseId ?? exercise.exerciseId
+    }
+
+    private func moveCurrentExercise(by offset: Int) {
+        WorkoutExecutionEngine.moveCurrentExercise(in: &state, day: day, by: offset)
+        saveActiveWorkout()
+        loadCurrentTargets()
     }
 
     private func saveActiveWorkout() {

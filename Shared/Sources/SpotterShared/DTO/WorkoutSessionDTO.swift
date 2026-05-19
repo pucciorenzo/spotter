@@ -53,10 +53,12 @@ public struct WorkoutSetLogDTO: Codable, Identifiable, Hashable {
     public var id: UUID
     public var sessionId: UUID
     public var exerciseId: UUID
+    public var originalExerciseId: UUID?
     public var workoutExerciseId: UUID?
     public var exerciseNameSnapshot: String
     public var setIndex: Int
     public var isWarmup: Bool
+    public var completionType: WorkoutSetCompletionType?
     public var targetReps: Int?
     public var targetDurationSeconds: Int?
     public var targetLoad: Double?
@@ -76,10 +78,12 @@ public struct WorkoutSetLogDTO: Codable, Identifiable, Hashable {
         id: UUID,
         sessionId: UUID,
         exerciseId: UUID,
+        originalExerciseId: UUID? = nil,
         workoutExerciseId: UUID?,
         exerciseNameSnapshot: String,
         setIndex: Int,
         isWarmup: Bool,
+        completionType: WorkoutSetCompletionType? = .completed,
         targetReps: Int?,
         targetDurationSeconds: Int?,
         targetLoad: Double?,
@@ -98,10 +102,12 @@ public struct WorkoutSetLogDTO: Codable, Identifiable, Hashable {
         self.id = id
         self.sessionId = sessionId
         self.exerciseId = exerciseId
+        self.originalExerciseId = originalExerciseId
         self.workoutExerciseId = workoutExerciseId
         self.exerciseNameSnapshot = exerciseNameSnapshot
         self.setIndex = setIndex
         self.isWarmup = isWarmup
+        self.completionType = completionType
         self.targetReps = targetReps
         self.targetDurationSeconds = targetDurationSeconds
         self.targetLoad = targetLoad
