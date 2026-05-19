@@ -1,11 +1,10 @@
+import SpotterShared
+import SwiftData
 import SwiftUI
 
 struct PlanListView: View {
-    private let days = [
-        ("Push Strength", "Chest, shoulders, triceps", "6 exercises", 0.42),
-        ("Pull Volume", "Back, rear delts, biceps", "7 exercises", 0.20),
-        ("Lower Control", "Squat pattern and hinges", "6 exercises", 0.0)
-    ]
+    @Query(sort: \WorkoutPlanModel.name) private var plans: [WorkoutPlanModel]
+    @Query(sort: \ExerciseModel.name) private var exercises: [ExerciseModel]
 
     var body: some View {
         ZStack {
@@ -15,40 +14,50 @@ struct PlanListView: View {
                 VStack(alignment: .leading, spacing: 22) {
                     ScreenHeader(
                         eyebrow: "Plan",
-                        title: "Training Week",
-                        subtitle: "Built around steady progress and low-friction logging."
+                        title: activePlan?.name ?? "Training Week",
+                        subtitle: activePlan?.goal.isEmpty == false ? activePlan?.goal ?? "" : "Built around steady progress and low-friction logging."
                     )
 
-                    ForEach(Array(days.enumerated()), id: \.offset) { _, day in
-                        NavigationLink {
-                            WorkoutDayPrototypeView(
-                                title: day.0,
-                                subtitle: day.1
-                            )
-                        } label: {
-                            GlassCard {
-                                HStack(spacing: 16) {
-                                    VStack(alignment: .leading, spacing: 8) {
-                                        Text(day.0)
-                                            .font(.title3.weight(.semibold))
-                                        Text(day.1)
-                                            .font(.subheadline)
-                                            .foregroundStyle(SpotterPalette.textSecondary)
-                                        Text(day.2)
-                                            .font(.caption.weight(.medium))
+                    if planDays.isEmpty {
+                        GlassCard {
+                            Text("No workout days yet.")
+                                .font(.subheadline)
+                                .foregroundStyle(SpotterPalette.textSecondary)
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                        }
+                    } else {
+                        ForEach(planDays) { day in
+                            NavigationLink {
+                                WorkoutDayPrototypeView(
+                                    plan: activePlan,
+                                    day: day,
+                                    exercises: exercises
+                                )
+                            } label: {
+                                GlassCard {
+                                    HStack(spacing: 16) {
+                                        VStack(alignment: .leading, spacing: 8) {
+                                            Text(day.name)
+                                                .font(.title3.weight(.semibold))
+                                            Text(day.notes.isEmpty ? activePlan?.name ?? "Workout day" : day.notes)
+                                                .font(.subheadline)
+                                                .foregroundStyle(SpotterPalette.textSecondary)
+                                            Text("\(day.exercises.count) exercises")
+                                                .font(.caption.weight(.medium))
+                                                .foregroundStyle(SpotterPalette.accentSoft)
+                                        }
+
+                                        Spacer()
+
+                                        Image(systemName: "chevron.right.circle.fill")
+                                            .font(.title2)
+                                            .symbolRenderingMode(.hierarchical)
                                             .foregroundStyle(SpotterPalette.accentSoft)
                                     }
-
-                                    Spacer()
-
-                                    Image(systemName: "chevron.right.circle.fill")
-                                        .font(.title2)
-                                        .symbolRenderingMode(.hierarchical)
-                                        .foregroundStyle(SpotterPalette.accentSoft)
                                 }
                             }
+                            .buttonStyle(.plain)
                         }
-                        .buttonStyle(.plain)
                     }
                 }
                 .padding(.horizontal, 20)
@@ -58,19 +67,24 @@ struct PlanListView: View {
         }
         .spotterScreenChrome()
     }
+
+    private var activePlan: WorkoutPlanModel? {
+        plans.first { $0.isActive && !$0.isArchived } ?? plans.first { !$0.isArchived }
+    }
+
+    private var planDays: [WorkoutDayModel] {
+        activePlan?.days.sorted { $0.orderIndex < $1.orderIndex } ?? []
+    }
 }
 
 private struct WorkoutDayPrototypeView: View {
-    let title: String
-    let subtitle: String
+    let plan: WorkoutPlanModel?
+    let day: WorkoutDayModel
+    let exercises: [ExerciseModel]
 
-    private let exercises = [
-        ("Incline Press", "4 sets x 6-8 reps", "80 kg"),
-        ("Flat Dumbbell Press", "3 sets x 8-10 reps", "34 kg"),
-        ("Cable Fly", "3 sets x 12 reps", "24 kg"),
-        ("Lateral Raise", "4 sets x 12-15 reps", "10 kg"),
-        ("Rope Pressdown", "3 sets x 10-12 reps", "32 kg")
-    ]
+    private var prescriptions: [WorkoutExerciseModel] {
+        day.exercises.sorted { $0.orderIndex < $1.orderIndex }
+    }
 
     var body: some View {
         ZStack(alignment: .bottom) {
@@ -80,20 +94,20 @@ private struct WorkoutDayPrototypeView: View {
                 VStack(alignment: .leading, spacing: 22) {
                     ScreenHeader(
                         eyebrow: "Workout Day",
-                        title: title,
-                        subtitle: subtitle
+                        title: day.name,
+                        subtitle: plan?.name ?? "Workout"
                     )
 
                     GlassCard {
                         HStack(spacing: 18) {
                             WorkoutProgressRing(progress: 0.0)
                             VStack(alignment: .leading, spacing: 8) {
-                                Text("54 min")
+                                Text(estimatedDurationText)
                                     .font(.system(size: 34, weight: .semibold, design: .rounded))
                                 Text("Estimated duration")
                                     .font(.subheadline)
                                     .foregroundStyle(SpotterPalette.textSecondary)
-                                Text("2 warm-up sets included")
+                                Text("\(warmupSetCount) warm-up sets included")
                                     .font(.caption)
                                     .foregroundStyle(SpotterPalette.accentSoft)
                             }
@@ -102,11 +116,22 @@ private struct WorkoutDayPrototypeView: View {
                     }
 
                     GlassCard {
-                        VStack(spacing: 4) {
-                            ForEach(Array(exercises.enumerated()), id: \.offset) { index, exercise in
-                                ExerciseRow(name: exercise.0, detail: exercise.1, metric: exercise.2)
-                                if index < exercises.count - 1 {
-                                    Divider().overlay(.white.opacity(0.10))
+                        if prescriptions.isEmpty {
+                            Text("No exercises in this day.")
+                                .font(.subheadline)
+                                .foregroundStyle(SpotterPalette.textSecondary)
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                        } else {
+                            VStack(spacing: 4) {
+                                ForEach(Array(prescriptions.enumerated()), id: \.element.id) { index, prescription in
+                                    ExerciseRow(
+                                        name: exerciseName(for: prescription.exerciseId),
+                                        detail: targetText(for: prescription),
+                                        metric: loadText(for: prescription)
+                                    )
+                                    if index < prescriptions.count - 1 {
+                                        Divider().overlay(.white.opacity(0.10))
+                                    }
                                 }
                             }
                         }
@@ -118,7 +143,11 @@ private struct WorkoutDayPrototypeView: View {
             }
 
             NavigationLink {
-                ActiveWorkoutPrototypeView()
+                ActiveWorkoutPrototypeView(
+                    title: prescriptions.first.map { exerciseName(for: $0.exerciseId) } ?? day.name,
+                    target: prescriptions.first.map(targetText(for:)) ?? "No target",
+                    load: prescriptions.first.map(loadText(for:)) ?? "-"
+                )
             } label: {
                 HStack(spacing: 10) {
                     Image(systemName: "play.fill")
@@ -140,16 +169,67 @@ private struct WorkoutDayPrototypeView: View {
                     RoundedRectangle(cornerRadius: 22, style: .continuous)
                         .strokeBorder(.white.opacity(0.18), lineWidth: 1)
                 }
-                    .padding(.horizontal, 20)
-                    .padding(.bottom, 18)
+                .padding(.horizontal, 20)
+                .padding(.bottom, 18)
             }
             .buttonStyle(.plain)
+            .disabled(prescriptions.isEmpty)
         }
         .spotterScreenChrome()
+    }
+
+    private var warmupSetCount: Int {
+        prescriptions.reduce(0) { $0 + $1.warmupSets }
+    }
+
+    private var estimatedDurationText: String {
+        let seconds = prescriptions.reduce(0) { total, prescription in
+            total + ((prescription.numberOfSets + prescription.warmupSets) * max(prescription.restSeconds, 45))
+        }
+        let minutes = max(seconds / 60, prescriptions.isEmpty ? 0 : 20)
+        return minutes == 0 ? "0 min" : "\(minutes) min"
+    }
+
+    private func exerciseName(for id: UUID) -> String {
+        exercises.first { $0.id == id }?.name ?? "Exercise"
+    }
+
+    private func targetText(for prescription: WorkoutExerciseModel) -> String {
+        if let seconds = prescription.targetDurationSeconds {
+            return "\(prescription.numberOfSets) sets x \(seconds)s"
+        }
+
+        if let min = prescription.targetRepsMin, let max = prescription.targetRepsMax {
+            return "\(prescription.numberOfSets) sets x \(min)-\(max) reps"
+        }
+
+        if let reps = prescription.targetReps {
+            return "\(prescription.numberOfSets) sets x \(reps) reps"
+        }
+
+        return "\(prescription.numberOfSets) sets"
+    }
+
+    private func loadText(for prescription: WorkoutExerciseModel) -> String {
+        guard let load = prescription.startingLoad, load > 0 else {
+            return "\(prescription.restSeconds)s"
+        }
+
+        return "\(format(load)) \(prescription.loadUnit.rawValue)"
+    }
+
+    private func format(_ value: Double) -> String {
+        value.truncatingRemainder(dividingBy: 1) == 0
+            ? "\(Int(value))"
+            : String(format: "%.1f", value)
     }
 }
 
 private struct ActiveWorkoutPrototypeView: View {
+    let title: String
+    let target: String
+    let load: String
+
     private let loggedSets = [
         ("Warm-up", "12 reps x 40 kg"),
         ("Set 1", "8 reps x 80 kg"),
@@ -164,8 +244,8 @@ private struct ActiveWorkoutPrototypeView: View {
                 VStack(alignment: .leading, spacing: 22) {
                     ScreenHeader(
                         eyebrow: "Active",
-                        title: "Incline Press",
-                        subtitle: "Set 3 of 4. Rest finished; next set ready."
+                        title: title,
+                        subtitle: "Set 1 ready. Live execution remains prototype-only here."
                     )
 
                     GlassCard {
@@ -175,8 +255,10 @@ private struct ActiveWorkoutPrototypeView: View {
                                     Text("Target")
                                         .font(.caption.weight(.semibold))
                                         .foregroundStyle(SpotterPalette.textSecondary)
-                                    Text("6-8 reps")
-                                        .font(.system(size: 36, weight: .semibold, design: .rounded))
+                                    Text(target)
+                                        .font(.system(size: 30, weight: .semibold, design: .rounded))
+                                        .lineLimit(2)
+                                        .minimumScaleFactor(0.7)
                                 }
 
                                 Spacer()
@@ -185,13 +267,15 @@ private struct ActiveWorkoutPrototypeView: View {
                                     Text("Load")
                                         .font(.caption.weight(.semibold))
                                         .foregroundStyle(SpotterPalette.textSecondary)
-                                    Text("82.5 kg")
-                                        .font(.system(size: 36, weight: .semibold, design: .rounded))
+                                    Text(load)
+                                        .font(.system(size: 30, weight: .semibold, design: .rounded))
                                         .monospacedDigit()
+                                        .lineLimit(1)
+                                        .minimumScaleFactor(0.7)
                                 }
                             }
 
-                            ProgressView(value: 0.58)
+                            ProgressView(value: 0.0)
                                 .tint(SpotterPalette.accentSoft)
                         }
                     }
@@ -201,11 +285,11 @@ private struct ActiveWorkoutPrototypeView: View {
                             Text("Rest")
                                 .font(.headline)
                             HStack(alignment: .lastTextBaseline) {
-                                Text("00:18")
+                                Text("00:00")
                                     .font(.system(size: 54, weight: .semibold, design: .rounded))
                                     .monospacedDigit()
                                 Spacer()
-                                Text("remaining")
+                                Text("not started")
                                     .font(.caption)
                                     .foregroundStyle(SpotterPalette.textSecondary)
                             }
