@@ -5,7 +5,7 @@ enum SpotterPalette {
     static let backgroundTop = Color(red: 0.04, green: 0.07, blue: 0.11)
     static let backgroundBottom = Color(red: 0.01, green: 0.02, blue: 0.03)
     static let accent = Color(red: 0.37, green: 0.63, blue: 1.0)
-    static let accentSoft = Color(red: 0.57, green: 0.74, blue: 1.0)
+    static let accentSoft = Color(red: 0.33, green: 0.49, blue: 0.73)
     static let textPrimary = Color.white.opacity(0.96)
     static let textSecondary = Color.white.opacity(0.68)
     static let textTertiary = Color.white.opacity(0.45)
@@ -31,7 +31,7 @@ enum SpotterAppearance {
         navigationBar.standardAppearance = navAppearance
         navigationBar.compactAppearance = navAppearance
         navigationBar.scrollEdgeAppearance = navAppearance
-        navigationBar.tintColor = UIColor(red: 0.57, green: 0.74, blue: 1.0, alpha: 1.0)
+        navigationBar.tintColor = UIColor(red: 0.33, green: 0.49, blue: 0.73, alpha: 1.0)
         navigationBar.overrideUserInterfaceStyle = .dark
 
         let tabAppearance = UITabBarAppearance()
@@ -42,7 +42,7 @@ enum SpotterAppearance {
         let tabBar = UITabBar.appearance()
         tabBar.standardAppearance = tabAppearance
         tabBar.scrollEdgeAppearance = tabAppearance
-        tabBar.tintColor = UIColor(red: 0.57, green: 0.74, blue: 1.0, alpha: 1.0)
+        tabBar.tintColor = UIColor(red: 0.33, green: 0.49, blue: 0.73, alpha: 1.0)
         tabBar.unselectedItemTintColor = UIColor.white.withAlphaComponent(0.46)
         tabBar.overrideUserInterfaceStyle = .dark
     }
