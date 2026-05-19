@@ -54,6 +54,10 @@ enum SpotterRepository {
         )
 
         if let existingSession = try context.fetch(descriptor).first {
+            if existingSession.status != .completed {
+                existingSession.update(from: session)
+                try context.save()
+            }
             return existingSession
         }
 
