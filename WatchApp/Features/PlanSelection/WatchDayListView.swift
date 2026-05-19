@@ -9,6 +9,12 @@ struct WatchDayListView: View {
     var body: some View {
         List(plan.days) { day in
             Section {
+                NavigationLink {
+                    WatchWorkoutView(plan: plan, day: day)
+                } label: {
+                    Label("Start \(day.name)", systemImage: "play.circle.fill")
+                }
+
                 ForEach(day.exercises) { exercise in
                     VStack(alignment: .leading, spacing: 4) {
                         Text(exerciseName(for: exercise.exerciseId))

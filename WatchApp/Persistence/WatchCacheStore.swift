@@ -32,8 +32,37 @@ struct WatchCacheStore {
         try data.write(to: snapshotURL(), options: [.atomic])
     }
 
+    func loadActiveWorkout() -> WorkoutExecutionState? {
+        do {
+            let data = try Data(contentsOf: activeWorkoutURL())
+            return try decoder.decode(WorkoutExecutionState.self, from: data)
+        } catch {
+            return nil
+        }
+    }
+
+    func saveActiveWorkout(_ state: WorkoutExecutionState) throws {
+        let directory = try cacheDirectory()
+        try fileManager.createDirectory(at: directory, withIntermediateDirectories: true)
+        let data = try encoder.encode(state)
+        try data.write(to: activeWorkoutURL(), options: [.atomic])
+    }
+
+    func clearActiveWorkout() throws {
+        let url = try activeWorkoutURL()
+        guard fileManager.fileExists(atPath: url.path) else {
+            return
+        }
+
+        try fileManager.removeItem(at: url)
+    }
+
     private func snapshotURL() throws -> URL {
         try cacheDirectory().appendingPathComponent("sync-snapshot.json")
+    }
+
+    private func activeWorkoutURL() throws -> URL {
+        try cacheDirectory().appendingPathComponent("active-workout.json")
     }
 
     private func cacheDirectory() throws -> URL {

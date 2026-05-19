@@ -28,6 +28,8 @@
 		A10000000000000000000013 /* PhoneWatchSyncManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000000000000000000012 /* PhoneWatchSyncManager.swift */; };
 		A10000000000000000000014 /* WatchCacheStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000000000000000000013 /* WatchCacheStore.swift */; };
 		A10000000000000000000015 /* WatchPhoneSyncManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000000000000000000014 /* WatchPhoneSyncManager.swift */; };
+		A10000000000000000000016 /* WatchWorkoutView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000000000000000000015 /* WatchWorkoutView.swift */; };
+		A10000000000000000000017 /* WatchWorkoutViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000000000000000000016 /* WatchWorkoutViewModel.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -75,6 +77,8 @@
 		A20000000000000000000012 /* PhoneWatchSyncManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = iOSApp/Sync/PhoneWatchSyncManager.swift; sourceTree = "<group>"; };
 		A20000000000000000000013 /* WatchCacheStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WatchApp/Persistence/WatchCacheStore.swift; sourceTree = "<group>"; };
 		A20000000000000000000014 /* WatchPhoneSyncManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WatchApp/Sync/WatchPhoneSyncManager.swift; sourceTree = "<group>"; };
+		A20000000000000000000015 /* WatchWorkoutView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WatchApp/Features/WorkoutExecution/WatchWorkoutView.swift; sourceTree = "<group>"; };
+		A20000000000000000000016 /* WatchWorkoutViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WatchApp/Features/WorkoutExecution/WatchWorkoutViewModel.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -132,6 +136,8 @@
 				A20000000000000000000008 /* SpotterWatchApp.swift */,
 				A20000000000000000000009 /* WatchPlanListView.swift */,
 				A2000000000000000000000A /* WatchDayListView.swift */,
+				A20000000000000000000015 /* WatchWorkoutView.swift */,
+				A20000000000000000000016 /* WatchWorkoutViewModel.swift */,
 				A20000000000000000000013 /* WatchCacheStore.swift */,
 				A20000000000000000000014 /* WatchPhoneSyncManager.swift */,
 			);
@@ -258,6 +264,8 @@
 				A10000000000000000000008 /* SpotterWatchApp.swift in Sources */,
 				A10000000000000000000009 /* WatchPlanListView.swift in Sources */,
 				A1000000000000000000000A /* WatchDayListView.swift in Sources */,
+				A10000000000000000000016 /* WatchWorkoutView.swift in Sources */,
+				A10000000000000000000017 /* WatchWorkoutViewModel.swift in Sources */,
 				A10000000000000000000014 /* WatchCacheStore.swift in Sources */,
 				A10000000000000000000015 /* WatchPhoneSyncManager.swift in Sources */,
 			);
