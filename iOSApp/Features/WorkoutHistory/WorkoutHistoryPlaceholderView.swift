@@ -72,7 +72,8 @@ private struct WorkoutSessionRow: View {
 }
 
 private struct WorkoutSessionDetailView: View {
-    let session: WorkoutSessionModel
+    @Bindable var session: WorkoutSessionModel
+    @State private var editedLog: WorkoutSetLogModel?
 
     var body: some View {
         List {
@@ -91,7 +92,15 @@ private struct WorkoutSessionDetailView: View {
                             .font(.headline)
 
                         ForEach(group.logs) { log in
-                            WorkoutSetLogRow(log: log)
+                            if log.completionType == .completed {
+                                Button {
+                                    editedLog = log
+                                } label: {
+                                    WorkoutSetLogRow(log: log)
+                                }
+                            } else {
+                                WorkoutSetLogRow(log: log)
+                            }
                         }
                     }
                     .padding(.vertical, 4)
@@ -99,6 +108,11 @@ private struct WorkoutSessionDetailView: View {
             }
         }
         .navigationTitle(session.dayNameSnapshot.isEmpty ? "Workout" : session.dayNameSnapshot)
+        .sheet(item: $editedLog) { log in
+            NavigationStack {
+                HistorySetResultEditorView(log: log)
+            }
+        }
     }
 
     private var groupedSetLogs: [(name: String, logs: [WorkoutSetLogModel])] {
@@ -161,6 +175,72 @@ private struct WorkoutSetLogRow: View {
             ? "\(Int(load))"
             : String(format: "%.1f", load)
         return "\(repsText) x \(loadText) \(log.completedLoadUnit.rawValue)"
+    }
+}
+
+private struct HistorySetResultEditorView: View {
+    @Environment(\.dismiss) private var dismiss
+    @Bindable var log: WorkoutSetLogModel
+    @State private var repsText: String
+    @State private var durationText: String
+    @State private var loadText: String
+
+    init(log: WorkoutSetLogModel) {
+        self.log = log
+        _repsText = State(initialValue: log.completedReps.map(String.init) ?? "")
+        _durationText = State(initialValue: log.completedDurationSeconds.map(String.init) ?? "")
+        _loadText = State(initialValue: log.completedLoad.map(Self.format) ?? "")
+    }
+
+    var body: some View {
+        Form {
+            Section("Result") {
+                if log.targetDurationSeconds != nil {
+                    TextField("Seconds", text: $durationText)
+                        .keyboardType(.numberPad)
+                } else {
+                    TextField("Reps", text: $repsText)
+                        .keyboardType(.numberPad)
+                }
+
+                if log.completedLoadUnit != .bodyweight {
+                    TextField(log.completedLoadUnit.rawValue, text: $loadText)
+                        .keyboardType(.decimalPad)
+                }
+            }
+        }
+        .navigationTitle("\(log.exerciseNameSnapshot) Set \(log.setIndex)")
+        .toolbar {
+            ToolbarItem(placement: .confirmationAction) {
+                Button("Save") {
+                    if log.targetDurationSeconds != nil {
+                        log.completedDurationSeconds = Int(durationText)
+                        log.completedReps = nil
+                    } else {
+                        log.completedReps = Int(repsText)
+                        log.completedDurationSeconds = nil
+                    }
+
+                    log.completedLoad = log.completedLoadUnit == .bodyweight
+                        ? nil
+                        : Double(loadText.replacingOccurrences(of: ",", with: "."))
+                    log.completedAt = Date()
+                    dismiss()
+                }
+            }
+
+            ToolbarItem(placement: .cancellationAction) {
+                Button("Cancel") {
+                    dismiss()
+                }
+            }
+        }
+    }
+
+    private static func format(_ value: Double) -> String {
+        value.truncatingRemainder(dividingBy: 1) == 0
+            ? "\(Int(value))"
+            : String(format: "%.1f", value)
     }
 }
 

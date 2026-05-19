@@ -92,6 +92,7 @@ public enum WorkoutExecutionEngine {
     public static func start(
         plan: WorkoutPlanDTO,
         day: WorkoutDayDTO,
+        source: WorkoutSource = .watch,
         at date: Date = Date()
     ) -> WorkoutExecutionState {
         let session = WorkoutSessionDTO(
@@ -103,7 +104,7 @@ public enum WorkoutExecutionEngine {
             startedAt: date,
             endedAt: nil,
             durationSeconds: 0,
-            source: .watch,
+            source: source,
             status: .inProgress,
             setLogs: [],
             notes: "",
@@ -203,6 +204,25 @@ public enum WorkoutExecutionEngine {
         if let nextIndex = nextIncompleteExerciseIndex(in: day, state: state) {
             state.currentExerciseIndex = nextIndex
         }
+    }
+
+    public static func updateSetLog(
+        in state: inout WorkoutExecutionState,
+        logId: UUID,
+        completedReps: Int?,
+        completedDurationSeconds: Int?,
+        completedLoad: Double?,
+        at date: Date = Date()
+    ) {
+        guard let index = state.session.setLogs.firstIndex(where: { $0.id == logId }) else {
+            return
+        }
+
+        state.session.setLogs[index].completedReps = completedReps
+        state.session.setLogs[index].completedDurationSeconds = completedDurationSeconds
+        state.session.setLogs[index].completedLoad = completedLoad
+        state.session.setLogs[index].completedAt = date
+        state.session.updatedAt = date
     }
 
     public static func appendSkippedSet(

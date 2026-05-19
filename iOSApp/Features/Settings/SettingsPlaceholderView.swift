@@ -2,12 +2,14 @@ import SwiftUI
 
 struct SettingsPlaceholderView: View {
     @EnvironmentObject private var watchSyncManager: PhoneWatchSyncManager
+    @AppStorage("workout.promptForSetResults") private var promptForSetResults = true
 
     var body: some View {
         List {
             Section("Defaults") {
                 LabeledContent("Units", value: "kg")
                 LabeledContent("Default Rest", value: "120s")
+                Toggle("Prompt for Set Results", isOn: $promptForSetResults)
             }
 
             Section("Sync") {

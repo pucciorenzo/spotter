@@ -76,7 +76,7 @@ private struct PlanDetailView: View {
         List {
             ForEach(sortedDays) { day in
                 NavigationLink {
-                    WorkoutDayDetailView(day: day)
+                    WorkoutDayDetailView(plan: plan, day: day)
                 } label: {
                     VStack(alignment: .leading, spacing: 4) {
                         Text(day.name)
@@ -140,6 +140,7 @@ private struct PlanDetailView: View {
 
 private struct WorkoutDayDetailView: View {
     @Environment(\.modelContext) private var modelContext
+    @Bindable var plan: WorkoutPlanModel
     @Bindable var day: WorkoutDayModel
     @Query(sort: \ExerciseModel.name) private var exercises: [ExerciseModel]
     @State private var editedPrescription: WorkoutExerciseModel?
@@ -183,10 +184,24 @@ private struct WorkoutDayDetailView: View {
             }
 
             ToolbarItem(placement: .topBarTrailing) {
-                Button {
-                    showingExercisePicker = true
+                Menu {
+                    NavigationLink {
+                        PhoneWorkoutView(
+                            plan: plan.toDTO(),
+                            day: day.toDTO(),
+                            exercises: exercises.map { $0.toDTO() }
+                        )
+                    } label: {
+                        Label("Start Workout", systemImage: "play.fill")
+                    }
+
+                    Button {
+                        showingExercisePicker = true
+                    } label: {
+                        Label("Add Exercise", systemImage: "plus")
+                    }
                 } label: {
-                    Label("Add Exercise", systemImage: "plus")
+                    Image(systemName: "ellipsis.circle")
                 }
             }
         }
@@ -403,5 +418,400 @@ private struct WorkoutExerciseEditorView: View {
             get: { prescription[keyPath: keyPath] ?? "" },
             set: { prescription[keyPath: keyPath] = $0.isEmpty ? nil : $0 }
         )
+    }
+}
+
+private struct PhoneWorkoutView: View {
+    @Environment(\.modelContext) private var modelContext
+    @Environment(\.dismiss) private var dismiss
+    @AppStorage("workout.promptForSetResults") private var promptForSetResults = true
+
+    let plan: WorkoutPlanDTO
+    let day: WorkoutDayDTO
+    let exercises: [ExerciseDTO]
+    @State private var state: WorkoutExecutionState
+    @State private var showingSetResultEntry = false
+    @State private var editedLog: WorkoutSetLogDTO?
+    @State private var errorMessage: String?
+
+    init(plan: WorkoutPlanDTO, day: WorkoutDayDTO, exercises: [ExerciseDTO]) {
+        self.plan = plan
+        self.day = day
+        self.exercises = exercises
+        _state = State(initialValue: WorkoutExecutionEngine.start(plan: plan, day: day, source: .iphone))
+    }
+
+    var body: some View {
+        List {
+            Section {
+                VStack(alignment: .leading, spacing: 6) {
+                    Text(currentExerciseName)
+                        .font(.headline)
+                    Text(setProgressText)
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                }
+            }
+
+            if canCompleteSet {
+                Section("Options") {
+                    Toggle("Prompt for Set Results", isOn: $promptForSetResults)
+                }
+
+                Button {
+                    if promptForSetResults {
+                        showingSetResultEntry = true
+                    } else {
+                        completeCurrentSet()
+                    }
+                } label: {
+                    Label("Complete Set", systemImage: "checkmark.circle.fill")
+                }
+                .sheet(isPresented: $showingSetResultEntry) {
+                    NavigationStack {
+                        SetResultEditorView(
+                            title: "Set \(nextSetNumber)",
+                            usesDuration: usesDuration,
+                            loadUnit: currentExercise?.loadUnit ?? .kg,
+                            reps: defaultReps,
+                            durationSeconds: defaultDuration,
+                            load: defaultLoad
+                        ) { reps, durationSeconds, load in
+                            completeCurrentSet(reps: reps, durationSeconds: durationSeconds, load: load)
+                        }
+                    }
+                }
+
+                Button {
+                    skipCurrentSet()
+                } label: {
+                    Label("Skip Set", systemImage: "forward.end.fill")
+                }
+            }
+
+            if !loggedSets.isEmpty {
+                Section("Logged Sets") {
+                    ForEach(loggedSets) { log in
+                        Button {
+                            if log.completionType == .completed {
+                                editedLog = log
+                            }
+                        } label: {
+                            LoggedSetSummaryRow(log: log)
+                        }
+                        .disabled(log.completionType != .completed)
+                    }
+                }
+            }
+
+            if isWorkoutComplete {
+                Button {
+                    finishWorkout()
+                } label: {
+                    Label("Finish Workout", systemImage: "flag.checkered")
+                }
+            }
+        }
+        .navigationTitle(day.name)
+        .sheet(item: $editedLog) { log in
+            NavigationStack {
+                SetResultEditorView(
+                    title: "\(log.exerciseNameSnapshot) Set \(log.setIndex)",
+                    usesDuration: log.targetDurationSeconds != nil,
+                    loadUnit: log.completedLoadUnit,
+                    reps: log.completedReps ?? log.targetReps ?? 0,
+                    durationSeconds: log.completedDurationSeconds ?? log.targetDurationSeconds ?? 0,
+                    load: log.completedLoad ?? log.targetLoad ?? 0
+                ) { reps, durationSeconds, load in
+                    updateLoggedSet(log, reps: reps, durationSeconds: durationSeconds, load: load)
+                }
+            }
+        }
+        .alert("Workout Error", isPresented: errorBinding) {
+            Button("OK", role: .cancel) {}
+        } message: {
+            Text(errorMessage ?? "")
+        }
+    }
+
+    private var orderedExercises: [WorkoutExerciseDTO] {
+        WorkoutExecutionEngine.orderedExercises(in: day, state: state)
+    }
+
+    private var currentExercise: WorkoutExerciseDTO? {
+        guard orderedExercises.indices.contains(state.currentExerciseIndex) else {
+            return nil
+        }
+
+        return orderedExercises[state.currentExerciseIndex]
+    }
+
+    private var currentExerciseName: String {
+        guard let currentExercise else {
+            return "Complete"
+        }
+
+        return exerciseName(for: currentExercise.exerciseId)
+    }
+
+    private var completedSetCount: Int {
+        guard let currentExercise else {
+            return 0
+        }
+
+        return WorkoutExecutionEngine.completedSetCount(for: currentExercise, in: state)
+    }
+
+    private var totalSetCount: Int {
+        guard let currentExercise else {
+            return 0
+        }
+
+        return WorkoutExecutionEngine.totalSetCount(for: currentExercise)
+    }
+
+    private var nextSetNumber: Int {
+        min(completedSetCount + 1, max(totalSetCount, 1))
+    }
+
+    private var usesDuration: Bool {
+        guard let currentExercise else {
+            return false
+        }
+
+        return currentExercise.targetType == .fixedDuration || currentExercise.targetType == .durationRange
+    }
+
+    private var canCompleteSet: Bool {
+        currentExercise != nil && !isWorkoutComplete
+    }
+
+    private var isWorkoutComplete: Bool {
+        WorkoutExecutionEngine.nextIncompleteExerciseIndex(in: day, state: state) == nil
+    }
+
+    private var loggedSets: [WorkoutSetLogDTO] {
+        state.session.setLogs.sorted { lhs, rhs in
+            if lhs.completedAt == rhs.completedAt {
+                return lhs.setIndex < rhs.setIndex
+            }
+
+            return lhs.completedAt < rhs.completedAt
+        }
+    }
+
+    private var defaultReps: Int {
+        currentExercise?.targetReps ?? currentExercise?.targetRepsMax ?? currentExercise?.targetRepsMin ?? 0
+    }
+
+    private var defaultDuration: Int {
+        currentExercise?.targetDurationSeconds ?? currentExercise?.targetDurationMaxSeconds ?? currentExercise?.targetDurationMinSeconds ?? 0
+    }
+
+    private var defaultLoad: Double {
+        currentExercise?.startingLoad ?? 0
+    }
+
+    private var setProgressText: String {
+        guard totalSetCount > 0 else {
+            return "No sets"
+        }
+
+        return "Set \(nextSetNumber) of \(totalSetCount)"
+    }
+
+    private var errorBinding: Binding<Bool> {
+        Binding(
+            get: { errorMessage != nil },
+            set: { isPresented in
+                if !isPresented {
+                    errorMessage = nil
+                }
+            }
+        )
+    }
+
+    private func completeCurrentSet() {
+        completeCurrentSet(
+            reps: usesDuration ? nil : defaultReps,
+            durationSeconds: usesDuration ? defaultDuration : nil,
+            load: currentExercise?.loadUnit == .bodyweight ? nil : defaultLoad
+        )
+    }
+
+    private func completeCurrentSet(reps: Int?, durationSeconds: Int?, load: Double?) {
+        guard let currentExercise else {
+            return
+        }
+
+        WorkoutExecutionEngine.appendCompletedSet(
+            to: &state,
+            day: day,
+            exercise: currentExercise,
+            exerciseName: currentExerciseName,
+            completedReps: reps,
+            completedDurationSeconds: durationSeconds,
+            completedLoad: currentExercise.loadUnit == .bodyweight ? nil : load
+        )
+    }
+
+    private func skipCurrentSet() {
+        guard let currentExercise else {
+            return
+        }
+
+        WorkoutExecutionEngine.appendSkippedSet(
+            to: &state,
+            day: day,
+            exercise: currentExercise,
+            exerciseName: currentExerciseName,
+            reason: "Skipped set"
+        )
+    }
+
+    private func updateLoggedSet(_ log: WorkoutSetLogDTO, reps: Int?, durationSeconds: Int?, load: Double?) {
+        WorkoutExecutionEngine.updateSetLog(
+            in: &state,
+            logId: log.id,
+            completedReps: reps,
+            completedDurationSeconds: durationSeconds,
+            completedLoad: log.completedLoadUnit == .bodyweight ? nil : load
+        )
+    }
+
+    private func finishWorkout() {
+        WorkoutExecutionEngine.finish(&state)
+        modelContext.insert(WorkoutSessionModel(dto: state.session))
+
+        do {
+            try modelContext.save()
+            dismiss()
+        } catch {
+            errorMessage = "Unable to save workout."
+        }
+    }
+
+    private func exerciseName(for id: UUID) -> String {
+        exercises.first(where: { $0.id == id })?.name ?? "Exercise"
+    }
+}
+
+private struct SetResultEditorView: View {
+    @Environment(\.dismiss) private var dismiss
+    let title: String
+    let usesDuration: Bool
+    let loadUnit: LoadUnit
+    let onSave: (Int?, Int?, Double?) -> Void
+
+    @State private var repsText: String
+    @State private var durationText: String
+    @State private var loadText: String
+
+    init(
+        title: String,
+        usesDuration: Bool,
+        loadUnit: LoadUnit,
+        reps: Int,
+        durationSeconds: Int,
+        load: Double,
+        onSave: @escaping (Int?, Int?, Double?) -> Void
+    ) {
+        self.title = title
+        self.usesDuration = usesDuration
+        self.loadUnit = loadUnit
+        self.onSave = onSave
+        _repsText = State(initialValue: reps == 0 ? "" : "\(reps)")
+        _durationText = State(initialValue: durationSeconds == 0 ? "" : "\(durationSeconds)")
+        _loadText = State(initialValue: load == 0 ? "" : Self.format(load))
+    }
+
+    var body: some View {
+        Form {
+            Section("Result") {
+                if usesDuration {
+                    TextField("Seconds", text: $durationText)
+                        .keyboardType(.numberPad)
+                } else {
+                    TextField("Reps", text: $repsText)
+                        .keyboardType(.numberPad)
+                }
+
+                if loadUnit != .bodyweight {
+                    TextField(loadUnit.rawValue, text: $loadText)
+                        .keyboardType(.decimalPad)
+                }
+            }
+        }
+        .navigationTitle(title)
+        .toolbar {
+            ToolbarItem(placement: .confirmationAction) {
+                Button("Save") {
+                    onSave(
+                        usesDuration ? nil : Int(repsText),
+                        usesDuration ? Int(durationText) : nil,
+                        loadUnit == .bodyweight ? nil : Double(loadText.replacingOccurrences(of: ",", with: "."))
+                    )
+                    dismiss()
+                }
+            }
+
+            ToolbarItem(placement: .cancellationAction) {
+                Button("Cancel") {
+                    dismiss()
+                }
+            }
+        }
+    }
+
+    private static func format(_ value: Double) -> String {
+        value.truncatingRemainder(dividingBy: 1) == 0
+            ? "\(Int(value))"
+            : String(format: "%.1f", value)
+    }
+}
+
+private struct LoggedSetSummaryRow: View {
+    let log: WorkoutSetLogDTO
+
+    var body: some View {
+        HStack {
+            VStack(alignment: .leading, spacing: 4) {
+                Text("\(log.exerciseNameSnapshot) Set \(log.setIndex)")
+                    .font(.headline)
+                Text(summaryText)
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+            }
+
+            Spacer()
+
+            if log.completionType == .completed {
+                Image(systemName: "pencil")
+                    .foregroundStyle(.secondary)
+            }
+        }
+    }
+
+    private var summaryText: String {
+        if log.completionType == .skipped {
+            return "Skipped"
+        }
+
+        if let seconds = log.completedDurationSeconds {
+            return "\(seconds)s"
+        }
+
+        let repsText = log.completedReps.map { "\($0) reps" } ?? "Logged"
+        guard let load = log.completedLoad else {
+            return repsText
+        }
+
+        return "\(repsText) x \(format(load)) \(log.completedLoadUnit.rawValue)"
+    }
+
+    private func format(_ value: Double) -> String {
+        value.truncatingRemainder(dividingBy: 1) == 0
+            ? "\(Int(value))"
+            : String(format: "%.1f", value)
     }
 }
