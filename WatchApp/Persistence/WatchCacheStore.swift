@@ -26,7 +26,7 @@ struct WatchCacheStore {
     }
 
     func saveSnapshot(_ snapshot: SyncSnapshot) throws {
-        let directory = cacheDirectory()
+        let directory = try cacheDirectory()
         try fileManager.createDirectory(at: directory, withIntermediateDirectories: true)
         let data = try encoder.encode(snapshot)
         try data.write(to: snapshotURL(), options: [.atomic])
