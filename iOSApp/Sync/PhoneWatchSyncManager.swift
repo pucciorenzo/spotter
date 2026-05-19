@@ -1,17 +1,20 @@
 import Foundation
 import SpotterShared
+import SwiftData
 @preconcurrency import WatchConnectivity
 
 @MainActor
 final class PhoneWatchSyncManager: NSObject, ObservableObject {
     @Published private(set) var activationStateDescription = "Not activated"
     @Published private(set) var lastSnapshotSentAt: Date?
+    @Published private(set) var lastWorkoutImportedAt: Date?
     @Published private(set) var lastErrorMessage: String?
 
     private let encoder = JSONEncoder()
     private let decoder = JSONDecoder()
     private let session: WCSession?
     private var latestSnapshot: SyncSnapshot?
+    private var modelContext: ModelContext?
 
     override init() {
         if WCSession.isSupported() {
@@ -28,6 +31,10 @@ final class PhoneWatchSyncManager: NSObject, ObservableObject {
         } else {
             activationStateDescription = "WatchConnectivity unavailable"
         }
+    }
+
+    func configure(modelContext: ModelContext) {
+        self.modelContext = modelContext
     }
 
     func publishSnapshot(_ snapshot: SyncSnapshot) {
@@ -76,6 +83,50 @@ final class PhoneWatchSyncManager: NSObject, ObservableObject {
         }
     }
 
+    private func importCompletedWorkout(
+        from message: SyncMessage,
+        replyHandler: (([String: Any]) -> Void)?
+    ) {
+        guard
+            let modelContext,
+            let payload = try? message.decodeWorkoutPayload(decoder: decoder)
+        else {
+            replyHandler?([:])
+            return
+        }
+
+        do {
+            try SpotterRepository.importCompletedWorkout(payload.session, in: modelContext)
+            lastWorkoutImportedAt = Date()
+            lastErrorMessage = nil
+            sendWorkoutAck(for: payload.session.id, replyHandler: replyHandler)
+        } catch {
+            lastErrorMessage = error.localizedDescription
+            replyHandler?([:])
+        }
+    }
+
+    private func sendWorkoutAck(
+        for sessionId: UUID,
+        replyHandler: (([String: Any]) -> Void)? = nil
+    ) {
+        do {
+            let ackPayload = SyncWorkoutAckPayload(sessionId: sessionId, receivedAt: Date())
+            let message = try SyncMessage.workoutAck(ackPayload, encoder: encoder)
+            let data = try encoder.encode(message)
+            let dictionary = ["message": data]
+
+            if let replyHandler {
+                replyHandler(dictionary)
+            } else if let session {
+                session.transferUserInfo(dictionary)
+            }
+        } catch {
+            lastErrorMessage = error.localizedDescription
+            replyHandler?([:])
+        }
+    }
+
     private func handleIncomingMessage(_ dictionary: [String: Any], replyHandler: (([String: Any]) -> Void)? = nil) {
         guard
             let data = dictionary["message"] as? Data,
@@ -88,7 +139,9 @@ final class PhoneWatchSyncManager: NSObject, ObservableObject {
         switch message.type {
         case .snapshotRequest:
             sendLatestSnapshot(replyHandler: replyHandler)
-        case .snapshotResponse, .workoutCompleted, .workoutAck:
+        case .workoutCompleted:
+            importCompletedWorkout(from: message, replyHandler: replyHandler)
+        case .snapshotResponse, .workoutAck:
             replyHandler?([:])
         }
     }
@@ -132,6 +185,12 @@ extension PhoneWatchSyncManager: WCSessionDelegate {
     ) {
         Task { @MainActor in
             handleIncomingMessage(message, replyHandler: replyHandler)
+        }
+    }
+
+    nonisolated func session(_ session: WCSession, didReceiveUserInfo userInfo: [String: Any]) {
+        Task { @MainActor in
+            handleIncomingMessage(userInfo)
         }
     }
 }

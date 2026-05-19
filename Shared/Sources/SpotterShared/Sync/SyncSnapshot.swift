@@ -41,3 +41,16 @@ public struct SyncWorkoutPayload: Codable, Hashable {
         self.session = session
     }
 }
+
+public struct SyncWorkoutAckPayload: Codable, Hashable {
+    public var sessionId: UUID
+    public var receivedAt: Date
+
+    public init(
+        sessionId: UUID,
+        receivedAt: Date
+    ) {
+        self.sessionId = sessionId
+        self.receivedAt = receivedAt
+    }
+}

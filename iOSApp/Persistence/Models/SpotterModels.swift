@@ -329,3 +329,168 @@ final class WorkoutExerciseModel {
         )
     }
 }
+
+@Model
+final class WorkoutSessionModel {
+    @Attribute(.unique) var id: UUID
+    var planId: UUID?
+    var dayId: UUID?
+    var planNameSnapshot: String
+    var dayNameSnapshot: String
+    var startedAt: Date
+    var endedAt: Date?
+    var durationSeconds: Int
+    var sourceRawValue: String
+    var statusRawValue: String
+    @Relationship(deleteRule: .cascade) var setLogs: [WorkoutSetLogModel]
+    var notes: String
+    var createdAt: Date
+    var updatedAt: Date
+
+    init(dto: WorkoutSessionDTO) {
+        id = dto.id
+        planId = dto.planId
+        dayId = dto.dayId
+        planNameSnapshot = dto.planNameSnapshot
+        dayNameSnapshot = dto.dayNameSnapshot
+        startedAt = dto.startedAt
+        endedAt = dto.endedAt
+        durationSeconds = dto.durationSeconds
+        sourceRawValue = dto.source.rawValue
+        statusRawValue = dto.status.rawValue
+        setLogs = dto.setLogs.map { WorkoutSetLogModel(dto: $0) }
+        notes = dto.notes
+        createdAt = dto.createdAt
+        updatedAt = dto.updatedAt
+    }
+
+    var source: WorkoutSource {
+        get { WorkoutSource(rawValue: sourceRawValue) ?? .iphone }
+        set { sourceRawValue = newValue.rawValue }
+    }
+
+    var status: WorkoutStatus {
+        get { WorkoutStatus(rawValue: statusRawValue) ?? .completed }
+        set { statusRawValue = newValue.rawValue }
+    }
+
+    func update(from dto: WorkoutSessionDTO) {
+        planId = dto.planId
+        dayId = dto.dayId
+        planNameSnapshot = dto.planNameSnapshot
+        dayNameSnapshot = dto.dayNameSnapshot
+        startedAt = dto.startedAt
+        endedAt = dto.endedAt
+        durationSeconds = dto.durationSeconds
+        source = dto.source
+        status = dto.status
+        setLogs = dto.setLogs.map { WorkoutSetLogModel(dto: $0) }
+        notes = dto.notes
+        createdAt = dto.createdAt
+        updatedAt = dto.updatedAt
+    }
+
+    func toDTO() -> WorkoutSessionDTO {
+        WorkoutSessionDTO(
+            id: id,
+            planId: planId,
+            dayId: dayId,
+            planNameSnapshot: planNameSnapshot,
+            dayNameSnapshot: dayNameSnapshot,
+            startedAt: startedAt,
+            endedAt: endedAt,
+            durationSeconds: durationSeconds,
+            source: source,
+            status: status,
+            setLogs: setLogs.sorted { $0.completedAt < $1.completedAt }.map { $0.toDTO() },
+            notes: notes,
+            createdAt: createdAt,
+            updatedAt: updatedAt
+        )
+    }
+}
+
+@Model
+final class WorkoutSetLogModel {
+    @Attribute(.unique) var id: UUID
+    var sessionId: UUID
+    var exerciseId: UUID
+    var workoutExerciseId: UUID?
+    var exerciseNameSnapshot: String
+    var setIndex: Int
+    var isWarmup: Bool
+    var targetReps: Int?
+    var targetDurationSeconds: Int?
+    var targetLoad: Double?
+    var targetLoadUnitRawValue: String
+    var completedReps: Int?
+    var completedDurationSeconds: Int?
+    var completedLoad: Double?
+    var completedLoadUnitRawValue: String
+    var restPlannedSeconds: Int
+    var restActualSeconds: Int?
+    var rpe: Double?
+    var rir: Int?
+    var notes: String
+    var completedAt: Date
+
+    init(dto: WorkoutSetLogDTO) {
+        id = dto.id
+        sessionId = dto.sessionId
+        exerciseId = dto.exerciseId
+        workoutExerciseId = dto.workoutExerciseId
+        exerciseNameSnapshot = dto.exerciseNameSnapshot
+        setIndex = dto.setIndex
+        isWarmup = dto.isWarmup
+        targetReps = dto.targetReps
+        targetDurationSeconds = dto.targetDurationSeconds
+        targetLoad = dto.targetLoad
+        targetLoadUnitRawValue = dto.targetLoadUnit.rawValue
+        completedReps = dto.completedReps
+        completedDurationSeconds = dto.completedDurationSeconds
+        completedLoad = dto.completedLoad
+        completedLoadUnitRawValue = dto.completedLoadUnit.rawValue
+        restPlannedSeconds = dto.restPlannedSeconds
+        restActualSeconds = dto.restActualSeconds
+        rpe = dto.rpe
+        rir = dto.rir
+        notes = dto.notes
+        completedAt = dto.completedAt
+    }
+
+    var targetLoadUnit: LoadUnit {
+        get { LoadUnit(rawValue: targetLoadUnitRawValue) ?? .kg }
+        set { targetLoadUnitRawValue = newValue.rawValue }
+    }
+
+    var completedLoadUnit: LoadUnit {
+        get { LoadUnit(rawValue: completedLoadUnitRawValue) ?? .kg }
+        set { completedLoadUnitRawValue = newValue.rawValue }
+    }
+
+    func toDTO() -> WorkoutSetLogDTO {
+        WorkoutSetLogDTO(
+            id: id,
+            sessionId: sessionId,
+            exerciseId: exerciseId,
+            workoutExerciseId: workoutExerciseId,
+            exerciseNameSnapshot: exerciseNameSnapshot,
+            setIndex: setIndex,
+            isWarmup: isWarmup,
+            targetReps: targetReps,
+            targetDurationSeconds: targetDurationSeconds,
+            targetLoad: targetLoad,
+            targetLoadUnit: targetLoadUnit,
+            completedReps: completedReps,
+            completedDurationSeconds: completedDurationSeconds,
+            completedLoad: completedLoad,
+            completedLoadUnit: completedLoadUnit,
+            restPlannedSeconds: restPlannedSeconds,
+            restActualSeconds: restActualSeconds,
+            rpe: rpe,
+            rir: rir,
+            notes: notes,
+            completedAt: completedAt
+        )
+    }
+}

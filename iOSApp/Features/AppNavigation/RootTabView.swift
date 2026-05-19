@@ -46,6 +46,7 @@ struct RootTabView: View {
         }
         .environmentObject(watchSyncManager)
         .task {
+            watchSyncManager.configure(modelContext: modelContext)
             SeedData.insertDemoDataIfNeeded(in: modelContext)
             publishWatchSnapshot()
         }

@@ -1,4 +1,5 @@
 import Foundation
+import SpotterShared
 import SwiftData
 
 enum SpotterRepository {
@@ -40,5 +41,25 @@ enum SpotterRepository {
 
     static func delete<T: PersistentModel>(_ model: T, from context: ModelContext) {
         context.delete(model)
+    }
+
+    @discardableResult
+    static func importCompletedWorkout(
+        _ session: WorkoutSessionDTO,
+        in context: ModelContext
+    ) throws -> WorkoutSessionModel {
+        let sessionId = session.id
+        let descriptor = FetchDescriptor<WorkoutSessionModel>(
+            predicate: #Predicate { $0.id == sessionId }
+        )
+
+        if let existingSession = try context.fetch(descriptor).first {
+            return existingSession
+        }
+
+        let newSession = WorkoutSessionModel(dto: session)
+        context.insert(newSession)
+        try context.save()
+        return newSession
     }
 }
