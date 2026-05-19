@@ -1,0 +1,429 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 56;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		A10000000000000000000001 /* SpotterApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000000000000000000001 /* SpotterApp.swift */; };
+		A10000000000000000000002 /* RootTabView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000000000000000000002 /* RootTabView.swift */; };
+		A10000000000000000000003 /* ExerciseListPlaceholderView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000000000000000000003 /* ExerciseListPlaceholderView.swift */; };
+		A10000000000000000000004 /* PlanListPlaceholderView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000000000000000000004 /* PlanListPlaceholderView.swift */; };
+		A10000000000000000000005 /* WorkoutHistoryPlaceholderView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000000000000000000005 /* WorkoutHistoryPlaceholderView.swift */; };
+		A10000000000000000000006 /* DashboardPlaceholderView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000000000000000000006 /* DashboardPlaceholderView.swift */; };
+		A10000000000000000000007 /* SettingsPlaceholderView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000000000000000000007 /* SettingsPlaceholderView.swift */; };
+		A10000000000000000000008 /* SpotterWatchApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000000000000000000008 /* SpotterWatchApp.swift */; };
+		A10000000000000000000009 /* WatchPlanListView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000000000000000000009 /* WatchPlanListView.swift */; };
+		A1000000000000000000000A /* WatchDayListView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2000000000000000000000A /* WatchDayListView.swift */; };
+		A1000000000000000000000B /* SpotterShared in Frameworks */ = {isa = PBXBuildFile; productRef = A70000000000000000000002 /* SpotterShared */; };
+		A1000000000000000000000C /* SpotterShared in Frameworks */ = {isa = PBXBuildFile; productRef = A70000000000000000000003 /* SpotterShared */; };
+		A1000000000000000000000D /* Spotter Watch App.app in Embed Watch Content */ = {isa = PBXBuildFile; fileRef = A2000000000000000000000C /* Spotter Watch App.app */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
+/* End PBXBuildFile section */
+
+/* Begin PBXContainerItemProxy section */
+		A90000000000000000000001 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = A50000000000000000000001 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = A40000000000000000000002;
+			remoteInfo = "Spotter Watch App";
+		};
+/* End PBXContainerItemProxy section */
+
+/* Begin PBXCopyFilesBuildPhase section */
+		A60000000000000000000005 /* Embed Watch Content */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "$(CONTENTS_FOLDER_PATH)/Watch";
+			dstSubfolderSpec = 16;
+			files = (
+				A1000000000000000000000D /* Spotter Watch App.app in Embed Watch Content */,
+			);
+			name = "Embed Watch Content";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXCopyFilesBuildPhase section */
+
+/* Begin PBXFileReference section */
+		A20000000000000000000001 /* SpotterApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = iOSApp/App/SpotterApp.swift; sourceTree = "<group>"; };
+		A20000000000000000000002 /* RootTabView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = iOSApp/Features/AppNavigation/RootTabView.swift; sourceTree = "<group>"; };
+		A20000000000000000000003 /* ExerciseListPlaceholderView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = iOSApp/Features/ExerciseLibrary/ExerciseListPlaceholderView.swift; sourceTree = "<group>"; };
+		A20000000000000000000004 /* PlanListPlaceholderView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = iOSApp/Features/PlanBuilder/PlanListPlaceholderView.swift; sourceTree = "<group>"; };
+		A20000000000000000000005 /* WorkoutHistoryPlaceholderView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = iOSApp/Features/WorkoutHistory/WorkoutHistoryPlaceholderView.swift; sourceTree = "<group>"; };
+		A20000000000000000000006 /* DashboardPlaceholderView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = iOSApp/Features/Dashboard/DashboardPlaceholderView.swift; sourceTree = "<group>"; };
+		A20000000000000000000007 /* SettingsPlaceholderView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = iOSApp/Features/Settings/SettingsPlaceholderView.swift; sourceTree = "<group>"; };
+		A20000000000000000000008 /* SpotterWatchApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WatchApp/App/SpotterWatchApp.swift; sourceTree = "<group>"; };
+		A20000000000000000000009 /* WatchPlanListView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WatchApp/Features/PlanSelection/WatchPlanListView.swift; sourceTree = "<group>"; };
+		A2000000000000000000000A /* WatchDayListView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WatchApp/Features/PlanSelection/WatchDayListView.swift; sourceTree = "<group>"; };
+		A2000000000000000000000B /* Spotter.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Spotter.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		A2000000000000000000000C /* Spotter Watch App.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "Spotter Watch App.app"; sourceTree = BUILT_PRODUCTS_DIR; };
+/* End PBXFileReference section */
+
+/* Begin PBXFrameworksBuildPhase section */
+		A60000000000000000000002 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				A1000000000000000000000B /* SpotterShared in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		A60000000000000000000004 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				A1000000000000000000000C /* SpotterShared in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXFrameworksBuildPhase section */
+
+/* Begin PBXGroup section */
+		A30000000000000000000001 = {
+			isa = PBXGroup;
+			children = (
+				A30000000000000000000002 /* iOSApp */,
+				A30000000000000000000003 /* WatchApp */,
+				A30000000000000000000004 /* Products */,
+			);
+			sourceTree = "<group>";
+		};
+		A30000000000000000000002 /* iOSApp */ = {
+			isa = PBXGroup;
+			children = (
+				A20000000000000000000001 /* SpotterApp.swift */,
+				A20000000000000000000002 /* RootTabView.swift */,
+				A20000000000000000000003 /* ExerciseListPlaceholderView.swift */,
+				A20000000000000000000004 /* PlanListPlaceholderView.swift */,
+				A20000000000000000000005 /* WorkoutHistoryPlaceholderView.swift */,
+				A20000000000000000000006 /* DashboardPlaceholderView.swift */,
+				A20000000000000000000007 /* SettingsPlaceholderView.swift */,
+			);
+			name = iOSApp;
+			sourceTree = "<group>";
+		};
+		A30000000000000000000003 /* WatchApp */ = {
+			isa = PBXGroup;
+			children = (
+				A20000000000000000000008 /* SpotterWatchApp.swift */,
+				A20000000000000000000009 /* WatchPlanListView.swift */,
+				A2000000000000000000000A /* WatchDayListView.swift */,
+			);
+			name = WatchApp;
+			sourceTree = "<group>";
+		};
+		A30000000000000000000004 /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				A2000000000000000000000B /* Spotter.app */,
+				A2000000000000000000000C /* Spotter Watch App.app */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		A40000000000000000000001 /* Spotter */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = A80000000000000000000002 /* Build configuration list for PBXNativeTarget "Spotter" */;
+			buildPhases = (
+				A60000000000000000000001 /* Sources */,
+				A60000000000000000000002 /* Frameworks */,
+				A60000000000000000000005 /* Embed Watch Content */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				A90000000000000000000002 /* PBXTargetDependency */,
+			);
+			name = Spotter;
+			packageProductDependencies = (
+				A70000000000000000000002 /* SpotterShared */,
+			);
+			productName = Spotter;
+			productReference = A2000000000000000000000B /* Spotter.app */;
+			productType = "com.apple.product-type.application";
+		};
+		A40000000000000000000002 /* Spotter Watch App */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = A80000000000000000000005 /* Build configuration list for PBXNativeTarget "Spotter Watch App" */;
+			buildPhases = (
+				A60000000000000000000003 /* Sources */,
+				A60000000000000000000004 /* Frameworks */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = "Spotter Watch App";
+			packageProductDependencies = (
+				A70000000000000000000003 /* SpotterShared */,
+			);
+			productName = "Spotter Watch App";
+			productReference = A2000000000000000000000C /* Spotter Watch App.app */;
+			productType = "com.apple.product-type.application.watchapp2";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		A50000000000000000000001 /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				BuildIndependentTargetsInParallel = 1;
+				LastSwiftUpdateCheck = 1600;
+				LastUpgradeCheck = 1600;
+				TargetAttributes = {
+					A40000000000000000000001 = {
+						CreatedOnToolsVersion = 16.0;
+					};
+					A40000000000000000000002 = {
+						CreatedOnToolsVersion = 16.0;
+					};
+				};
+			};
+			buildConfigurationList = A80000000000000000000001 /* Build configuration list for PBXProject "Spotter" */;
+			compatibilityVersion = "Xcode 14.0";
+			developmentRegion = en;
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				en,
+				Base,
+			);
+			mainGroup = A30000000000000000000001;
+			packageReferences = (
+				A70000000000000000000001 /* XCLocalSwiftPackageReference "Shared" */,
+			);
+			productRefGroup = A30000000000000000000004 /* Products */;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				A40000000000000000000001 /* Spotter */,
+				A40000000000000000000002 /* Spotter Watch App */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXSourcesBuildPhase section */
+		A60000000000000000000001 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				A10000000000000000000001 /* SpotterApp.swift in Sources */,
+				A10000000000000000000002 /* RootTabView.swift in Sources */,
+				A10000000000000000000003 /* ExerciseListPlaceholderView.swift in Sources */,
+				A10000000000000000000004 /* PlanListPlaceholderView.swift in Sources */,
+				A10000000000000000000005 /* WorkoutHistoryPlaceholderView.swift in Sources */,
+				A10000000000000000000006 /* DashboardPlaceholderView.swift in Sources */,
+				A10000000000000000000007 /* SettingsPlaceholderView.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		A60000000000000000000003 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				A10000000000000000000008 /* SpotterWatchApp.swift in Sources */,
+				A10000000000000000000009 /* WatchPlanListView.swift in Sources */,
+				A1000000000000000000000A /* WatchDayListView.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin PBXTargetDependency section */
+		A90000000000000000000002 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = A40000000000000000000002 /* Spotter Watch App */;
+			targetProxy = A90000000000000000000001 /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
+
+/* Begin XCBuildConfiguration section */
+		A80000000000000000000003 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_ASSET_PATHS = "";
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_CFBundleDisplayName = Spotter;
+				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.healthcare-fitness";
+				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
+				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
+				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.vincenzocosi.spotter;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SUPPORTS_MACCATALYST = NO;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = 1;
+			};
+			name = Debug;
+		};
+		A80000000000000000000004 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_ASSET_PATHS = "";
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_CFBundleDisplayName = Spotter;
+				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.healthcare-fitness";
+				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
+				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
+				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.vincenzocosi.spotter;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SUPPORTS_MACCATALYST = NO;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = 1;
+			};
+			name = Release;
+		};
+		A80000000000000000000006 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_CFBundleDisplayName = Spotter;
+				INFOPLIST_KEY_WKApplication = YES;
+				INFOPLIST_KEY_WKCompanionAppBundleIdentifier = com.vincenzocosi.spotter;
+				INFOPLIST_KEY_WKRunsIndependentlyOfCompanionApp = YES;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.vincenzocosi.spotter.watchkitapp;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = watchos;
+				SKIP_INSTALL = NO;
+				SUPPORTED_PLATFORMS = "watchos watchsimulator";
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = 4;
+				WATCHOS_DEPLOYMENT_TARGET = 10.0;
+			};
+			name = Debug;
+		};
+		A80000000000000000000007 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_CFBundleDisplayName = Spotter;
+				INFOPLIST_KEY_WKApplication = YES;
+				INFOPLIST_KEY_WKCompanionAppBundleIdentifier = com.vincenzocosi.spotter;
+				INFOPLIST_KEY_WKRunsIndependentlyOfCompanionApp = YES;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.vincenzocosi.spotter.watchkitapp;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = watchos;
+				SKIP_INSTALL = NO;
+				SUPPORTED_PLATFORMS = "watchos watchsimulator";
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = 4;
+				WATCHOS_DEPLOYMENT_TARGET = 10.0;
+			};
+			name = Release;
+		};
+		A80000000000000000000008 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ENABLE_MODULES = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = dwarf;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_TESTABILITY = YES;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				ONLY_ACTIVE_ARCH = YES;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEBUG;
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+			};
+			name = Debug;
+		};
+		A80000000000000000000009 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ENABLE_MODULES = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				ENABLE_NS_ASSERTIONS = NO;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				GCC_NO_COMMON_BLOCKS = YES;
+				SWIFT_COMPILATION_MODE = wholemodule;
+				SWIFT_OPTIMIZATION_LEVEL = "-O";
+				VALIDATE_PRODUCT = YES;
+			};
+			name = Release;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		A80000000000000000000001 /* Build configuration list for PBXProject "Spotter" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				A80000000000000000000008 /* Debug */,
+				A80000000000000000000009 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		A80000000000000000000002 /* Build configuration list for PBXNativeTarget "Spotter" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				A80000000000000000000003 /* Debug */,
+				A80000000000000000000004 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		A80000000000000000000005 /* Build configuration list for PBXNativeTarget "Spotter Watch App" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				A80000000000000000000006 /* Debug */,
+				A80000000000000000000007 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+/* End XCConfigurationList section */
+
+/* Begin XCLocalSwiftPackageReference section */
+		A70000000000000000000001 /* XCLocalSwiftPackageReference "Shared" */ = {
+			isa = XCLocalSwiftPackageReference;
+			relativePath = Shared;
+		};
+/* End XCLocalSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		A70000000000000000000002 /* SpotterShared */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = A70000000000000000000001 /* XCLocalSwiftPackageReference "Shared" */;
+			productName = SpotterShared;
+		};
+		A70000000000000000000003 /* SpotterShared */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = A70000000000000000000001 /* XCLocalSwiftPackageReference "Shared" */;
+			productName = SpotterShared;
+		};
+/* End XCSwiftPackageProductDependency section */
+	};
+	rootObject = A50000000000000000000001 /* Project object */;
+}
