@@ -131,6 +131,7 @@ final class WatchWorkoutViewModel: ObservableObject {
         WorkoutExecutionEngine.finish(&state)
 
         do {
+            try cacheStore.enqueueCompletedWorkout(state.session)
             try cacheStore.clearActiveWorkout()
             didFinish = true
         } catch {

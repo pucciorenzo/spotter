@@ -15,6 +15,9 @@ struct SettingsPlaceholderView: View {
                 if let lastSnapshotSentAt = watchSyncManager.lastSnapshotSentAt {
                     LabeledContent("Last Snapshot", value: lastSnapshotSentAt.formatted(date: .omitted, time: .shortened))
                 }
+                if let lastWorkoutImportedAt = watchSyncManager.lastWorkoutImportedAt {
+                    LabeledContent("Last Watch Workout", value: lastWorkoutImportedAt.formatted(date: .omitted, time: .shortened))
+                }
                 if let lastErrorMessage = watchSyncManager.lastErrorMessage {
                     Text(lastErrorMessage)
                         .font(.caption)

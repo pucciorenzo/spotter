@@ -6,7 +6,9 @@ enum ModelContainerProvider {
             ExerciseModel.self,
             WorkoutPlanModel.self,
             WorkoutDayModel.self,
-            WorkoutExerciseModel.self
+            WorkoutExerciseModel.self,
+            WorkoutSessionModel.self,
+            WorkoutSetLogModel.self
         ])
         let configuration = ModelConfiguration(schema: schema, isStoredInMemoryOnly: false)
         return try ModelContainer(for: schema, configurations: [configuration])

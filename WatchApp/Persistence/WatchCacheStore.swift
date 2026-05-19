@@ -57,12 +57,47 @@ struct WatchCacheStore {
         try fileManager.removeItem(at: url)
     }
 
+    func loadQueuedCompletedWorkouts() -> [WorkoutSessionDTO] {
+        do {
+            let data = try Data(contentsOf: completedWorkoutQueueURL())
+            return try decoder.decode([WorkoutSessionDTO].self, from: data)
+        } catch {
+            return []
+        }
+    }
+
+    func enqueueCompletedWorkout(_ session: WorkoutSessionDTO) throws {
+        var sessions = loadQueuedCompletedWorkouts()
+        guard !sessions.contains(where: { $0.id == session.id }) else {
+            return
+        }
+
+        sessions.append(session)
+        try saveQueuedCompletedWorkouts(sessions)
+    }
+
+    func removeQueuedCompletedWorkout(id: UUID) throws {
+        let sessions = loadQueuedCompletedWorkouts().filter { $0.id != id }
+        try saveQueuedCompletedWorkouts(sessions)
+    }
+
+    private func saveQueuedCompletedWorkouts(_ sessions: [WorkoutSessionDTO]) throws {
+        let directory = try cacheDirectory()
+        try fileManager.createDirectory(at: directory, withIntermediateDirectories: true)
+        let data = try encoder.encode(sessions)
+        try data.write(to: completedWorkoutQueueURL(), options: [.atomic])
+    }
+
     private func snapshotURL() throws -> URL {
         try cacheDirectory().appendingPathComponent("sync-snapshot.json")
     }
 
     private func activeWorkoutURL() throws -> URL {
         try cacheDirectory().appendingPathComponent("active-workout.json")
+    }
+
+    private func completedWorkoutQueueURL() throws -> URL {
+        try cacheDirectory().appendingPathComponent("completed-workout-queue.json")
     }
 
     private func cacheDirectory() throws -> URL {

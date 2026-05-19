@@ -36,8 +36,28 @@ public struct SyncMessage: Codable, Identifiable, Hashable {
         return SyncMessage(type: .snapshotResponse, payload: payload)
     }
 
+    public static func workoutCompleted(_ payload: SyncWorkoutPayload, encoder: JSONEncoder = JSONEncoder()) throws -> SyncMessage {
+        let payload = try encoder.encode(payload)
+        return SyncMessage(type: .workoutCompleted, payload: payload)
+    }
+
+    public static func workoutAck(_ payload: SyncWorkoutAckPayload, encoder: JSONEncoder = JSONEncoder()) throws -> SyncMessage {
+        let payload = try encoder.encode(payload)
+        return SyncMessage(type: .workoutAck, payload: payload)
+    }
+
     public func decodeSnapshot(decoder: JSONDecoder = JSONDecoder()) throws -> SyncSnapshot? {
         guard type == .snapshotResponse, let payload else { return nil }
         return try decoder.decode(SyncSnapshot.self, from: payload)
+    }
+
+    public func decodeWorkoutPayload(decoder: JSONDecoder = JSONDecoder()) throws -> SyncWorkoutPayload? {
+        guard type == .workoutCompleted, let payload else { return nil }
+        return try decoder.decode(SyncWorkoutPayload.self, from: payload)
+    }
+
+    public func decodeWorkoutAck(decoder: JSONDecoder = JSONDecoder()) throws -> SyncWorkoutAckPayload? {
+        guard type == .workoutAck, let payload else { return nil }
+        return try decoder.decode(SyncWorkoutAckPayload.self, from: payload)
     }
 }
