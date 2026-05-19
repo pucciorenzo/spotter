@@ -1,6 +1,7 @@
 import Foundation
 import SwiftUI
 
+@MainActor
 protocol ActiveWorkoutProviding: ObservableObject {
     var session: ActiveWorkoutSession? { get }
     func startMockWorkout()

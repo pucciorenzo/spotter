@@ -8,6 +8,7 @@ final class PhoneWatchSyncManager: NSObject, ObservableObject {
     @Published private(set) var activationStateDescription = "Not activated"
     @Published private(set) var lastSnapshotSentAt: Date?
     @Published private(set) var lastWorkoutImportedAt: Date?
+    @Published private(set) var activeWorkoutState: WorkoutExecutionState?
     @Published private(set) var lastErrorMessage: String?
 
     private let encoder = JSONEncoder()
@@ -52,6 +53,31 @@ final class PhoneWatchSyncManager: NSObject, ObservableObject {
 
             if session.isReachable {
                 session.sendMessage(["message": data], replyHandler: nil) { [weak self] error in
+                    Task { @MainActor in
+                        self?.lastErrorMessage = error.localizedDescription
+                    }
+                }
+            }
+        } catch {
+            lastErrorMessage = error.localizedDescription
+        }
+    }
+
+    func publishActiveWorkoutState(_ state: WorkoutExecutionState) {
+        activeWorkoutState = state
+
+        guard let session else { return }
+
+        do {
+            let message = try SyncMessage.activeWorkoutUpdated(state, encoder: encoder)
+            let data = try encoder.encode(message)
+            let dictionary = ["message": data]
+
+            try session.updateApplicationContext(dictionary)
+            lastErrorMessage = nil
+
+            if session.isReachable {
+                session.sendMessage(dictionary, replyHandler: nil) { [weak self] error in
                     Task { @MainActor in
                         self?.lastErrorMessage = error.localizedDescription
                     }
@@ -139,6 +165,9 @@ final class PhoneWatchSyncManager: NSObject, ObservableObject {
         switch message.type {
         case .snapshotRequest:
             sendLatestSnapshot(replyHandler: replyHandler)
+        case .activeWorkoutUpdated:
+            activeWorkoutState = try? message.decodeActiveWorkoutState(decoder: decoder)
+            replyHandler?([:])
         case .workoutCompleted:
             importCompletedWorkout(from: message, replyHandler: replyHandler)
         case .snapshotResponse, .workoutAck:
