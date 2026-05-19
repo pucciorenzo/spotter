@@ -18,6 +18,11 @@ struct WatchWorkoutView: View {
                 VStack(alignment: .leading, spacing: 6) {
                     Text(viewModel.currentExerciseName)
                         .font(.headline)
+                    if let substitutionText = viewModel.currentSubstitutionText {
+                        Text(substitutionText)
+                            .font(.caption2)
+                            .foregroundStyle(.secondary)
+                    }
                     Text(setProgressText)
                         .font(.caption)
                         .foregroundStyle(.secondary)
@@ -70,6 +75,43 @@ struct WatchWorkoutView: View {
                     viewModel.completeCurrentSet()
                 } label: {
                     Label("Complete Set", systemImage: "checkmark.circle.fill")
+                }
+
+                Section {
+                    Button {
+                        viewModel.skipCurrentSet()
+                    } label: {
+                        Label("Skip Set", systemImage: "forward.end.fill")
+                    }
+
+                    Button(role: .destructive) {
+                        viewModel.skipCurrentExercise()
+                    } label: {
+                        Label("Skip Exercise", systemImage: "figure.strengthtraining.traditional")
+                    }
+
+                    HStack {
+                        Button {
+                            viewModel.moveCurrentExerciseUp()
+                        } label: {
+                            Image(systemName: "arrow.up")
+                        }
+                        .disabled(!viewModel.canMoveCurrentExerciseUp)
+
+                        Button {
+                            viewModel.moveCurrentExerciseDown()
+                        } label: {
+                            Image(systemName: "arrow.down")
+                        }
+                        .disabled(!viewModel.canMoveCurrentExerciseDown)
+                    }
+
+                    NavigationLink {
+                        WatchExerciseReplacementView(viewModel: viewModel)
+                    } label: {
+                        Label("Change Exercise", systemImage: "arrow.triangle.2.circlepath")
+                    }
+                    .disabled(viewModel.replacementExercises.isEmpty)
                 }
             }
 
@@ -130,6 +172,29 @@ struct WatchWorkoutView: View {
                 }
             }
         )
+    }
+}
+
+private struct WatchExerciseReplacementView: View {
+    @Environment(\.dismiss) private var dismiss
+    @ObservedObject var viewModel: WatchWorkoutViewModel
+
+    var body: some View {
+        List(viewModel.replacementExercises) { exercise in
+            Button {
+                viewModel.substituteCurrentExercise(with: exercise)
+                dismiss()
+            } label: {
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(exercise.name)
+                        .font(.headline)
+                    Text(exercise.primaryMuscleGroup)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+            }
+        }
+        .navigationTitle("Change")
     }
 }
 

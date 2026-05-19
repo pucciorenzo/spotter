@@ -62,3 +62,10 @@ public enum WorkoutStatus: String, Codable, CaseIterable, Identifiable, Hashable
 
     public var id: String { rawValue }
 }
+
+public enum WorkoutSetCompletionType: String, Codable, CaseIterable, Identifiable, Hashable {
+    case completed
+    case skipped
+
+    public var id: String { rawValue }
+}

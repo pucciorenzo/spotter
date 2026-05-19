@@ -415,10 +415,12 @@ final class WorkoutSetLogModel {
     @Attribute(.unique) var id: UUID
     var sessionId: UUID
     var exerciseId: UUID
+    var originalExerciseId: UUID?
     var workoutExerciseId: UUID?
     var exerciseNameSnapshot: String
     var setIndex: Int
     var isWarmup: Bool
+    var completionTypeRawValue: String?
     var targetReps: Int?
     var targetDurationSeconds: Int?
     var targetLoad: Double?
@@ -438,10 +440,12 @@ final class WorkoutSetLogModel {
         id = dto.id
         sessionId = dto.sessionId
         exerciseId = dto.exerciseId
+        originalExerciseId = dto.originalExerciseId
         workoutExerciseId = dto.workoutExerciseId
         exerciseNameSnapshot = dto.exerciseNameSnapshot
         setIndex = dto.setIndex
         isWarmup = dto.isWarmup
+        completionTypeRawValue = dto.completionType?.rawValue
         targetReps = dto.targetReps
         targetDurationSeconds = dto.targetDurationSeconds
         targetLoad = dto.targetLoad
@@ -468,15 +472,22 @@ final class WorkoutSetLogModel {
         set { completedLoadUnitRawValue = newValue.rawValue }
     }
 
+    var completionType: WorkoutSetCompletionType {
+        get { WorkoutSetCompletionType(rawValue: completionTypeRawValue ?? "") ?? .completed }
+        set { completionTypeRawValue = newValue.rawValue }
+    }
+
     func toDTO() -> WorkoutSetLogDTO {
         WorkoutSetLogDTO(
             id: id,
             sessionId: sessionId,
             exerciseId: exerciseId,
+            originalExerciseId: originalExerciseId,
             workoutExerciseId: workoutExerciseId,
             exerciseNameSnapshot: exerciseNameSnapshot,
             setIndex: setIndex,
             isWarmup: isWarmup,
+            completionType: completionType,
             targetReps: targetReps,
             targetDurationSeconds: targetDurationSeconds,
             targetLoad: targetLoad,
