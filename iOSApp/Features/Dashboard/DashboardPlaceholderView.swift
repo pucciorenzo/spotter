@@ -23,12 +23,9 @@ struct DashboardPlaceholderView: View {
                                     .foregroundStyle(SpotterPalette.textSecondary)
 
                                 HStack(spacing: 10) {
-                                    Label("6 exercises", systemImage: "list.bullet")
-                                    Label("54 min", systemImage: "timer")
+                                    MainWorkoutInfoPill(title: "6 exercises", systemImage: "list.bullet")
+                                    MainWorkoutInfoPill(title: "54 min", systemImage: "timer")
                                 }
-                                .font(.caption.weight(.medium))
-                                .symbolRenderingMode(.hierarchical)
-                                .foregroundStyle(SpotterPalette.accentSoft)
                             }
 
                             Spacer()
@@ -66,6 +63,25 @@ struct DashboardPlaceholderView: View {
         }
         .scrollContentBackground(.hidden)
         .spotterScreenChrome()
+    }
+}
+
+private struct MainWorkoutInfoPill: View {
+    let title: String
+    let systemImage: String
+
+    var body: some View {
+        Label(title, systemImage: systemImage)
+            .font(.caption.weight(.semibold))
+            .symbolRenderingMode(.hierarchical)
+            .foregroundStyle(SpotterPalette.textPrimary)
+            .padding(.horizontal, 10)
+            .padding(.vertical, 7)
+            .background(.white.opacity(0.08), in: Capsule())
+            .overlay {
+                Capsule()
+                    .strokeBorder(SpotterPalette.glassStroke, lineWidth: 1)
+            }
     }
 }
 

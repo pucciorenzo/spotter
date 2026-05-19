@@ -223,7 +223,11 @@ struct WorkoutProgressRing: View {
                 .trim(from: 0, to: min(max(progress, 0), 1))
                 .stroke(
                     AngularGradient(
-                        colors: [SpotterPalette.accentSoft, .white.opacity(0.9), SpotterPalette.accent],
+                        colors: [
+                            SpotterPalette.accentSoft,
+                            SpotterPalette.accent.opacity(0.82),
+                            SpotterPalette.accentSoft
+                        ],
                         center: .center
                     ),
                     style: StrokeStyle(lineWidth: 12, lineCap: .round)
