@@ -61,5 +61,10 @@ fastlane/Preview.html
 fastlane/screenshots/**/*.png
 fastlane/test_output
 
+# Local machine files
+.DS_Store
+AGENTS.md
+Spotter.xcodeproj/project.xcworkspace/xcuserdata/
+
 # Local implementation briefs
 docs/gym_iphone_watch_app_codex_spec.md
