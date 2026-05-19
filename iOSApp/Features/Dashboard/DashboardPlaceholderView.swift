@@ -2,6 +2,8 @@ import SwiftUI
 
 struct TodayView: View {
     let dataProvider: any SpotterDataProviding
+    @ObservedObject var activeWorkoutRepository: MockActiveWorkoutRepository
+    let showActiveWorkout: () -> Void
 
     private var snapshot: SpotterTodaySnapshot {
         dataProvider.today
@@ -15,12 +17,15 @@ struct TodayView: View {
                 VStack(alignment: .leading, spacing: 22) {
                     TodayHeader(snapshot: snapshot)
 
-                    if let activeWorkout = snapshot.activeWorkout {
-                        ActiveWorkoutBanner(activeWorkout: activeWorkout)
+                    if let session = activeWorkoutRepository.session {
+                        ActiveWorkoutBanner(session: session, action: showActiveWorkout)
                     }
 
                     if let suggestedWorkout = snapshot.suggestedWorkout {
-                        SuggestedWorkoutCard(workout: suggestedWorkout)
+                        SuggestedWorkoutCard(workout: suggestedWorkout) {
+                            activeWorkoutRepository.startMockWorkout()
+                            showActiveWorkout()
+                        }
                     } else {
                         TodayEmptyPlanCard()
                     }
@@ -86,6 +91,7 @@ private struct TodayHeader: View {
 
 private struct SuggestedWorkoutCard: View {
     let workout: SpotterSuggestedWorkout
+    let startWorkout: () -> Void
 
     var body: some View {
         GlassCard {
@@ -126,18 +132,18 @@ private struct SuggestedWorkoutCard: View {
                 }
                 .foregroundStyle(SpotterPalette.textSecondary)
 
-                GlassButton(title: "Start", systemImage: "play.fill")
+                GlassButton(title: "Start", systemImage: "play.fill", action: startWorkout)
             }
         }
     }
 }
 
 private struct ActiveWorkoutBanner: View {
-    let activeWorkout: SpotterActiveWorkout
+    let session: ActiveWorkoutSession
+    let action: () -> Void
 
     var body: some View {
-        Button {
-        } label: {
+        Button(action: action) {
             HStack(spacing: 14) {
                 Image(systemName: "figure.strengthtraining.traditional")
                     .font(.title3)
@@ -145,9 +151,9 @@ private struct ActiveWorkoutBanner: View {
                     .foregroundStyle(SpotterPalette.accentSoft)
 
                 VStack(alignment: .leading, spacing: 3) {
-                    Text(activeWorkout.title)
+                    Text(session.currentExercise?.name ?? session.dayName)
                         .font(.headline)
-                    Text(activeWorkout.detail)
+                    Text("\(session.dayName) - \(session.completedSetCount)/\(session.totalSetCount) sets")
                         .font(.caption)
                         .foregroundStyle(SpotterPalette.textSecondary)
                 }
@@ -237,7 +243,11 @@ private struct TodayStatusPill: View {
 
 #Preview {
     NavigationStack {
-        TodayView(dataProvider: MockSpotterRepository.preview)
+        TodayView(
+            dataProvider: MockSpotterRepository.preview,
+            activeWorkoutRepository: MockActiveWorkoutRepository(),
+            showActiveWorkout: {}
+        )
             .preferredColorScheme(.dark)
     }
 }

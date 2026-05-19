@@ -2,6 +2,8 @@ import SwiftUI
 
 struct PlanListView: View {
     let dataProvider: any SpotterDataProviding
+    @ObservedObject var activeWorkoutRepository: MockActiveWorkoutRepository
+    let showActiveWorkout: () -> Void
     @State private var searchText = ""
     @State private var showingCreatePlanSheet = false
 
@@ -31,7 +33,11 @@ struct PlanListView: View {
                     VStack(spacing: 14) {
                         ForEach(plans) { plan in
                             NavigationLink {
-                                PlanDetailView(plan: plan)
+                                PlanDetailView(
+                                    plan: plan,
+                                    activeWorkoutRepository: activeWorkoutRepository,
+                                    showActiveWorkout: showActiveWorkout
+                                )
                             } label: {
                                 PlanCard(plan: plan)
                             }
@@ -127,6 +133,8 @@ private struct PlanCard: View {
 
 private struct PlanDetailView: View {
     let plan: SpotterPlanSummary
+    @ObservedObject var activeWorkoutRepository: MockActiveWorkoutRepository
+    let showActiveWorkout: () -> Void
 
     var body: some View {
         ZStack(alignment: .bottom) {
@@ -142,7 +150,11 @@ private struct PlanDetailView: View {
 
                     ForEach(plan.days) { day in
                         NavigationLink {
-                            PlanDayDetailView(day: day)
+                            PlanDayDetailView(
+                                day: day,
+                                activeWorkoutRepository: activeWorkoutRepository,
+                                showActiveWorkout: showActiveWorkout
+                            )
                         } label: {
                             GlassCard {
                                 HStack(spacing: 16) {
@@ -174,7 +186,10 @@ private struct PlanDetailView: View {
                 .padding(.bottom, 112)
             }
 
-            GlassButton(title: "Start Workout", systemImage: "play.fill")
+            GlassButton(title: "Start Workout", systemImage: "play.fill") {
+                activeWorkoutRepository.startMockWorkout()
+                showActiveWorkout()
+            }
                 .padding(.horizontal, 20)
                 .padding(.bottom, 18)
         }
@@ -195,6 +210,8 @@ private struct PlanDetailView: View {
 
 private struct PlanDayDetailView: View {
     let day: SpotterPlanDaySummary
+    @ObservedObject var activeWorkoutRepository: MockActiveWorkoutRepository
+    let showActiveWorkout: () -> Void
 
     var body: some View {
         ZStack(alignment: .bottom) {
@@ -228,7 +245,10 @@ private struct PlanDayDetailView: View {
                 .padding(.bottom, 112)
             }
 
-            GlassButton(title: "Start Workout", systemImage: "play.fill")
+            GlassButton(title: "Start Workout", systemImage: "play.fill") {
+                activeWorkoutRepository.startMockWorkout()
+                showActiveWorkout()
+            }
                 .padding(.horizontal, 20)
                 .padding(.bottom, 18)
         }
@@ -343,7 +363,11 @@ private struct PlanInfoPill: View {
 
 #Preview {
     NavigationStack {
-        PlanListView(dataProvider: MockSpotterRepository.preview)
+        PlanListView(
+            dataProvider: MockSpotterRepository.preview,
+            activeWorkoutRepository: MockActiveWorkoutRepository(),
+            showActiveWorkout: {}
+        )
             .preferredColorScheme(.dark)
     }
 }

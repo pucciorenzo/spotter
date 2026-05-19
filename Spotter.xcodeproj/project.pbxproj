@@ -33,6 +33,8 @@
 		A10000000000000000000018 /* SpotterDesignSystem.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000000000000000000017 /* SpotterDesignSystem.swift */; };
 		A10000000000000000000019 /* WatchSpotterDesignSystem.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000000000000000000018 /* WatchSpotterDesignSystem.swift */; };
 		A1000000000000000000001A /* SpotterDataProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000000000000000000019 /* SpotterDataProvider.swift */; };
+		A1000000000000000000001B /* ActiveWorkoutRepository.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2000000000000000000001A /* ActiveWorkoutRepository.swift */; };
+		A1000000000000000000001C /* ActiveWorkoutView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2000000000000000000001B /* ActiveWorkoutView.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -85,6 +87,8 @@
 		A20000000000000000000017 /* SpotterDesignSystem.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = iOSApp/DesignSystem/SpotterDesignSystem.swift; sourceTree = "<group>"; };
 		A20000000000000000000018 /* WatchSpotterDesignSystem.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WatchApp/DesignSystem/WatchSpotterDesignSystem.swift; sourceTree = "<group>"; };
 		A20000000000000000000019 /* SpotterDataProvider.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = iOSApp/Features/AppNavigation/SpotterDataProvider.swift; sourceTree = "<group>"; };
+		A2000000000000000000001A /* ActiveWorkoutRepository.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = iOSApp/Features/WorkoutExecution/ActiveWorkoutRepository.swift; sourceTree = "<group>"; };
+		A2000000000000000000001B /* ActiveWorkoutView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = iOSApp/Features/WorkoutExecution/ActiveWorkoutView.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -134,6 +138,8 @@
 				A20000000000000000000012 /* PhoneWatchSyncManager.swift */,
 				A20000000000000000000017 /* SpotterDesignSystem.swift */,
 				A20000000000000000000019 /* SpotterDataProvider.swift */,
+				A2000000000000000000001A /* ActiveWorkoutRepository.swift */,
+				A2000000000000000000001B /* ActiveWorkoutView.swift */,
 			);
 			name = iOSApp;
 			sourceTree = "<group>";
@@ -266,6 +272,8 @@
 				A1000000000000000000000F /* SpotterRepository.swift in Sources */,
 				A10000000000000000000018 /* SpotterDesignSystem.swift in Sources */,
 				A1000000000000000000001A /* SpotterDataProvider.swift in Sources */,
+				A1000000000000000000001B /* ActiveWorkoutRepository.swift in Sources */,
+				A1000000000000000000001C /* ActiveWorkoutView.swift in Sources */,
 				A10000000000000000000010 /* SeedData.swift in Sources */,
 				A10000000000000000000011 /* ModelContainerProvider.swift in Sources */,
 				A10000000000000000000012 /* SnapshotBuilder.swift in Sources */,
