@@ -3,8 +3,11 @@ import SwiftData
 import SwiftUI
 
 struct PlanListView: View {
+    @Environment(\.modelContext) private var modelContext
     @Query(sort: \WorkoutPlanModel.name) private var plans: [WorkoutPlanModel]
     @Query(sort: \ExerciseModel.name) private var exercises: [ExerciseModel]
+    @State private var newWorkoutName = ""
+    @State private var showingNewWorkoutPrompt = false
 
     var body: some View {
         ZStack {
@@ -66,6 +69,28 @@ struct PlanListView: View {
             }
         }
         .spotterScreenChrome()
+        .toolbar {
+            ToolbarItem(placement: .topBarTrailing) {
+                Button {
+                    newWorkoutName = nextWorkoutName
+                    showingNewWorkoutPrompt = true
+                } label: {
+                    Image(systemName: "plus.circle.fill")
+                        .symbolRenderingMode(.hierarchical)
+                        .foregroundStyle(SpotterPalette.accentSoft)
+                }
+                .accessibilityLabel("Create Workout")
+            }
+        }
+        .alert("New Workout", isPresented: $showingNewWorkoutPrompt) {
+            TextField("Name", text: $newWorkoutName)
+            Button("Create") {
+                createWorkout()
+            }
+            Button("Cancel", role: .cancel) {}
+        } message: {
+            Text("Create an active workout plan with one empty day.")
+        }
     }
 
     private var activePlan: WorkoutPlanModel? {
@@ -74,6 +99,25 @@ struct PlanListView: View {
 
     private var planDays: [WorkoutDayModel] {
         activePlan?.days.sorted { $0.orderIndex < $1.orderIndex } ?? []
+    }
+
+    private var nextWorkoutName: String {
+        "Workout \(plans.filter { !$0.isArchived }.count + 1)"
+    }
+
+    private func createWorkout() {
+        let trimmedName = newWorkoutName.trimmingCharacters(in: .whitespacesAndNewlines)
+        let plan = SpotterRepository.insertPlan(
+            named: trimmedName.isEmpty ? nextWorkoutName : trimmedName,
+            in: modelContext
+        )
+
+        for existingPlan in plans where existingPlan.id != plan.id {
+            existingPlan.isActive = false
+            existingPlan.updatedAt = Date()
+        }
+
+        _ = SpotterRepository.insertDay(named: "Day 1", into: plan)
     }
 }
 
