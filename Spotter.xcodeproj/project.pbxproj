@@ -188,7 +188,7 @@
 			);
 			productName = "Spotter Watch App";
 			productReference = A2000000000000000000000C /* Spotter Watch App.app */;
-			productType = "com.apple.product-type.application.watchapp2";
+			productType = "com.apple.product-type.application";
 		};
 /* End PBXNativeTarget section */
 
