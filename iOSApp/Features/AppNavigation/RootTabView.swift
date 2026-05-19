@@ -10,36 +10,41 @@ struct RootTabView: View {
     var body: some View {
         TabView {
             NavigationStack {
+                DashboardPlaceholderView()
+            }
+            .spotterNavigationChrome()
+            .tabItem {
+                Label("Home", systemImage: "house")
+            }
+
+            NavigationStack {
                 ExerciseListView()
             }
+            .spotterNavigationChrome()
             .tabItem {
-                Label("Exercises", systemImage: "figure.strengthtraining.traditional")
+                Label("Library", systemImage: "square.grid.2x2")
             }
 
             NavigationStack {
                 PlanListView()
             }
+            .spotterNavigationChrome()
             .tabItem {
-                Label("Plans", systemImage: "list.clipboard")
+                Label("Workout", systemImage: "play.circle")
             }
 
             NavigationStack {
                 WorkoutHistoryPlaceholderView()
             }
+            .spotterNavigationChrome()
             .tabItem {
                 Label("History", systemImage: "clock")
             }
 
             NavigationStack {
-                DashboardPlaceholderView()
-            }
-            .tabItem {
-                Label("Dashboard", systemImage: "chart.bar")
-            }
-
-            NavigationStack {
                 SettingsPlaceholderView()
             }
+            .spotterNavigationChrome()
             .tabItem {
                 Label("Settings", systemImage: "gearshape")
             }

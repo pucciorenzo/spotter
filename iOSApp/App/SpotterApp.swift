@@ -6,6 +6,8 @@ struct SpotterApp: App {
     private let modelContainer: ModelContainer
 
     init() {
+        SpotterAppearance.configure()
+
         do {
             modelContainer = try ModelContainerProvider.make()
         } catch {

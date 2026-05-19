@@ -1,209 +1,93 @@
-import SwiftData
 import SwiftUI
 
 struct DashboardPlaceholderView: View {
-    @Query(sort: \WorkoutSessionModel.startedAt, order: .reverse) private var sessions: [WorkoutSessionModel]
-
     var body: some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: 20) {
-                LazyVGrid(columns: columns, spacing: 12) {
-                    DashboardMetricTile(
-                        title: "This Week",
-                        value: "\(thisWeekSessions.count)",
-                        caption: "workouts",
-                        systemImage: "calendar"
+        ZStack {
+            SpotterBackground()
+
+            ScrollView {
+                VStack(alignment: .leading, spacing: 22) {
+                    ScreenHeader(
+                        eyebrow: "Today",
+                        title: "spotter",
+                        subtitle: "Upper body session ready. Keep pace calm and precise."
                     )
 
-                    DashboardMetricTile(
-                        title: "Sets",
-                        value: "\(completedSetCount(in: thisWeekSessions))",
-                        caption: "completed",
-                        systemImage: "checkmark.circle"
-                    )
+                    GlassCard {
+                        HStack(alignment: .center, spacing: 18) {
+                            VStack(alignment: .leading, spacing: 14) {
+                                Text("Push Strength")
+                                    .font(.title2.weight(.semibold))
+                                Text("Chest, shoulders, triceps")
+                                    .font(.subheadline)
+                                    .foregroundStyle(SpotterPalette.textSecondary)
 
-                    DashboardMetricTile(
-                        title: "Volume",
-                        value: volumeText(for: thisWeekSessions),
-                        caption: "logged load",
-                        systemImage: "scalemass"
-                    )
+                                HStack(spacing: 10) {
+                                    MainWorkoutInfoPill(title: "6 exercises", systemImage: "list.bullet")
+                                    MainWorkoutInfoPill(title: "54 min", systemImage: "timer")
+                                }
+                            }
 
-                    DashboardMetricTile(
-                        title: "Time",
-                        value: durationText(for: thisWeekSessions),
-                        caption: "training",
-                        systemImage: "timer"
-                    )
-                }
+                            Spacer()
 
-                VStack(alignment: .leading, spacing: 12) {
-                    Text("Recent Workouts")
-                        .font(.headline)
+                            WorkoutProgressRing(progress: 0.42)
+                        }
+                    }
 
-                    if recentSessions.isEmpty {
-                        ContentUnavailableView(
-                            "No Workouts Yet",
-                            systemImage: "chart.xyaxis.line",
-                            description: Text("Complete a workout to start building trends.")
-                        )
-                        .frame(maxWidth: .infinity)
-                    } else {
-                        VStack(spacing: 10) {
-                            ForEach(recentSessions) { session in
-                                RecentWorkoutSummaryRow(session: session)
+                    LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 14) {
+                        MetricCard(title: "Week", value: "3", caption: "workouts", systemImage: "calendar")
+                        MetricCard(title: "Volume", value: "12.5k", caption: "kg logged", systemImage: "chart.bar.fill")
+                        MetricCard(title: "Sets", value: "48", caption: "completed", systemImage: "checkmark.circle.fill")
+                        MetricCard(title: "Recovery", value: "82", caption: "readiness", systemImage: "waveform.path.ecg")
+                    }
+
+                    VStack(alignment: .leading, spacing: 12) {
+                        Text("Next Exercises")
+                            .font(.headline)
+
+                        GlassCard {
+                            VStack(spacing: 4) {
+                                ExerciseRow(name: "Incline Press", detail: "4 sets x 6-8 reps", metric: "80 kg")
+                                Divider().overlay(.white.opacity(0.10))
+                                ExerciseRow(name: "Cable Fly", detail: "3 sets x 10-12 reps", metric: "24 kg")
+                                Divider().overlay(.white.opacity(0.10))
+                                ExerciseRow(name: "Lateral Raise", detail: "4 sets x 12-15 reps", metric: "10 kg")
                             }
                         }
                     }
                 }
+                .padding(.horizontal, 20)
+                .padding(.top, 18)
+                .padding(.bottom, 34)
             }
-            .padding()
         }
-        .navigationTitle("Dashboard")
-    }
-
-    private var columns: [GridItem] {
-        [GridItem(.adaptive(minimum: 150), spacing: 12)]
-    }
-
-    private var recentSessions: [WorkoutSessionModel] {
-        Array(sessions.prefix(5))
-    }
-
-    private var thisWeekSessions: [WorkoutSessionModel] {
-        let calendar = Calendar.current
-        guard let weekInterval = calendar.dateInterval(of: .weekOfYear, for: Date()) else {
-            return []
-        }
-
-        return sessions.filter { session in
-            session.status == .completed && weekInterval.contains(session.startedAt)
-        }
-    }
-
-    private func completedSetCount(in sessions: [WorkoutSessionModel]) -> Int {
-        sessions.reduce(0) { count, session in
-            count + session.setLogs.filter { $0.completionType == .completed }.count
-        }
-    }
-
-    private func volumeText(for sessions: [WorkoutSessionModel]) -> String {
-        let volume = sessions
-            .flatMap(\.setLogs)
-            .filter { $0.completionType == .completed }
-            .reduce(0.0) { total, log in
-                guard let reps = log.completedReps,
-                      let load = log.completedLoad,
-                      log.completedLoadUnit != .bodyweight else {
-                    return total
-                }
-
-                return total + (Double(reps) * load)
-            }
-
-        guard volume > 0 else {
-            return "0"
-        }
-
-        if volume >= 1_000 {
-            return String(format: "%.1fk", volume / 1_000)
-        }
-
-        return volume.truncatingRemainder(dividingBy: 1) == 0
-            ? "\(Int(volume))"
-            : String(format: "%.1f", volume)
-    }
-
-    private func durationText(for sessions: [WorkoutSessionModel]) -> String {
-        let seconds = sessions.reduce(0) { $0 + $1.durationSeconds }
-        let minutes = seconds / 60
-
-        if minutes < 60 {
-            return "\(minutes)m"
-        }
-
-        return "\(minutes / 60)h \(minutes % 60)m"
+        .scrollContentBackground(.hidden)
+        .spotterScreenChrome()
     }
 }
 
-private struct DashboardMetricTile: View {
+private struct MainWorkoutInfoPill: View {
     let title: String
-    let value: String
-    let caption: String
     let systemImage: String
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            HStack {
-                Image(systemName: systemImage)
-                    .foregroundStyle(.secondary)
-                Spacer()
+        Label(title, systemImage: systemImage)
+            .font(.caption.weight(.semibold))
+            .symbolRenderingMode(.hierarchical)
+            .foregroundStyle(SpotterPalette.textPrimary)
+            .padding(.horizontal, 10)
+            .padding(.vertical, 7)
+            .background(.white.opacity(0.08), in: Capsule())
+            .overlay {
+                Capsule()
+                    .strokeBorder(SpotterPalette.glassStroke, lineWidth: 1)
             }
-
-            Text(value)
-                .font(.title2.monospacedDigit().weight(.semibold))
-                .lineLimit(1)
-                .minimumScaleFactor(0.7)
-
-            VStack(alignment: .leading, spacing: 2) {
-                Text(title)
-                    .font(.subheadline.weight(.medium))
-                Text(caption)
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-            }
-        }
-        .frame(maxWidth: .infinity, minHeight: 128, alignment: .leading)
-        .padding()
-        .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 8))
-    }
-}
-
-private struct RecentWorkoutSummaryRow: View {
-    let session: WorkoutSessionModel
-
-    var body: some View {
-        HStack(alignment: .firstTextBaseline) {
-            VStack(alignment: .leading, spacing: 4) {
-                Text(session.dayNameSnapshot.isEmpty ? "Workout" : session.dayNameSnapshot)
-                    .font(.subheadline.weight(.medium))
-
-                Text(session.startedAt.formatted(date: .abbreviated, time: .omitted))
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-            }
-
-            Spacer()
-
-            VStack(alignment: .trailing, spacing: 4) {
-                Text("\(completedSetCount) sets")
-                    .font(.subheadline.monospacedDigit())
-
-                Text(durationText)
-                    .font(.caption.monospacedDigit())
-                    .foregroundStyle(.secondary)
-            }
-        }
-        .padding()
-        .background(.background.secondary, in: RoundedRectangle(cornerRadius: 8))
-    }
-
-    private var completedSetCount: Int {
-        session.setLogs.filter { $0.completionType == .completed }.count
-    }
-
-    private var durationText: String {
-        let minutes = session.durationSeconds / 60
-        if minutes < 60 {
-            return "\(minutes)m"
-        }
-
-        return "\(minutes / 60)h \(minutes % 60)m"
     }
 }
 
 #Preview {
     NavigationStack {
         DashboardPlaceholderView()
+            .preferredColorScheme(.dark)
     }
 }
