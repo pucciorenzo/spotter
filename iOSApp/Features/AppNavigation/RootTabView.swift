@@ -12,6 +12,7 @@ struct RootTabView: View {
             NavigationStack {
                 DashboardPlaceholderView()
             }
+            .spotterNavigationChrome()
             .tabItem {
                 Label("Home", systemImage: "house")
             }
@@ -19,6 +20,7 @@ struct RootTabView: View {
             NavigationStack {
                 ExerciseListView()
             }
+            .spotterNavigationChrome()
             .tabItem {
                 Label("Library", systemImage: "square.grid.2x2")
             }
@@ -26,6 +28,7 @@ struct RootTabView: View {
             NavigationStack {
                 PlanListView()
             }
+            .spotterNavigationChrome()
             .tabItem {
                 Label("Workout", systemImage: "play.circle")
             }
@@ -33,6 +36,7 @@ struct RootTabView: View {
             NavigationStack {
                 WorkoutHistoryPlaceholderView()
             }
+            .spotterNavigationChrome()
             .tabItem {
                 Label("History", systemImage: "clock")
             }
@@ -40,6 +44,7 @@ struct RootTabView: View {
             NavigationStack {
                 SettingsPlaceholderView()
             }
+            .spotterNavigationChrome()
             .tabItem {
                 Label("Settings", systemImage: "gearshape")
             }

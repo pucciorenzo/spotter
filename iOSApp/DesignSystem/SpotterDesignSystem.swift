@@ -11,15 +11,14 @@ enum SpotterPalette {
     static let textTertiary = Color.white.opacity(0.45)
     static let iconMuted = Color.white.opacity(0.56)
     static let glassStroke = Color.white.opacity(0.16)
-    static let navGlass = Color(red: 0.04, green: 0.06, blue: 0.09).opacity(0.82)
+    static let navGlass = Color(red: 0.04, green: 0.06, blue: 0.09)
 }
 
 enum SpotterAppearance {
     static func configure() {
         let navAppearance = UINavigationBarAppearance()
-        navAppearance.configureWithTransparentBackground()
-        navAppearance.backgroundEffect = UIBlurEffect(style: .systemUltraThinMaterialDark)
-        navAppearance.backgroundColor = UIColor(red: 0.04, green: 0.06, blue: 0.09, alpha: 0.84)
+        navAppearance.configureWithOpaqueBackground()
+        navAppearance.backgroundColor = UIColor(red: 0.04, green: 0.06, blue: 0.09, alpha: 1.0)
         navAppearance.shadowColor = UIColor.white.withAlphaComponent(0.08)
         navAppearance.titleTextAttributes = [
             .foregroundColor: UIColor.white.withAlphaComponent(0.96)
@@ -36,9 +35,8 @@ enum SpotterAppearance {
         navigationBar.overrideUserInterfaceStyle = .dark
 
         let tabAppearance = UITabBarAppearance()
-        tabAppearance.configureWithTransparentBackground()
-        tabAppearance.backgroundEffect = UIBlurEffect(style: .systemUltraThinMaterialDark)
-        tabAppearance.backgroundColor = UIColor(red: 0.04, green: 0.06, blue: 0.09, alpha: 0.84)
+        tabAppearance.configureWithOpaqueBackground()
+        tabAppearance.backgroundColor = UIColor(red: 0.04, green: 0.06, blue: 0.09, alpha: 1.0)
         tabAppearance.shadowColor = UIColor.white.withAlphaComponent(0.08)
 
         let tabBar = UITabBar.appearance()
@@ -300,5 +298,12 @@ struct SpotterScreenChrome: ViewModifier {
 extension View {
     func spotterScreenChrome() -> some View {
         modifier(SpotterScreenChrome())
+    }
+
+    func spotterNavigationChrome() -> some View {
+        background(SpotterPalette.navGlass.ignoresSafeArea())
+            .toolbarColorScheme(.dark, for: .navigationBar)
+            .toolbarBackground(SpotterPalette.navGlass, for: .navigationBar)
+            .toolbarBackground(.visible, for: .navigationBar)
     }
 }
