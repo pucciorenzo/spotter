@@ -10,17 +10,24 @@ struct RootTabView: View {
     var body: some View {
         TabView {
             NavigationStack {
+                DashboardPlaceholderView()
+            }
+            .tabItem {
+                Label("Home", systemImage: "house")
+            }
+
+            NavigationStack {
                 ExerciseListView()
             }
             .tabItem {
-                Label("Exercises", systemImage: "figure.strengthtraining.traditional")
+                Label("Library", systemImage: "square.grid.2x2")
             }
 
             NavigationStack {
                 PlanListView()
             }
             .tabItem {
-                Label("Plans", systemImage: "list.clipboard")
+                Label("Workout", systemImage: "play.circle")
             }
 
             NavigationStack {
@@ -28,13 +35,6 @@ struct RootTabView: View {
             }
             .tabItem {
                 Label("History", systemImage: "clock")
-            }
-
-            NavigationStack {
-                DashboardPlaceholderView()
-            }
-            .tabItem {
-                Label("Dashboard", systemImage: "chart.bar")
             }
 
             NavigationStack {

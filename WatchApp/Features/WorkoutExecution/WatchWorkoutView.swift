@@ -15,163 +15,185 @@ struct WatchWorkoutView: View {
     }
 
     var body: some View {
-        List {
-            Section {
-                VStack(alignment: .leading, spacing: 6) {
-                    Text(viewModel.currentExerciseName)
-                        .font(.headline)
-                    if let substitutionText = viewModel.currentSubstitutionText {
-                        Text(substitutionText)
+        ScrollView {
+            VStack(spacing: 10) {
+                WatchGlassCard {
+                    VStack(alignment: .leading, spacing: 7) {
+                        Text(viewModel.state.session.dayNameSnapshot)
                             .font(.caption2)
+                            .foregroundStyle(WatchSpotterPalette.accent)
+                        Text(viewModel.currentExerciseName)
+                            .font(.headline)
+                            .lineLimit(2)
+                        if let substitutionText = viewModel.currentSubstitutionText {
+                            Text(substitutionText)
+                                .font(.caption2)
+                                .foregroundStyle(.secondary)
+                        }
+                        Text(setProgressText)
+                            .font(.caption)
                             .foregroundStyle(.secondary)
                     }
-                    Text(setProgressText)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                }
+
+                if let restText = viewModel.formattedRest(at: now) {
+                    WatchGlassCard {
+                        HStack {
+                            Image(systemName: "timer")
+                                .foregroundStyle(restIsOver ? .green : WatchSpotterPalette.accent)
+                            Text(restText)
+                                .font(.system(size: 28, weight: .semibold, design: .rounded))
+                                .monospacedDigit()
+                            Spacer()
+                        }
+                        .foregroundStyle(restIsOver ? .green : .primary)
+                    }
+                }
+
+                if viewModel.canCompleteSet {
+                    Toggle("Prompt", isOn: $promptForSetResults)
                         .font(.caption)
-                        .foregroundStyle(.secondary)
-                }
-            }
+                        .padding(.horizontal, 4)
 
-            if let restText = viewModel.formattedRest(at: now) {
-                Section {
-                    HStack {
-                        Image(systemName: "timer")
-                        Text(restText)
-                            .font(.title3.monospacedDigit())
+                    if !promptForSetResults {
+                        WatchGlassCard {
+                            VStack(spacing: 10) {
+                                if viewModel.usesDuration {
+                                    CrownNumberField(
+                                        title: "Duration",
+                                        suffix: "s",
+                                        value: $viewModel.durationValue,
+                                        range: 0...3600,
+                                        step: 5
+                                    )
+                                } else {
+                                    CrownNumberField(
+                                        title: "Reps",
+                                        suffix: "",
+                                        value: $viewModel.repsValue,
+                                        range: 0...200,
+                                        step: 1
+                                    )
+                                }
+
+                                if viewModel.currentExercise?.loadUnit != .bodyweight {
+                                    CrownNumberField(
+                                        title: "Load",
+                                        suffix: viewModel.currentExercise?.loadUnit.rawValue ?? "",
+                                        value: $viewModel.loadValue,
+                                        range: 0...500,
+                                        step: 2.5
+                                    )
+                                }
+                            }
+                        }
                     }
-                    .foregroundStyle(restIsOver ? .green : .primary)
-                }
-            }
 
-            if viewModel.canCompleteSet {
-                Section("Options") {
-                    Toggle("Prompt for Results", isOn: $promptForSetResults)
-                }
-
-                if !promptForSetResults {
-                    Section {
-                        if viewModel.usesDuration {
-                            CrownNumberField(
-                                title: "Duration",
-                                suffix: "s",
-                                value: $viewModel.durationValue,
-                                range: 0...3600,
-                                step: 5
-                            )
+                    WatchGlassButton(title: "Complete", systemImage: "checkmark") {
+                        if promptForSetResults {
+                            showingSetResultEntry = true
                         } else {
-                            CrownNumberField(
-                                title: "Reps",
-                                suffix: "",
-                                value: $viewModel.repsValue,
-                                range: 0...200,
-                                step: 1
+                            viewModel.completeCurrentSet()
+                        }
+                    }
+                    .sheet(isPresented: $showingSetResultEntry) {
+                        WatchSetResultEntryView(
+                            title: "Set \(viewModel.nextSetNumber)",
+                            usesDuration: viewModel.usesDuration,
+                            loadUnit: viewModel.currentExercise?.loadUnit ?? .kg,
+                            reps: Int(viewModel.repsValue),
+                            durationSeconds: Int(viewModel.durationValue),
+                            load: viewModel.loadValue
+                        ) { reps, durationSeconds, load in
+                            viewModel.completeCurrentSet(
+                                reps: reps,
+                                durationSeconds: durationSeconds,
+                                load: load
                             )
                         }
+                    }
 
-                        if viewModel.currentExercise?.loadUnit != .bodyweight {
-                            CrownNumberField(
-                                title: "Load",
-                                suffix: viewModel.currentExercise?.loadUnit.rawValue ?? "",
-                                value: $viewModel.loadValue,
-                                range: 0...500,
-                                step: 2.5
-                            )
+                    WatchGlassCard {
+                        VStack(spacing: 8) {
+                            if !viewModel.loggedSets.isEmpty {
+                                NavigationLink {
+                                    WatchLoggedSetListView(viewModel: viewModel)
+                                } label: {
+                                    Label("Logged Sets", systemImage: "pencil")
+                                }
+                            }
+
+                            Button {
+                                viewModel.skipCurrentSet()
+                            } label: {
+                                Label("Skip Set", systemImage: "forward.end.fill")
+                            }
+
+                            Button(role: .destructive) {
+                                viewModel.skipCurrentExercise()
+                            } label: {
+                                Label("Skip Exercise", systemImage: "figure.strengthtraining.traditional")
+                            }
+
+                            HStack {
+                                Button {
+                                    viewModel.moveCurrentExerciseUp()
+                                } label: {
+                                    Image(systemName: "arrow.up")
+                                }
+                                .disabled(!viewModel.canMoveCurrentExerciseUp)
+
+                                Button {
+                                    viewModel.moveCurrentExerciseDown()
+                                } label: {
+                                    Image(systemName: "arrow.down")
+                                }
+                                .disabled(!viewModel.canMoveCurrentExerciseDown)
+                            }
+
+                            NavigationLink {
+                                WatchExerciseReplacementView(viewModel: viewModel)
+                            } label: {
+                                Label("Change", systemImage: "arrow.triangle.2.circlepath")
+                            }
+                            .disabled(viewModel.replacementExercises.isEmpty)
                         }
+                        .font(.caption)
                     }
-                }
-
-                Button {
-                    if promptForSetResults {
-                        showingSetResultEntry = true
-                    } else {
-                        viewModel.completeCurrentSet()
-                    }
-                } label: {
-                    Label("Complete Set", systemImage: "checkmark.circle.fill")
-                }
-                .sheet(isPresented: $showingSetResultEntry) {
-                    WatchSetResultEntryView(
-                        title: "Set \(viewModel.nextSetNumber)",
-                        usesDuration: viewModel.usesDuration,
-                        loadUnit: viewModel.currentExercise?.loadUnit ?? .kg,
-                        reps: Int(viewModel.repsValue),
-                        durationSeconds: Int(viewModel.durationValue),
-                        load: viewModel.loadValue
-                    ) { reps, durationSeconds, load in
-                        viewModel.completeCurrentSet(
-                            reps: reps,
-                            durationSeconds: durationSeconds,
-                            load: load
-                        )
-                    }
-                }
-
-                Section {
-                    if !viewModel.loggedSets.isEmpty {
-                        NavigationLink {
-                            WatchLoggedSetListView(viewModel: viewModel)
-                        } label: {
-                            Label("Edit Logged Sets", systemImage: "pencil")
-                        }
-                    }
-
-                    Button {
-                        viewModel.skipCurrentSet()
-                    } label: {
-                        Label("Skip Set", systemImage: "forward.end.fill")
-                    }
-
-                    Button(role: .destructive) {
-                        viewModel.skipCurrentExercise()
-                    } label: {
-                        Label("Skip Exercise", systemImage: "figure.strengthtraining.traditional")
-                    }
-
-                    HStack {
-                        Button {
-                            viewModel.moveCurrentExerciseUp()
-                        } label: {
-                            Image(systemName: "arrow.up")
-                        }
-                        .disabled(!viewModel.canMoveCurrentExerciseUp)
-
-                        Button {
-                            viewModel.moveCurrentExerciseDown()
-                        } label: {
-                            Image(systemName: "arrow.down")
-                        }
-                        .disabled(!viewModel.canMoveCurrentExerciseDown)
-                    }
-
-                    NavigationLink {
-                        WatchExerciseReplacementView(viewModel: viewModel)
-                    } label: {
-                        Label("Change Exercise", systemImage: "arrow.triangle.2.circlepath")
-                    }
-                    .disabled(viewModel.replacementExercises.isEmpty)
-                }
-            } else if !viewModel.loggedSets.isEmpty {
-                Section {
+                } else if !viewModel.loggedSets.isEmpty {
                     NavigationLink {
                         WatchLoggedSetListView(viewModel: viewModel)
                     } label: {
                         Label("Edit Logged Sets", systemImage: "pencil")
                     }
                 }
-            }
 
-            if viewModel.isWorkoutComplete {
-                Button {
-                    viewModel.finishWorkout()
-                } label: {
-                    Label("Finish Workout", systemImage: "flag.checkered")
+                if viewModel.isWorkoutComplete {
+                    WatchGlassButton(title: "Finish", systemImage: "flag.checkered") {
+                        viewModel.finishWorkout()
+                    }
                 }
-            }
 
-            Button(role: .destructive) {
-                viewModel.cancelWorkout()
-            } label: {
-                Label("Cancel", systemImage: "xmark.circle")
+                Button(role: .destructive) {
+                    viewModel.cancelWorkout()
+                } label: {
+                    Label("Cancel", systemImage: "xmark.circle")
+                }
+                .font(.caption)
             }
+            .padding(.horizontal, 8)
+            .padding(.vertical, 10)
+        }
+        .containerBackground(for: .navigation) {
+            LinearGradient(
+                colors: [
+                    Color(red: 0.04, green: 0.07, blue: 0.11),
+                    Color.black
+                ],
+                startPoint: .topLeading,
+                endPoint: .bottomTrailing
+            )
         }
         .navigationTitle(viewModel.state.session.dayNameSnapshot)
         .onAppear {

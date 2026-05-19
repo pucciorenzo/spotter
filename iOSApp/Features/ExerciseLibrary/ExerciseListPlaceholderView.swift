@@ -1,169 +1,88 @@
-import Foundation
-import SpotterShared
-import SwiftData
 import SwiftUI
 
 struct ExerciseListView: View {
-    @Environment(\.modelContext) private var modelContext
-    @Query(sort: \ExerciseModel.name) private var exercises: [ExerciseModel]
-    @State private var showingArchived = false
-    @State private var editedExercise: ExerciseModel?
+    private let exercises = [
+        ("Incline Press", "Chest • Barbell", "80 kg"),
+        ("Chest-Supported Row", "Back • Machine", "72 kg"),
+        ("Bulgarian Split Squat", "Legs • Dumbbell", "24 kg"),
+        ("Cable Fly", "Chest • Cable", "24 kg"),
+        ("Lateral Raise", "Shoulders • Dumbbell", "10 kg"),
+        ("Dead Bug", "Core • Bodyweight", "45 s")
+    ]
 
     var body: some View {
-        List {
-            Toggle("Show Archived", isOn: $showingArchived)
+        ZStack {
+            SpotterBackground()
 
-            ForEach(filteredExercises) { exercise in
-                Button {
-                    editedExercise = exercise
-                } label: {
-                    VStack(alignment: .leading, spacing: 4) {
-                        Text(exercise.name)
-                            .font(.headline)
-                        Text(detailText(for: exercise))
-                            .font(.subheadline)
-                            .foregroundStyle(.secondary)
-                    }
-                }
-                .swipeActions(edge: .trailing) {
-                    Button(role: .destructive) {
-                        SpotterRepository.delete(exercise, from: modelContext)
-                    } label: {
-                        Label("Delete", systemImage: "trash")
+            ScrollView {
+                VStack(alignment: .leading, spacing: 22) {
+                    ScreenHeader(
+                        eyebrow: "Library",
+                        title: "Exercises",
+                        subtitle: "A calm catalog for movements, defaults, and training notes."
+                    )
+
+                    GlassCard(cornerRadius: 26, padding: 14) {
+                        HStack(spacing: 10) {
+                            Image(systemName: "magnifyingglass")
+                                .foregroundStyle(.secondary)
+                            Text("Search movements")
+                                .font(.subheadline)
+                                .foregroundStyle(.secondary)
+                            Spacer()
+                        }
+                        .padding(.horizontal, 6)
+                        .padding(.vertical, 8)
                     }
 
-                    Button {
-                        exercise.isArchived.toggle()
-                        exercise.updatedAt = Date()
-                    } label: {
-                        Label(exercise.isArchived ? "Restore" : "Archive", systemImage: "archivebox")
+                    HStack(spacing: 10) {
+                        LibraryChip(title: "All", isSelected: true)
+                        LibraryChip(title: "Upper", isSelected: false)
+                        LibraryChip(title: "Lower", isSelected: false)
+                        LibraryChip(title: "Core", isSelected: false)
                     }
-                    .tint(.orange)
+
+                    GlassCard {
+                        VStack(spacing: 4) {
+                            ForEach(Array(exercises.enumerated()), id: \.offset) { index, exercise in
+                                ExerciseRow(name: exercise.0, detail: exercise.1, metric: exercise.2)
+                                if index < exercises.count - 1 {
+                                    Divider().overlay(.white.opacity(0.10))
+                                }
+                            }
+                        }
+                    }
                 }
+                .padding(.horizontal, 20)
+                .padding(.top, 18)
+                .padding(.bottom, 34)
             }
         }
-        .navigationTitle("Exercises")
-        .toolbar {
-            ToolbarItem(placement: .topBarTrailing) {
-                Button {
-                    let exercise = SpotterRepository.insertExercise(named: "New Exercise", in: modelContext)
-                    editedExercise = exercise
-                } label: {
-                    Label("Add Exercise", systemImage: "plus")
-                }
-            }
-        }
-        .sheet(item: $editedExercise) { exercise in
-            NavigationStack {
-                ExerciseEditorView(exercise: exercise)
-            }
-        }
+        .toolbarBackground(.hidden, for: .navigationBar)
     }
+}
 
-    private var filteredExercises: [ExerciseModel] {
-        exercises.filter { showingArchived || !$0.isArchived }
-    }
+private struct LibraryChip: View {
+    let title: String
+    let isSelected: Bool
 
-    private func detailText(for exercise: ExerciseModel) -> String {
-        let archived = exercise.isArchived ? " • Archived" : ""
-        return "\(exercise.primaryMuscleGroup.isEmpty ? "No muscle group" : exercise.primaryMuscleGroup) • \(exercise.equipment.rawValue)\(archived)"
+    var body: some View {
+        Text(title)
+            .font(.subheadline.weight(.semibold))
+            .padding(.horizontal, 16)
+            .padding(.vertical, 10)
+            .foregroundStyle(isSelected ? .white : .secondary)
+            .background(isSelected ? AnyShapeStyle(SpotterPalette.accent.opacity(0.72)) : AnyShapeStyle(.thinMaterial))
+            .clipShape(Capsule())
+            .overlay {
+                Capsule().strokeBorder(.white.opacity(0.12), lineWidth: 1)
+            }
     }
 }
 
 #Preview {
     NavigationStack {
         ExerciseListView()
-    }
-    .modelContainer(for: [ExerciseModel.self], inMemory: true)
-}
-
-private struct ExerciseEditorView: View {
-    @Environment(\.dismiss) private var dismiss
-    @Bindable var exercise: ExerciseModel
-
-    var body: some View {
-        Form {
-            Section("Identity") {
-                TextField("Name", text: $exercise.name)
-                TextField("Primary Muscle Group", text: $exercise.primaryMuscleGroup)
-                TextField("Description", text: $exercise.exerciseDescription, axis: .vertical)
-            }
-
-            Section("Defaults") {
-                Picker("Category", selection: categoryBinding) {
-                    ForEach(ExerciseCategory.allCases) { category in
-                        Text(category.rawValue.capitalized).tag(category)
-                    }
-                }
-
-                Picker("Equipment", selection: equipmentBinding) {
-                    ForEach(EquipmentType.allCases) { equipment in
-                        Text(equipment.rawValue.capitalized).tag(equipment)
-                    }
-                }
-
-                Picker("Measurement", selection: measurementBinding) {
-                    ForEach(MeasurementType.allCases) { measurement in
-                        Text(measurement.rawValue.capitalized).tag(measurement)
-                    }
-                }
-
-                Stepper("Rest: \(exercise.defaultRestSeconds)s", value: $exercise.defaultRestSeconds, in: 0...600, step: 15)
-
-                Picker("Load Unit", selection: loadUnitBinding) {
-                    ForEach(LoadUnit.allCases) { unit in
-                        Text(unit.rawValue).tag(unit)
-                    }
-                }
-            }
-
-            Section("Flags") {
-                Toggle("Unilateral", isOn: $exercise.isUnilateral)
-                Toggle("Warm-up Exercise", isOn: $exercise.isWarmup)
-                Toggle("Archived", isOn: $exercise.isArchived)
-            }
-
-            Section("Notes") {
-                TextField("Notes", text: $exercise.notes, axis: .vertical)
-            }
-        }
-        .navigationTitle(exercise.name.isEmpty ? "Exercise" : exercise.name)
-        .toolbar {
-            ToolbarItem(placement: .confirmationAction) {
-                Button("Done") {
-                    exercise.updatedAt = Date()
-                    dismiss()
-                }
-                .disabled(exercise.name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
-            }
-        }
-    }
-
-    private var categoryBinding: Binding<ExerciseCategory> {
-        Binding(
-            get: { exercise.category },
-            set: { exercise.category = $0 }
-        )
-    }
-
-    private var equipmentBinding: Binding<EquipmentType> {
-        Binding(
-            get: { exercise.equipment },
-            set: { exercise.equipment = $0 }
-        )
-    }
-
-    private var measurementBinding: Binding<MeasurementType> {
-        Binding(
-            get: { exercise.defaultMeasurementType },
-            set: { exercise.defaultMeasurementType = $0 }
-        )
-    }
-
-    private var loadUnitBinding: Binding<LoadUnit> {
-        Binding(
-            get: { exercise.defaultLoadUnit },
-            set: { exercise.defaultLoadUnit = $0 }
-        )
+            .preferredColorScheme(.dark)
     }
 }

@@ -68,3 +68,8 @@ Spotter.xcodeproj/project.xcworkspace/xcuserdata/
 
 # Local implementation briefs
 docs/gym_iphone_watch_app_codex_spec.md
+
+# Local design inputs and mockups
+design/
+mockups/
+**/mockups/
