@@ -1,17 +1,20 @@
 import SwiftUI
+import SwiftData
 
 struct RootTabView: View {
+    @Environment(\.modelContext) private var modelContext
+
     var body: some View {
         TabView {
             NavigationStack {
-                ExerciseListPlaceholderView()
+                ExerciseListView()
             }
             .tabItem {
                 Label("Exercises", systemImage: "figure.strengthtraining.traditional")
             }
 
             NavigationStack {
-                PlanListPlaceholderView()
+                PlanListView()
             }
             .tabItem {
                 Label("Plans", systemImage: "list.clipboard")
@@ -37,6 +40,9 @@ struct RootTabView: View {
             .tabItem {
                 Label("Settings", systemImage: "gearshape")
             }
+        }
+        .task {
+            SeedData.insertDemoDataIfNeeded(in: modelContext)
         }
     }
 }
