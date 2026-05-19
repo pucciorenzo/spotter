@@ -60,3 +60,6 @@ fastlane/report.xml
 fastlane/Preview.html
 fastlane/screenshots/**/*.png
 fastlane/test_output
+
+# Local implementation briefs
+docs/gym_iphone_watch_app_codex_spec.md
