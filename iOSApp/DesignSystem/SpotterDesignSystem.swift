@@ -1,4 +1,5 @@
 import SwiftUI
+import UIKit
 
 enum SpotterPalette {
     static let backgroundTop = Color(red: 0.04, green: 0.07, blue: 0.11)
@@ -11,6 +12,42 @@ enum SpotterPalette {
     static let iconMuted = Color.white.opacity(0.56)
     static let glassStroke = Color.white.opacity(0.16)
     static let navGlass = Color(red: 0.04, green: 0.06, blue: 0.09).opacity(0.82)
+}
+
+enum SpotterAppearance {
+    static func configure() {
+        let navAppearance = UINavigationBarAppearance()
+        navAppearance.configureWithTransparentBackground()
+        navAppearance.backgroundEffect = UIBlurEffect(style: .systemUltraThinMaterialDark)
+        navAppearance.backgroundColor = UIColor(red: 0.04, green: 0.06, blue: 0.09, alpha: 0.84)
+        navAppearance.shadowColor = UIColor.white.withAlphaComponent(0.08)
+        navAppearance.titleTextAttributes = [
+            .foregroundColor: UIColor.white.withAlphaComponent(0.96)
+        ]
+        navAppearance.largeTitleTextAttributes = [
+            .foregroundColor: UIColor.white.withAlphaComponent(0.96)
+        ]
+
+        let navigationBar = UINavigationBar.appearance()
+        navigationBar.standardAppearance = navAppearance
+        navigationBar.compactAppearance = navAppearance
+        navigationBar.scrollEdgeAppearance = navAppearance
+        navigationBar.tintColor = UIColor(red: 0.57, green: 0.74, blue: 1.0, alpha: 1.0)
+        navigationBar.overrideUserInterfaceStyle = .dark
+
+        let tabAppearance = UITabBarAppearance()
+        tabAppearance.configureWithTransparentBackground()
+        tabAppearance.backgroundEffect = UIBlurEffect(style: .systemUltraThinMaterialDark)
+        tabAppearance.backgroundColor = UIColor(red: 0.04, green: 0.06, blue: 0.09, alpha: 0.84)
+        tabAppearance.shadowColor = UIColor.white.withAlphaComponent(0.08)
+
+        let tabBar = UITabBar.appearance()
+        tabBar.standardAppearance = tabAppearance
+        tabBar.scrollEdgeAppearance = tabAppearance
+        tabBar.tintColor = UIColor(red: 0.57, green: 0.74, blue: 1.0, alpha: 1.0)
+        tabBar.unselectedItemTintColor = UIColor.white.withAlphaComponent(0.46)
+        tabBar.overrideUserInterfaceStyle = .dark
+    }
 }
 
 struct SpotterBackground: View {
