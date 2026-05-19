@@ -6,9 +6,7 @@ struct WatchWorkoutView: View {
     @Environment(\.dismiss) private var dismiss
     @EnvironmentObject private var syncManager: WatchPhoneSyncManager
     @StateObject private var viewModel: WatchWorkoutViewModel
-    @AppStorage("workout.promptForSetResults") private var promptForSetResults = true
     @State private var now = Date()
-    @State private var showingSetResultEntry = false
 
     init(plan: WorkoutPlanDTO, day: WorkoutDayDTO) {
         _viewModel = StateObject(wrappedValue: WatchWorkoutViewModel(plan: plan, day: day))
@@ -16,158 +14,23 @@ struct WatchWorkoutView: View {
 
     var body: some View {
         ScrollView {
-            VStack(spacing: 10) {
-                WatchGlassCard {
-                    VStack(alignment: .leading, spacing: 7) {
-                        Text(viewModel.state.session.dayNameSnapshot)
-                            .font(.caption2)
-                            .foregroundStyle(WatchSpotterPalette.accent)
-                        Text(viewModel.currentExerciseName)
-                            .font(.headline)
-                            .lineLimit(2)
-                        if let substitutionText = viewModel.currentSubstitutionText {
-                            Text(substitutionText)
-                                .font(.caption2)
-                                .foregroundStyle(.secondary)
-                        }
-                        Text(setProgressText)
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-                    }
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                }
+            VStack(spacing: 8) {
+                currentSetCard
 
                 if let restText = viewModel.formattedRest(at: now) {
-                    WatchGlassCard {
-                        HStack {
-                            Image(systemName: "timer")
-                                .foregroundStyle(restIsOver ? .green : WatchSpotterPalette.accent)
-                            Text(restText)
-                                .font(.system(size: 28, weight: .semibold, design: .rounded))
-                                .monospacedDigit()
-                            Spacer()
-                        }
-                        .foregroundStyle(restIsOver ? .green : .primary)
-                    }
+                    restCard(restText)
                 }
 
                 if viewModel.canCompleteSet {
-                    Toggle("Prompt", isOn: $promptForSetResults)
-                        .font(.caption)
-                        .padding(.horizontal, 4)
+                    inputCard
 
-                    if !promptForSetResults {
-                        WatchGlassCard {
-                            VStack(spacing: 10) {
-                                if viewModel.usesDuration {
-                                    CrownNumberField(
-                                        title: "Duration",
-                                        suffix: "s",
-                                        value: $viewModel.durationValue,
-                                        range: 0...3600,
-                                        step: 5
-                                    )
-                                } else {
-                                    CrownNumberField(
-                                        title: "Reps",
-                                        suffix: "",
-                                        value: $viewModel.repsValue,
-                                        range: 0...200,
-                                        step: 1
-                                    )
-                                }
-
-                                if viewModel.currentExercise?.loadUnit != .bodyweight {
-                                    CrownNumberField(
-                                        title: "Load",
-                                        suffix: viewModel.currentExercise?.loadUnit.rawValue ?? "",
-                                        value: $viewModel.loadValue,
-                                        range: 0...500,
-                                        step: 2.5
-                                    )
-                                }
-                            }
-                        }
-                    }
-
-                    WatchGlassButton(title: "Complete", systemImage: "checkmark") {
-                        if promptForSetResults {
-                            showingSetResultEntry = true
-                        } else {
-                            viewModel.completeCurrentSet()
-                        }
-                    }
-                    .sheet(isPresented: $showingSetResultEntry) {
-                        WatchSetResultEntryView(
-                            title: "Set \(viewModel.nextSetNumber)",
-                            usesDuration: viewModel.usesDuration,
-                            loadUnit: viewModel.currentExercise?.loadUnit ?? .kg,
-                            reps: Int(viewModel.repsValue),
-                            durationSeconds: Int(viewModel.durationValue),
-                            load: viewModel.loadValue
-                        ) { reps, durationSeconds, load in
-                            viewModel.completeCurrentSet(
-                                reps: reps,
-                                durationSeconds: durationSeconds,
-                                load: load
-                            )
-                        }
-                    }
-
-                    WatchGlassCard {
-                        VStack(spacing: 8) {
-                            if !viewModel.loggedSets.isEmpty {
-                                NavigationLink {
-                                    WatchLoggedSetListView(viewModel: viewModel)
-                                } label: {
-                                    Label("Logged Sets", systemImage: "pencil")
-                                }
-                            }
-
-                            Button {
-                                viewModel.skipCurrentSet()
-                            } label: {
-                                Label("Skip Set", systemImage: "forward.end.fill")
-                            }
-
-                            Button(role: .destructive) {
-                                viewModel.skipCurrentExercise()
-                            } label: {
-                                Label("Skip Exercise", systemImage: "figure.strengthtraining.traditional")
-                            }
-
-                            HStack {
-                                Button {
-                                    viewModel.moveCurrentExerciseUp()
-                                } label: {
-                                    Image(systemName: "arrow.up")
-                                }
-                                .disabled(!viewModel.canMoveCurrentExerciseUp)
-
-                                Button {
-                                    viewModel.moveCurrentExerciseDown()
-                                } label: {
-                                    Image(systemName: "arrow.down")
-                                }
-                                .disabled(!viewModel.canMoveCurrentExerciseDown)
-                            }
-
-                            NavigationLink {
-                                WatchExerciseReplacementView(viewModel: viewModel)
-                            } label: {
-                                Label("Change", systemImage: "arrow.triangle.2.circlepath")
-                            }
-                            .disabled(viewModel.replacementExercises.isEmpty)
-                        }
-                        .font(.caption)
-                    }
-                } else if !viewModel.loggedSets.isEmpty {
-                    NavigationLink {
-                        WatchLoggedSetListView(viewModel: viewModel)
-                    } label: {
-                        Label("Edit Logged Sets", systemImage: "pencil")
+                    WatchGlassButton(title: "Complete Set", systemImage: "checkmark") {
+                        viewModel.completeCurrentSet()
+                        syncManager.publishActiveWorkoutState(viewModel.state)
                     }
                 }
+
+                nextExerciseCard
 
                 if viewModel.isWorkoutComplete {
                     WatchGlassButton(title: "Finish", systemImage: "flag.checkered") {
@@ -176,14 +39,15 @@ struct WatchWorkoutView: View {
                 }
 
                 Button(role: .destructive) {
-                    viewModel.cancelWorkout()
+                    viewModel.skipCurrentSet()
+                    syncManager.publishActiveWorkoutState(viewModel.state)
                 } label: {
-                    Label("Cancel", systemImage: "xmark.circle")
+                    Label("Skip Set", systemImage: "forward.end.fill")
                 }
                 .font(.caption)
             }
-            .padding(.horizontal, 8)
-            .padding(.vertical, 10)
+            .padding(.horizontal, 7)
+            .padding(.vertical, 8)
         }
         .containerBackground(for: .navigation) {
             LinearGradient(
@@ -198,10 +62,27 @@ struct WatchWorkoutView: View {
         .navigationTitle(viewModel.state.session.dayNameSnapshot)
         .onAppear {
             viewModel.configure(snapshot: syncManager.snapshot)
+            viewModel.applySyncedState(syncManager.activeWorkoutState)
+            syncManager.publishActiveWorkoutState(viewModel.state)
         }
         .onReceive(Timer.publish(every: 1, on: .main, in: .common).autoconnect()) { date in
             now = date
             viewModel.tickRest(at: date)
+        }
+        .onChange(of: viewModel.state) { _, state in
+            syncManager.publishActiveWorkoutState(state)
+        }
+        .onChange(of: syncManager.activeWorkoutState) { _, state in
+            viewModel.applySyncedState(state)
+        }
+        .onChange(of: viewModel.repsValue) { _, _ in
+            autosaveDraftInput()
+        }
+        .onChange(of: viewModel.loadValue) { _, _ in
+            autosaveDraftInput()
+        }
+        .onChange(of: viewModel.durationValue) { _, _ in
+            autosaveDraftInput()
         }
         .onChange(of: viewModel.didFinish) { _, didFinish in
             if didFinish {
@@ -213,6 +94,95 @@ struct WatchWorkoutView: View {
             Button("OK", role: .cancel) {}
         } message: {
             Text(viewModel.errorMessage ?? "")
+        }
+    }
+
+    private func autosaveDraftInput() {
+        viewModel.autosaveDraftInput()
+        syncManager.publishActiveWorkoutState(viewModel.state)
+    }
+
+    private var currentSetCard: some View {
+        WatchGlassCard {
+            VStack(alignment: .leading, spacing: 7) {
+                Text(viewModel.state.session.dayNameSnapshot)
+                    .font(.caption2)
+                    .foregroundStyle(WatchSpotterPalette.accent)
+                Text(viewModel.currentExerciseName)
+                    .font(.system(.title3, design: .rounded).weight(.semibold))
+                    .lineLimit(2)
+                Text(setProgressText)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                if let substitutionText = viewModel.currentSubstitutionText {
+                    Text(substitutionText)
+                        .font(.caption2)
+                        .foregroundStyle(.secondary)
+                }
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+        }
+    }
+
+    private var inputCard: some View {
+        WatchGlassCard {
+            VStack(spacing: 8) {
+                if viewModel.usesDuration {
+                    FastWatchNumberField(
+                        title: "Duration",
+                        suffix: "s",
+                        value: $viewModel.durationValue,
+                        range: 0...3600,
+                        step: 5
+                    )
+                } else {
+                    FastWatchNumberField(
+                        title: "Reps",
+                        suffix: "",
+                        value: $viewModel.repsValue,
+                        range: 0...200,
+                        step: 1
+                    )
+                }
+
+                if viewModel.currentExercise?.loadUnit != .bodyweight {
+                    FastWatchNumberField(
+                        title: "Weight",
+                        suffix: viewModel.currentExercise?.loadUnit.rawValue ?? "",
+                        value: $viewModel.loadValue,
+                        range: 0...500,
+                        step: 2.5
+                    )
+                }
+            }
+        }
+    }
+
+    private var nextExerciseCard: some View {
+        WatchGlassCard {
+            VStack(alignment: .leading, spacing: 3) {
+                Text("Next")
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
+                Text(viewModel.nextExerciseName ?? "Finish")
+                    .font(.caption.weight(.semibold))
+                    .lineLimit(1)
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+        }
+    }
+
+    private func restCard(_ restText: String) -> some View {
+        WatchGlassCard {
+            HStack {
+                Image(systemName: "timer")
+                    .foregroundStyle(restIsOver ? .green : WatchSpotterPalette.accent)
+                Text(restText)
+                    .font(.system(size: 30, weight: .semibold, design: .rounded))
+                    .monospacedDigit()
+                Spacer()
+            }
+            .foregroundStyle(restIsOver ? .green : .primary)
         }
     }
 
@@ -397,7 +367,7 @@ private struct WatchExerciseReplacementView: View {
     }
 }
 
-private struct CrownNumberField: View {
+private struct FastWatchNumberField: View {
     let title: String
     let suffix: String
     @Binding var value: Double
@@ -405,23 +375,43 @@ private struct CrownNumberField: View {
     let step: Double
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 4) {
+        VStack(alignment: .leading, spacing: 5) {
             Text(title)
-                .font(.caption)
+                .font(.caption2.weight(.semibold))
                 .foregroundStyle(.secondary)
-            Text(displayText)
-                .font(.title3.monospacedDigit())
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .focusable(true)
-                .digitalCrownRotation(
-                    $value,
-                    from: range.lowerBound,
-                    through: range.upperBound,
-                    by: step,
-                    sensitivity: .medium,
-                    isContinuous: false,
-                    isHapticFeedbackEnabled: true
-                )
+            HStack(spacing: 8) {
+                Button {
+                    value = max(range.lowerBound, value - step)
+                } label: {
+                    Image(systemName: "minus")
+                        .frame(width: 30, height: 30)
+                }
+                .buttonStyle(.bordered)
+
+                Text(displayText)
+                    .font(.system(size: 25, weight: .semibold, design: .rounded).monospacedDigit())
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.72)
+                    .frame(maxWidth: .infinity)
+                    .focusable(true)
+                    .digitalCrownRotation(
+                        $value,
+                        from: range.lowerBound,
+                        through: range.upperBound,
+                        by: step,
+                        sensitivity: .high,
+                        isContinuous: false,
+                        isHapticFeedbackEnabled: true
+                    )
+
+                Button {
+                    value = min(range.upperBound, value + step)
+                } label: {
+                    Image(systemName: "plus")
+                        .frame(width: 30, height: 30)
+                }
+                .buttonStyle(.bordered)
+            }
         }
     }
 

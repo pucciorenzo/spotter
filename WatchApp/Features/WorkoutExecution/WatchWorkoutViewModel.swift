@@ -10,6 +10,7 @@ final class WatchWorkoutViewModel: ObservableObject {
     @Published var repsValue: Double = 0
     @Published var durationValue: Double = 0
     @Published var loadValue: Double = 0
+    @Published private(set) var lastAutosavedAt = Date()
     @Published var errorMessage: String?
 
     private let plan: WorkoutPlanDTO
@@ -142,8 +143,35 @@ final class WatchWorkoutViewModel: ObservableObject {
         }
     }
 
+    var nextExerciseName: String? {
+        let exercises = WorkoutExecutionEngine.orderedExercises(in: day, state: state)
+        let nextIndex = state.currentExerciseIndex + 1
+        guard exercises.indices.contains(nextIndex) else {
+            return nil
+        }
+
+        return exerciseName(for: exercises[nextIndex].exerciseId)
+    }
+
     func configure(snapshot: SyncSnapshot?) {
         self.snapshot = snapshot
+    }
+
+    func applySyncedState(_ syncedState: WorkoutExecutionState?) {
+        guard let syncedState,
+              syncedState.session.id == state.session.id,
+              syncedState.session.updatedAt > state.session.updatedAt else {
+            return
+        }
+
+        state = syncedState
+        lastAutosavedAt = syncedState.session.updatedAt
+        loadCurrentTargets()
+    }
+
+    func autosaveDraftInput() {
+        state.session.updatedAt = Date()
+        saveActiveWorkout()
     }
 
     func completeCurrentSet() {
@@ -330,6 +358,7 @@ final class WatchWorkoutViewModel: ObservableObject {
     private func saveActiveWorkout() {
         do {
             try cacheStore.saveActiveWorkout(state)
+            lastAutosavedAt = state.session.updatedAt
         } catch {
             errorMessage = "Unable to save workout."
         }

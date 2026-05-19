@@ -3,6 +3,7 @@ import Foundation
 public enum SyncMessageType: String, Codable, CaseIterable, Identifiable, Hashable {
     case snapshotRequest
     case snapshotResponse
+    case activeWorkoutUpdated
     case workoutCompleted
     case workoutAck
 
@@ -41,6 +42,11 @@ public struct SyncMessage: Codable, Identifiable, Hashable {
         return SyncMessage(type: .workoutCompleted, payload: payload)
     }
 
+    public static func activeWorkoutUpdated(_ state: WorkoutExecutionState, encoder: JSONEncoder = JSONEncoder()) throws -> SyncMessage {
+        let payload = try encoder.encode(state)
+        return SyncMessage(type: .activeWorkoutUpdated, payload: payload)
+    }
+
     public static func workoutAck(_ payload: SyncWorkoutAckPayload, encoder: JSONEncoder = JSONEncoder()) throws -> SyncMessage {
         let payload = try encoder.encode(payload)
         return SyncMessage(type: .workoutAck, payload: payload)
@@ -54,6 +60,11 @@ public struct SyncMessage: Codable, Identifiable, Hashable {
     public func decodeWorkoutPayload(decoder: JSONDecoder = JSONDecoder()) throws -> SyncWorkoutPayload? {
         guard type == .workoutCompleted, let payload else { return nil }
         return try decoder.decode(SyncWorkoutPayload.self, from: payload)
+    }
+
+    public func decodeActiveWorkoutState(decoder: JSONDecoder = JSONDecoder()) throws -> WorkoutExecutionState? {
+        guard type == .activeWorkoutUpdated, let payload else { return nil }
+        return try decoder.decode(WorkoutExecutionState.self, from: payload)
     }
 
     public func decodeWorkoutAck(decoder: JSONDecoder = JSONDecoder()) throws -> SyncWorkoutAckPayload? {

@@ -1,61 +1,138 @@
-import SwiftData
 import SwiftUI
 
 struct ExerciseListView: View {
-    @Query(sort: \ExerciseModel.name) private var exercises: [ExerciseModel]
+    let dataProvider: any SpotterDataProviding
+    @State private var searchText = ""
+    @State private var selectedCategory = "All"
+    @State private var showingCreateExerciseSheet = false
+
+    private var categories: [String] {
+        ["All"] + Array(Set(dataProvider.exercises.map(\.primaryCategory))).sorted()
+    }
+
+    private var exercises: [SpotterExerciseSummary] {
+        let query = searchText.trimmingCharacters(in: .whitespacesAndNewlines)
+        return dataProvider.exercises.filter { exercise in
+            let matchesCategory = selectedCategory == "All" || exercise.primaryCategory == selectedCategory
+            let matchesQuery = query.isEmpty
+                || exercise.name.localizedCaseInsensitiveContains(query)
+                || exercise.primaryCategory.localizedCaseInsensitiveContains(query)
+                || exercise.equipment.localizedCaseInsensitiveContains(query)
+            return matchesCategory && matchesQuery
+        }
+    }
 
     var body: some View {
         ZStack {
             SpotterBackground()
 
             ScrollView {
-                VStack(alignment: .leading, spacing: 22) {
-                    ScreenHeader(
-                        eyebrow: "Library",
-                        title: "Exercises",
-                        subtitle: "\(visibleExercises.count) available movements with defaults and notes."
-                    )
+                VStack(alignment: .leading, spacing: 18) {
+                    ScrollView(.horizontal, showsIndicators: false) {
+                        HStack(spacing: 10) {
+                            ForEach(categories, id: \.self) { category in
+                                LibraryChip(
+                                    title: category,
+                                    isSelected: selectedCategory == category
+                                ) {
+                                    selectedCategory = category
+                                }
+                            }
+                        }
+                        .padding(.horizontal, 20)
+                    }
 
                     GlassCard(cornerRadius: 26, padding: 14) {
-                        HStack(spacing: 10) {
-                            Image(systemName: "magnifyingglass")
-                                .symbolRenderingMode(.hierarchical)
-                                .foregroundStyle(SpotterPalette.accentSoft)
-                            Text("Search movements")
-                                .font(.subheadline)
-                                .foregroundStyle(SpotterPalette.textSecondary)
-                            Spacer()
-                        }
-                        .padding(.horizontal, 6)
-                        .padding(.vertical, 8)
-                    }
-
-                    HStack(spacing: 10) {
-                        LibraryChip(title: "All", isSelected: true)
-                        LibraryChip(title: "Strength", isSelected: false)
-                        LibraryChip(title: "Cardio", isSelected: false)
-                    }
-
-                    GlassCard {
-                        if visibleExercises.isEmpty {
-                            Text("No exercises yet. Add movements from plan setup.")
+                        if exercises.isEmpty {
+                            Text("No exercises match this filter.")
                                 .font(.subheadline)
                                 .foregroundStyle(SpotterPalette.textSecondary)
                                 .frame(maxWidth: .infinity, alignment: .leading)
                         } else {
                             VStack(spacing: 4) {
-                                ForEach(Array(visibleExercises.enumerated()), id: \.element.id) { index, exercise in
-                                    ExerciseRow(
-                                        name: exercise.name,
-                                        detail: detailText(for: exercise),
-                                        metric: metricText(for: exercise)
-                                    )
-                                    if index < visibleExercises.count - 1 {
+                                ForEach(Array(exercises.enumerated()), id: \.element.id) { index, exercise in
+                                    NavigationLink {
+                                        ExerciseDetailView(exercise: exercise)
+                                    } label: {
+                                        ExerciseRow(
+                                            name: exercise.name,
+                                            detail: "\(exercise.primaryCategory) - \(exercise.equipment)",
+                                            metric: exercise.trackingType
+                                        )
+                                    }
+                                    .buttonStyle(.plain)
+
+                                    if index < exercises.count - 1 {
                                         Divider().overlay(.white.opacity(0.10))
                                     }
                                 }
                             }
                         }
+                    }
+                    .padding(.horizontal, 20)
+                }
+                .padding(.top, 14)
+                .padding(.bottom, 34)
+            }
+        }
+        .navigationTitle("Exercises")
+        .navigationBarTitleDisplayMode(.large)
+        .searchable(text: $searchText, placement: .navigationBarDrawer(displayMode: .always), prompt: "Search Exercises")
+        .toolbar {
+            ToolbarItem(placement: .topBarTrailing) {
+                Button {
+                    showingCreateExerciseSheet = true
+                } label: {
+                    Image(systemName: "plus")
+                        .font(.headline.weight(.semibold))
+                }
+                .accessibilityLabel("Create Exercise")
+            }
+        }
+        .sheet(isPresented: $showingCreateExerciseSheet) {
+            CreateExerciseSheet()
+                .presentationDetents([.height(380), .medium])
+                .presentationDragIndicator(.visible)
+                .presentationBackground(.ultraThinMaterial)
+        }
+        .spotterScreenChrome()
+    }
+}
+
+private struct ExerciseDetailView: View {
+    let exercise: SpotterExerciseSummary
+
+    var body: some View {
+        ZStack {
+            SpotterBackground()
+
+            ScrollView {
+                VStack(alignment: .leading, spacing: 18) {
+                    ScreenHeader(
+                        eyebrow: exercise.primaryCategory,
+                        title: exercise.name,
+                        subtitle: "\(exercise.equipment) - \(exercise.movementPattern)"
+                    )
+
+                    GlassCard {
+                        VStack(alignment: .leading, spacing: 14) {
+                            DetailRow(title: "Tracking", value: exercise.trackingType)
+                            DetailRow(title: "Primary", value: exercise.primaryCategory)
+                            DetailRow(title: "Secondary", value: exercise.secondaryCategories.joined(separator: ", "))
+                            DetailRow(title: "Equipment", value: exercise.equipment)
+                            DetailRow(title: "Pattern", value: exercise.movementPattern)
+                        }
+                    }
+
+                    GlassCard {
+                        VStack(alignment: .leading, spacing: 8) {
+                            Text("Notes")
+                                .font(.headline)
+                            Text(exercise.notes)
+                                .font(.subheadline)
+                                .foregroundStyle(SpotterPalette.textSecondary)
+                        }
+                        .frame(maxWidth: .infinity, alignment: .leading)
                     }
                 }
                 .padding(.horizontal, 20)
@@ -63,24 +140,85 @@ struct ExerciseListView: View {
                 .padding(.bottom, 34)
             }
         }
+        .navigationTitle(exercise.name)
+        .navigationBarTitleDisplayMode(.large)
+        .toolbar {
+            ToolbarItem(placement: .topBarTrailing) {
+                Button {
+                } label: {
+                    Image(systemName: "pencil")
+                }
+                .accessibilityLabel("Edit Exercise")
+            }
+        }
         .spotterScreenChrome()
     }
+}
 
-    private var visibleExercises: [ExerciseModel] {
-        exercises.filter { !$0.isArchived }
+private struct CreateExerciseSheet: View {
+    @Environment(\.dismiss) private var dismiss
+    @State private var name = ""
+    @State private var category = ""
+    @State private var equipment = ""
+    @FocusState private var isNameFocused: Bool
+
+    var body: some View {
+        NavigationStack {
+            ZStack {
+                SpotterBackground()
+
+                VStack(spacing: 14) {
+                    TextField("Exercise Name", text: $name)
+                        .focused($isNameFocused)
+                        .textInputAutocapitalization(.words)
+                        .spotterTextFieldStyle()
+
+                    TextField("Primary Category", text: $category)
+                        .textInputAutocapitalization(.words)
+                        .spotterTextFieldStyle()
+
+                    TextField("Equipment", text: $equipment)
+                        .textInputAutocapitalization(.words)
+                        .spotterTextFieldStyle()
+
+                    GlassButton(title: "Create Exercise", systemImage: "plus") {
+                        dismiss()
+                    }
+                    .disabled(name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+
+                    Spacer()
+                }
+                .padding(22)
+            }
+            .navigationTitle("New Exercise")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Cancel") {
+                        dismiss()
+                    }
+                }
+            }
+            .task {
+                isNameFocused = true
+            }
+        }
     }
+}
 
-    private func detailText(for exercise: ExerciseModel) -> String {
-        let muscle = exercise.primaryMuscleGroup.isEmpty ? "No muscle group" : exercise.primaryMuscleGroup
-        return "\(muscle) - \(exercise.equipment.rawValue)"
-    }
+private struct DetailRow: View {
+    let title: String
+    let value: String
 
-    private func metricText(for exercise: ExerciseModel) -> String {
-        switch exercise.defaultMeasurementType {
-        case .duration:
-            return "\(exercise.defaultRestSeconds)s"
-        default:
-            return exercise.defaultLoadUnit.rawValue
+    var body: some View {
+        HStack(alignment: .firstTextBaseline) {
+            Text(title)
+                .font(.subheadline)
+                .foregroundStyle(SpotterPalette.textSecondary)
+            Spacer()
+            Text(value.isEmpty ? "None" : value)
+                .font(.subheadline.weight(.medium))
+                .multilineTextAlignment(.trailing)
         }
     }
 }
@@ -88,24 +226,41 @@ struct ExerciseListView: View {
 private struct LibraryChip: View {
     let title: String
     let isSelected: Bool
+    let action: () -> Void
 
     var body: some View {
-        Text(title)
-            .font(.subheadline.weight(.semibold))
-            .padding(.horizontal, 16)
-            .padding(.vertical, 10)
-            .foregroundStyle(isSelected ? SpotterPalette.textPrimary : SpotterPalette.textSecondary)
-            .background(isSelected ? AnyShapeStyle(SpotterPalette.accent.opacity(0.72)) : AnyShapeStyle(.thinMaterial))
-            .clipShape(Capsule())
+        Button(action: action) {
+            Text(title)
+                .font(.subheadline.weight(.semibold))
+                .padding(.horizontal, 16)
+                .padding(.vertical, 10)
+                .foregroundStyle(isSelected ? SpotterPalette.textPrimary : SpotterPalette.textSecondary)
+                .background(isSelected ? AnyShapeStyle(SpotterPalette.accent.opacity(0.72)) : AnyShapeStyle(.thinMaterial))
+                .clipShape(Capsule())
+                .overlay {
+                    Capsule().strokeBorder(.white.opacity(0.12), lineWidth: 1)
+                }
+        }
+        .buttonStyle(.plain)
+    }
+}
+
+private extension View {
+    func spotterTextFieldStyle() -> some View {
+        padding(.horizontal, 16)
+            .frame(height: 54)
+            .foregroundStyle(SpotterPalette.textPrimary)
+            .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 18, style: .continuous))
             .overlay {
-                Capsule().strokeBorder(.white.opacity(0.12), lineWidth: 1)
+                RoundedRectangle(cornerRadius: 18, style: .continuous)
+                    .strokeBorder(SpotterPalette.glassStroke, lineWidth: 1)
             }
     }
 }
 
 #Preview {
     NavigationStack {
-        ExerciseListView()
+        ExerciseListView(dataProvider: MockSpotterRepository.preview)
             .preferredColorScheme(.dark)
     }
 }

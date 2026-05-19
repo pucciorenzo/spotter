@@ -3,8 +3,15 @@ import SpotterShared
 @preconcurrency import WatchConnectivity
 
 @MainActor
+protocol WatchActiveWorkoutSyncing: ObservableObject {
+    var activeWorkoutState: WorkoutExecutionState? { get }
+    func publishActiveWorkoutState(_ state: WorkoutExecutionState)
+}
+
+@MainActor
 final class WatchPhoneSyncManager: NSObject, ObservableObject {
     @Published private(set) var snapshot: SyncSnapshot?
+    @Published private(set) var activeWorkoutState: WorkoutExecutionState?
     @Published private(set) var activationStateDescription = "Not activated"
     @Published private(set) var queuedCompletedWorkoutCount = 0
     @Published private(set) var lastErrorMessage: String?
@@ -89,6 +96,34 @@ final class WatchPhoneSyncManager: NSObject, ObservableObject {
         }
     }
 
+    func publishActiveWorkoutState(_ state: WorkoutExecutionState) {
+        activeWorkoutState = state
+
+        guard let session else { return }
+
+        do {
+            let message = try SyncMessage.activeWorkoutUpdated(state, encoder: encoder)
+            let data = try encoder.encode(message)
+            let dictionary = ["message": data]
+
+            if session.isReachable {
+                session.sendMessage(dictionary) { [weak self] reply in
+                    Task { @MainActor in
+                        self?.handleIncomingMessage(reply)
+                    }
+                } errorHandler: { [weak self] error in
+                    Task { @MainActor in
+                        self?.lastErrorMessage = error.localizedDescription
+                    }
+                }
+            } else {
+                session.transferUserInfo(dictionary)
+            }
+        } catch {
+            lastErrorMessage = error.localizedDescription
+        }
+    }
+
     private func handleSnapshot(_ snapshot: SyncSnapshot) {
         self.snapshot = snapshot
         lastErrorMessage = nil
@@ -110,6 +145,11 @@ final class WatchPhoneSyncManager: NSObject, ObservableObject {
         }
     }
 
+    private func handleActiveWorkoutState(_ state: WorkoutExecutionState) {
+        activeWorkoutState = state
+        lastErrorMessage = nil
+    }
+
     private func handleIncomingMessage(_ dictionary: [String: Any]) {
         guard
             let data = dictionary["message"] as? Data,
@@ -122,6 +162,9 @@ final class WatchPhoneSyncManager: NSObject, ObservableObject {
         case .snapshotResponse:
             guard let snapshot = try? message.decodeSnapshot(decoder: decoder) else { return }
             handleSnapshot(snapshot)
+        case .activeWorkoutUpdated:
+            guard let state = try? message.decodeActiveWorkoutState(decoder: decoder) else { return }
+            handleActiveWorkoutState(state)
         case .workoutAck:
             guard let ack = try? message.decodeWorkoutAck(decoder: decoder) else { return }
             handleWorkoutAck(ack)
@@ -130,6 +173,8 @@ final class WatchPhoneSyncManager: NSObject, ObservableObject {
         }
     }
 }
+
+extension WatchPhoneSyncManager: WatchActiveWorkoutSyncing {}
 
 extension WatchPhoneSyncManager: WCSessionDelegate {
     nonisolated func session(

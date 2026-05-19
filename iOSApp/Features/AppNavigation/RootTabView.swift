@@ -6,40 +6,72 @@ struct RootTabView: View {
     @Query(sort: \ExerciseModel.name) private var exercises: [ExerciseModel]
     @Query(sort: \WorkoutPlanModel.name) private var plans: [WorkoutPlanModel]
     @StateObject private var watchSyncManager = PhoneWatchSyncManager()
+    @StateObject private var activeWorkoutRepository = MockActiveWorkoutRepository()
+    @State private var showingActiveWorkout = false
+    private let dataProvider: any SpotterDataProviding = MockSpotterRepository.preview
 
     var body: some View {
-        TabView {
-            NavigationStack {
-                DashboardPlaceholderView()
-            }
-            .spotterNavigationChrome()
-            .tabItem {
-                Label("Today", systemImage: "calendar")
+        ZStack(alignment: .bottom) {
+            TabView {
+                NavigationStack {
+                    TodayView(
+                        dataProvider: dataProvider,
+                        activeWorkoutRepository: activeWorkoutRepository,
+                        showActiveWorkout: { showingActiveWorkout = true }
+                    )
+                }
+                .spotterNavigationChrome()
+                .tabItem {
+                    Label("Today", systemImage: "calendar")
+                }
+
+                NavigationStack {
+                    PlanListView(
+                        dataProvider: dataProvider,
+                        activeWorkoutRepository: activeWorkoutRepository,
+                        showActiveWorkout: { showingActiveWorkout = true }
+                    )
+                }
+                .spotterNavigationChrome()
+                .tabItem {
+                    Label("Plans", systemImage: "list.bullet.rectangle")
+                }
+
+                NavigationStack {
+                    ExerciseListView(dataProvider: dataProvider)
+                }
+                .spotterNavigationChrome()
+                .tabItem {
+                    Label("Exercises", systemImage: "figure.strengthtraining.traditional")
+                }
+
+                NavigationStack {
+                    ProgressScreenView(dataProvider: dataProvider)
+                }
+                .spotterNavigationChrome()
+                .tabItem {
+                    Label("Progress", systemImage: "chart.line.uptrend.xyaxis")
+                }
+
+                NavigationStack {
+                    ProfileView(dataProvider: dataProvider)
+                }
+                .spotterNavigationChrome()
+                .tabItem {
+                    Label("Profile", systemImage: "person.crop.circle")
+                }
             }
 
-            NavigationStack {
-                PlanListView()
+            if let session = activeWorkoutRepository.session {
+                ActiveWorkoutMiniPlayer(session: session) {
+                    showingActiveWorkout = true
+                }
+                .padding(.horizontal, 16)
+                .padding(.bottom, 58)
             }
-            .spotterNavigationChrome()
-            .tabItem {
-                Label("Plans", systemImage: "list.bullet.rectangle")
-            }
-
-            NavigationStack {
-                WorkoutHistoryPlaceholderView()
-            }
-            .spotterNavigationChrome()
-            .tabItem {
-                Label("Progress", systemImage: "chart.line.uptrend.xyaxis")
-            }
-
-            NavigationStack {
-                SettingsPlaceholderView()
-            }
-            .spotterNavigationChrome()
-            .tabItem {
-                Label("Profile", systemImage: "person.crop.circle")
-            }
+        }
+        .fullScreenCover(isPresented: $showingActiveWorkout) {
+            ActiveWorkoutView(repository: activeWorkoutRepository)
         }
         .environmentObject(watchSyncManager)
         .task {
@@ -104,4 +136,53 @@ struct RootTabView: View {
 
 #Preview {
     RootTabView()
+}
+
+private struct ActiveWorkoutMiniPlayer: View {
+    let session: ActiveWorkoutSession
+    let action: () -> Void
+
+    var body: some View {
+        Button(action: action) {
+            HStack(spacing: 12) {
+                Image(systemName: "figure.strengthtraining.traditional")
+                    .font(.title3)
+                    .symbolRenderingMode(.hierarchical)
+                    .foregroundStyle(SpotterPalette.accentSoft)
+
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(session.currentExercise?.name ?? session.dayName)
+                        .font(.headline)
+                        .lineLimit(1)
+                    Text("\(session.dayName) - \(session.completedSetCount)/\(session.totalSetCount) sets - \(restText)")
+                        .font(.caption)
+                        .foregroundStyle(SpotterPalette.textSecondary)
+                        .lineLimit(1)
+                }
+
+                Spacer()
+
+                Text("Resume")
+                    .font(.subheadline.weight(.semibold))
+                    .foregroundStyle(SpotterPalette.accentSoft)
+            }
+            .padding(.horizontal, 16)
+            .padding(.vertical, 12)
+            .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 24, style: .continuous))
+            .overlay {
+                RoundedRectangle(cornerRadius: 24, style: .continuous)
+                    .strokeBorder(SpotterPalette.glassStroke, lineWidth: 1)
+            }
+            .shadow(color: .black.opacity(0.28), radius: 20, y: 12)
+        }
+        .buttonStyle(.plain)
+    }
+
+    private var restText: String {
+        guard session.restStartedAt != nil else { return "rest idle" }
+        if session.restRemainingSeconds >= 0 {
+            return "rest \(formatTime(session.restRemainingSeconds))"
+        }
+        return "+\(formatTime(abs(session.restRemainingSeconds)))"
+    }
 }
