@@ -33,7 +33,7 @@ struct PlanListView: View {
                                             .font(.title3.weight(.semibold))
                                         Text(day.1)
                                             .font(.subheadline)
-                                            .foregroundStyle(.secondary)
+                                            .foregroundStyle(SpotterPalette.textSecondary)
                                         Text(day.2)
                                             .font(.caption.weight(.medium))
                                             .foregroundStyle(SpotterPalette.accentSoft)
@@ -56,7 +56,7 @@ struct PlanListView: View {
                 .padding(.bottom, 34)
             }
         }
-        .toolbarBackground(.hidden, for: .navigationBar)
+        .spotterScreenChrome()
     }
 }
 
@@ -92,7 +92,7 @@ private struct WorkoutDayPrototypeView: View {
                                     .font(.system(size: 34, weight: .semibold, design: .rounded))
                                 Text("Estimated duration")
                                     .font(.subheadline)
-                                    .foregroundStyle(.secondary)
+                                    .foregroundStyle(SpotterPalette.textSecondary)
                                 Text("2 warm-up sets included")
                                     .font(.caption)
                                     .foregroundStyle(SpotterPalette.accentSoft)
@@ -145,7 +145,7 @@ private struct WorkoutDayPrototypeView: View {
             }
             .buttonStyle(.plain)
         }
-        .toolbarBackground(.hidden, for: .navigationBar)
+        .spotterScreenChrome()
     }
 }
 
@@ -174,7 +174,7 @@ private struct ActiveWorkoutPrototypeView: View {
                                 VStack(alignment: .leading, spacing: 6) {
                                     Text("Target")
                                         .font(.caption.weight(.semibold))
-                                        .foregroundStyle(.secondary)
+                                        .foregroundStyle(SpotterPalette.textSecondary)
                                     Text("6-8 reps")
                                         .font(.system(size: 36, weight: .semibold, design: .rounded))
                                 }
@@ -184,7 +184,7 @@ private struct ActiveWorkoutPrototypeView: View {
                                 VStack(alignment: .trailing, spacing: 6) {
                                     Text("Load")
                                         .font(.caption.weight(.semibold))
-                                        .foregroundStyle(.secondary)
+                                        .foregroundStyle(SpotterPalette.textSecondary)
                                     Text("82.5 kg")
                                         .font(.system(size: 36, weight: .semibold, design: .rounded))
                                         .monospacedDigit()
@@ -207,7 +207,7 @@ private struct ActiveWorkoutPrototypeView: View {
                                 Spacer()
                                 Text("remaining")
                                     .font(.caption)
-                                    .foregroundStyle(.secondary)
+                                    .foregroundStyle(SpotterPalette.textSecondary)
                             }
                         }
                     }
@@ -221,7 +221,7 @@ private struct ActiveWorkoutPrototypeView: View {
                                     Spacer()
                                     Text(set.1)
                                         .font(.subheadline.monospacedDigit())
-                                        .foregroundStyle(.secondary)
+                                        .foregroundStyle(SpotterPalette.textSecondary)
                                 }
                             }
                         }
@@ -242,7 +242,7 @@ private struct ActiveWorkoutPrototypeView: View {
             .padding(.horizontal, 20)
             .padding(.bottom, 18)
         }
-        .toolbarBackground(.hidden, for: .navigationBar)
+        .spotterScreenChrome()
     }
 }
 

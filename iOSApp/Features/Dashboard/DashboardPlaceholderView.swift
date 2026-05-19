@@ -20,14 +20,15 @@ struct DashboardPlaceholderView: View {
                                     .font(.title2.weight(.semibold))
                                 Text("Chest, shoulders, triceps")
                                     .font(.subheadline)
-                                    .foregroundStyle(.secondary)
+                                    .foregroundStyle(SpotterPalette.textSecondary)
 
                                 HStack(spacing: 10) {
                                     Label("6 exercises", systemImage: "list.bullet")
                                     Label("54 min", systemImage: "timer")
                                 }
                                 .font(.caption.weight(.medium))
-                                .foregroundStyle(.secondary)
+                                .symbolRenderingMode(.hierarchical)
+                                .foregroundStyle(SpotterPalette.accentSoft)
                             }
 
                             Spacer()
@@ -64,7 +65,7 @@ struct DashboardPlaceholderView: View {
             }
         }
         .scrollContentBackground(.hidden)
-        .toolbarBackground(.hidden, for: .navigationBar)
+        .spotterScreenChrome()
     }
 }
 

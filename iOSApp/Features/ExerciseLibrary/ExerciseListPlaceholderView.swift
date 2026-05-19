@@ -25,10 +25,11 @@ struct ExerciseListView: View {
                     GlassCard(cornerRadius: 26, padding: 14) {
                         HStack(spacing: 10) {
                             Image(systemName: "magnifyingglass")
-                                .foregroundStyle(.secondary)
+                                .symbolRenderingMode(.hierarchical)
+                                .foregroundStyle(SpotterPalette.accentSoft)
                             Text("Search movements")
                                 .font(.subheadline)
-                                .foregroundStyle(.secondary)
+                                .foregroundStyle(SpotterPalette.textSecondary)
                             Spacer()
                         }
                         .padding(.horizontal, 6)
@@ -58,7 +59,7 @@ struct ExerciseListView: View {
                 .padding(.bottom, 34)
             }
         }
-        .toolbarBackground(.hidden, for: .navigationBar)
+        .spotterScreenChrome()
     }
 }
 
@@ -71,7 +72,7 @@ private struct LibraryChip: View {
             .font(.subheadline.weight(.semibold))
             .padding(.horizontal, 16)
             .padding(.vertical, 10)
-            .foregroundStyle(isSelected ? .white : .secondary)
+            .foregroundStyle(isSelected ? SpotterPalette.textPrimary : SpotterPalette.textSecondary)
             .background(isSelected ? AnyShapeStyle(SpotterPalette.accent.opacity(0.72)) : AnyShapeStyle(.thinMaterial))
             .clipShape(Capsule())
             .overlay {

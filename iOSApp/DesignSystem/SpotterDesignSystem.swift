@@ -5,6 +5,12 @@ enum SpotterPalette {
     static let backgroundBottom = Color(red: 0.01, green: 0.02, blue: 0.03)
     static let accent = Color(red: 0.37, green: 0.63, blue: 1.0)
     static let accentSoft = Color(red: 0.57, green: 0.74, blue: 1.0)
+    static let textPrimary = Color.white.opacity(0.96)
+    static let textSecondary = Color.white.opacity(0.68)
+    static let textTertiary = Color.white.opacity(0.45)
+    static let iconMuted = Color.white.opacity(0.56)
+    static let glassStroke = Color.white.opacity(0.16)
+    static let navGlass = Color(red: 0.04, green: 0.06, blue: 0.09).opacity(0.82)
 }
 
 struct SpotterBackground: View {
@@ -51,7 +57,7 @@ struct GlassCard<Content: View>: View {
             .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: cornerRadius, style: .continuous))
             .overlay {
                 RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
-                    .strokeBorder(.white.opacity(0.14), lineWidth: 1)
+                    .strokeBorder(SpotterPalette.glassStroke, lineWidth: 1)
             }
             .shadow(color: .black.opacity(0.24), radius: 28, y: 18)
     }
@@ -73,6 +79,7 @@ struct GlassButton: View {
             HStack(spacing: 10) {
                 Image(systemName: systemImage)
                     .font(.headline)
+                    .symbolRenderingMode(.hierarchical)
                 Text(title)
                     .font(.headline.weight(.semibold))
                     .lineLimit(1)
@@ -80,7 +87,7 @@ struct GlassButton: View {
             }
             .frame(maxWidth: .infinity)
             .padding(.vertical, 15)
-            .foregroundStyle(style == .primary ? .white : .primary)
+            .foregroundStyle(style == .primary ? SpotterPalette.textPrimary : SpotterPalette.textPrimary)
             .background(buttonBackground, in: RoundedRectangle(cornerRadius: 22, style: .continuous))
             .overlay {
                 RoundedRectangle(cornerRadius: 22, style: .continuous)
@@ -112,6 +119,7 @@ struct MetricCard: View {
             VStack(alignment: .leading, spacing: 14) {
                 Image(systemName: systemImage)
                     .font(.headline)
+                    .symbolRenderingMode(.hierarchical)
                     .foregroundStyle(SpotterPalette.accentSoft)
 
                 Text(value)
@@ -123,9 +131,10 @@ struct MetricCard: View {
                 VStack(alignment: .leading, spacing: 3) {
                     Text(title)
                         .font(.subheadline.weight(.medium))
+                        .foregroundStyle(SpotterPalette.textPrimary)
                     Text(caption)
                         .font(.caption)
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(SpotterPalette.textSecondary)
                 }
             }
             .frame(maxWidth: .infinity, minHeight: 132, alignment: .leading)
@@ -145,22 +154,24 @@ struct ExerciseRow: View {
                 .frame(width: 48, height: 48)
                 .overlay {
                     Image(systemName: "figure.strengthtraining.traditional")
+                        .symbolRenderingMode(.hierarchical)
                         .foregroundStyle(SpotterPalette.accentSoft)
                 }
 
             VStack(alignment: .leading, spacing: 4) {
                 Text(name)
                     .font(.headline)
+                    .foregroundStyle(SpotterPalette.textPrimary)
                 Text(detail)
                     .font(.subheadline)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(SpotterPalette.textSecondary)
             }
 
             Spacer()
 
             Text(metric)
                 .font(.footnote.monospacedDigit().weight(.semibold))
-                .foregroundStyle(.secondary)
+                .foregroundStyle(SpotterPalette.textSecondary)
         }
         .padding(.vertical, 8)
     }
@@ -190,7 +201,7 @@ struct WorkoutProgressRing: View {
                     .monospacedDigit()
                 Text("done")
                     .font(.caption)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(SpotterPalette.textSecondary)
             }
         }
         .frame(width: 118, height: 118)
@@ -210,10 +221,47 @@ struct ScreenHeader: View {
             Text(title)
                 .font(.largeTitle.weight(.semibold))
                 .tracking(0)
+                .foregroundStyle(SpotterPalette.textPrimary)
             Text(subtitle)
                 .font(.subheadline)
-                .foregroundStyle(.secondary)
+                .foregroundStyle(SpotterPalette.textSecondary)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(18)
+        .background(
+            LinearGradient(
+                colors: [
+                    Color.black.opacity(0.34),
+                    Color(red: 0.06, green: 0.08, blue: 0.12).opacity(0.22)
+                ],
+                startPoint: .topLeading,
+                endPoint: .bottomTrailing
+            ),
+            in: RoundedRectangle(cornerRadius: 28, style: .continuous)
+        )
+        .overlay {
+            RoundedRectangle(cornerRadius: 28, style: .continuous)
+                .strokeBorder(SpotterPalette.glassStroke, lineWidth: 1)
+        }
+    }
+}
+
+struct SpotterScreenChrome: ViewModifier {
+    func body(content: Content) -> some View {
+        content
+            .foregroundStyle(SpotterPalette.textPrimary)
+            .tint(SpotterPalette.accentSoft)
+            .toolbarColorScheme(.dark, for: .navigationBar)
+            .toolbarBackground(SpotterPalette.navGlass, for: .navigationBar)
+            .toolbarBackground(.visible, for: .navigationBar)
+            .toolbarColorScheme(.dark, for: .tabBar)
+            .toolbarBackground(SpotterPalette.navGlass, for: .tabBar)
+            .toolbarBackground(.visible, for: .tabBar)
+    }
+}
+
+extension View {
+    func spotterScreenChrome() -> some View {
+        modifier(SpotterScreenChrome())
     }
 }
