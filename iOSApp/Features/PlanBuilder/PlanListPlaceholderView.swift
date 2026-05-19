@@ -6,21 +6,334 @@ struct PlanListView: View {
     @Environment(\.modelContext) private var modelContext
     @Query(sort: \WorkoutPlanModel.name) private var plans: [WorkoutPlanModel]
     @Query(sort: \ExerciseModel.name) private var exercises: [ExerciseModel]
+    @Query(sort: \WorkoutSessionModel.startedAt, order: .reverse) private var sessions: [WorkoutSessionModel]
     @State private var newWorkoutName = ""
-    @State private var showingNewWorkoutPrompt = false
+    @State private var showingCreatePlanSheet = false
+    @State private var searchText = ""
+
+    var body: some View {
+        ZStack {
+            SpotterBackground()
+
+            if visiblePlans.isEmpty && searchText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                PlansEmptyState {
+                    newWorkoutName = nextWorkoutName
+                    showingCreatePlanSheet = true
+                }
+                .padding(.horizontal, 28)
+            } else {
+                List {
+                    ForEach(visiblePlans) { plan in
+                        NavigationLink {
+                            PlanDetailPrototypeView(plan: plan, exercises: exercises)
+                        } label: {
+                            WorkoutPlanCard(
+                                plan: plan,
+                                lastUsedText: lastUsedText(for: plan)
+                            )
+                        }
+                        .buttonStyle(.plain)
+                        .listRowBackground(Color.clear)
+                        .listRowSeparator(.hidden)
+                        .listRowInsets(EdgeInsets(top: 7, leading: 20, bottom: 7, trailing: 20))
+                        .swipeActions(edge: .leading) {
+                            Button {
+                                makeActive(plan)
+                            } label: {
+                                Label("Activate", systemImage: "checkmark.circle")
+                            }
+                            .tint(.blue)
+                        }
+                        .swipeActions(edge: .trailing) {
+                            Button(role: .destructive) {
+                                SpotterRepository.delete(plan, from: modelContext)
+                            } label: {
+                                Label("Delete", systemImage: "trash")
+                            }
+
+                            Button {
+                                plan.isArchived.toggle()
+                                plan.updatedAt = Date()
+                            } label: {
+                                Label(plan.isArchived ? "Restore" : "Archive", systemImage: "archivebox")
+                            }
+                            .tint(.gray)
+                        }
+                        .contextMenu {
+                            Button {
+                                makeActive(plan)
+                            } label: {
+                                Label("Make Active", systemImage: "checkmark.circle")
+                            }
+
+                            Button {
+                                plan.isArchived.toggle()
+                                plan.updatedAt = Date()
+                            } label: {
+                                Label(plan.isArchived ? "Restore Plan" : "Archive Plan", systemImage: "archivebox")
+                            }
+
+                            Button(role: .destructive) {
+                                SpotterRepository.delete(plan, from: modelContext)
+                            } label: {
+                                Label("Delete Plan", systemImage: "trash")
+                            }
+                        }
+                    }
+                }
+                .listStyle(.plain)
+                .scrollContentBackground(.hidden)
+                .contentMargins(.top, 12, for: .scrollContent)
+                .contentMargins(.bottom, 24, for: .scrollContent)
+            }
+        }
+        .navigationTitle("Workout Plans")
+        .navigationBarTitleDisplayMode(.large)
+        .spotterScreenChrome()
+        .searchable(text: $searchText, placement: .navigationBarDrawer(displayMode: .always), prompt: "Search Plans")
+        .toolbar {
+            ToolbarItem(placement: .topBarTrailing) {
+                Button {
+                    newWorkoutName = nextWorkoutName
+                    showingCreatePlanSheet = true
+                } label: {
+                    Image(systemName: "plus")
+                        .font(.headline.weight(.semibold))
+                        .symbolRenderingMode(.hierarchical)
+                        .foregroundStyle(SpotterPalette.accentSoft)
+                }
+                .accessibilityLabel("Create Plan")
+            }
+        }
+        .sheet(isPresented: $showingCreatePlanSheet) {
+            CreatePlanSheet(planName: $newWorkoutName) {
+                createWorkout()
+                showingCreatePlanSheet = false
+            }
+            .presentationDetents([.height(310), .medium])
+            .presentationDragIndicator(.visible)
+            .presentationBackground(.ultraThinMaterial)
+        }
+    }
+
+    private var visiblePlans: [WorkoutPlanModel] {
+        let livePlans = plans.filter { !$0.isArchived }
+        let query = searchText.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !query.isEmpty else {
+            return livePlans
+        }
+
+        return livePlans.filter { plan in
+            plan.name.localizedCaseInsensitiveContains(query)
+                || plan.goal.localizedCaseInsensitiveContains(query)
+        }
+    }
+
+    private func lastUsedText(for plan: WorkoutPlanModel) -> String {
+        guard let lastSession = sessions.first(where: { $0.planId == plan.id }) else {
+            return "Not used yet"
+        }
+
+        return "Last used \(lastSession.startedAt.formatted(date: .abbreviated, time: .omitted))"
+    }
+
+    private var nextWorkoutName: String {
+        "Plan \(plans.filter { !$0.isArchived }.count + 1)"
+    }
+
+    private func createWorkout() {
+        let trimmedName = newWorkoutName.trimmingCharacters(in: .whitespacesAndNewlines)
+        let plan = SpotterRepository.insertPlan(
+            named: trimmedName.isEmpty ? nextWorkoutName : trimmedName,
+            in: modelContext
+        )
+
+        for existingPlan in plans where existingPlan.id != plan.id {
+            existingPlan.isActive = false
+            existingPlan.updatedAt = Date()
+        }
+
+        _ = SpotterRepository.insertDay(named: "Day 1", into: plan)
+    }
+
+    private func makeActive(_ plan: WorkoutPlanModel) {
+        for existingPlan in plans {
+            existingPlan.isActive = existingPlan.id == plan.id
+            existingPlan.updatedAt = Date()
+        }
+    }
+}
+
+private struct PlansEmptyState: View {
+    let onCreate: () -> Void
+
+    var body: some View {
+        VStack(spacing: 24) {
+            Spacer(minLength: 84)
+
+            ZStack {
+                Circle()
+                    .fill(.ultraThinMaterial)
+                    .frame(width: 92, height: 92)
+                    .overlay {
+                        Circle()
+                            .strokeBorder(SpotterPalette.glassStroke, lineWidth: 1)
+                    }
+
+                Image(systemName: "figure.strengthtraining.traditional")
+                    .font(.system(size: 38, weight: .semibold))
+                    .symbolRenderingMode(.hierarchical)
+                    .foregroundStyle(SpotterPalette.accentSoft)
+            }
+
+            VStack(spacing: 8) {
+                Text("No Workout Plans")
+                    .font(.title2.weight(.semibold))
+                    .foregroundStyle(SpotterPalette.textPrimary)
+                Text("Create a plan for your training week, then build days around how you lift.")
+                    .font(.subheadline)
+                    .foregroundStyle(SpotterPalette.textSecondary)
+                    .multilineTextAlignment(.center)
+                    .lineLimit(3)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+
+            GlassButton(title: "Create Plan", systemImage: "plus", action: onCreate)
+                .frame(maxWidth: 260)
+
+            Spacer(minLength: 84)
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+    }
+}
+
+private struct WorkoutPlanCard: View {
+    let plan: WorkoutPlanModel
+    let lastUsedText: String
+
+    var body: some View {
+        GlassCard(cornerRadius: 26, padding: 18) {
+            HStack(spacing: 16) {
+                VStack(alignment: .leading, spacing: 10) {
+                    HStack(spacing: 8) {
+                        Text(plan.name)
+                            .font(.title3.weight(.semibold))
+                            .foregroundStyle(SpotterPalette.textPrimary)
+                            .lineLimit(1)
+
+                        if plan.isActive {
+                            Text("Active")
+                                .font(.caption2.weight(.semibold))
+                                .foregroundStyle(SpotterPalette.textPrimary)
+                                .padding(.horizontal, 8)
+                                .padding(.vertical, 4)
+                                .background(.thinMaterial, in: Capsule())
+                                .overlay {
+                                    Capsule()
+                                        .strokeBorder(SpotterPalette.glassStroke, lineWidth: 1)
+                                }
+                        }
+                    }
+
+                    Text("\(plan.days.count) workout days")
+                        .font(.subheadline)
+                        .foregroundStyle(SpotterPalette.textSecondary)
+
+                    Text(lastUsedText)
+                        .font(.footnote)
+                        .foregroundStyle(SpotterPalette.textTertiary)
+                }
+
+                Spacer()
+
+                Image(systemName: "chevron.right")
+                    .font(.footnote.weight(.semibold))
+                    .foregroundStyle(SpotterPalette.textTertiary)
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+        }
+    }
+}
+
+private struct CreatePlanSheet: View {
+    @Environment(\.dismiss) private var dismiss
+    @Binding var planName: String
+    let onCreate: () -> Void
+    @FocusState private var isNameFocused: Bool
+
+    var body: some View {
+        NavigationStack {
+            ZStack {
+                SpotterBackground()
+
+                VStack(alignment: .leading, spacing: 18) {
+                    Text("Name your workout plan.")
+                        .font(.headline)
+                        .foregroundStyle(SpotterPalette.textPrimary)
+
+                    TextField("Plan Name", text: $planName)
+                        .textInputAutocapitalization(.words)
+                        .submitLabel(.done)
+                        .focused($isNameFocused)
+                        .padding(.horizontal, 16)
+                        .frame(height: 54)
+                        .foregroundStyle(SpotterPalette.textPrimary)
+                        .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 18, style: .continuous))
+                        .overlay {
+                            RoundedRectangle(cornerRadius: 18, style: .continuous)
+                                .strokeBorder(SpotterPalette.glassStroke, lineWidth: 1)
+                        }
+                        .onSubmit {
+                            createIfPossible()
+                        }
+
+                    GlassButton(title: "Create Plan", systemImage: "plus") {
+                        createIfPossible()
+                    }
+                    .disabled(planName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+
+                    Spacer()
+                }
+                .padding(22)
+            }
+            .navigationTitle("New Plan")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Cancel") {
+                        dismiss()
+                    }
+                }
+            }
+            .task {
+                isNameFocused = true
+            }
+        }
+    }
+
+    private func createIfPossible() {
+        guard !planName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
+            return
+        }
+
+        onCreate()
+    }
+}
+
+private struct PlanDetailPrototypeView: View {
+    let plan: WorkoutPlanModel
+    let exercises: [ExerciseModel]
+
+    private var planDays: [WorkoutDayModel] {
+        plan.days.sorted { $0.orderIndex < $1.orderIndex }
+    }
 
     var body: some View {
         ZStack {
             SpotterBackground()
 
             ScrollView {
-                VStack(alignment: .leading, spacing: 22) {
-                    ScreenHeader(
-                        eyebrow: "Plan",
-                        title: activePlan?.name ?? "Training Week",
-                        subtitle: activePlan?.goal.isEmpty == false ? activePlan?.goal ?? "" : "Built around steady progress and low-friction logging."
-                    )
-
+                VStack(alignment: .leading, spacing: 18) {
                     if planDays.isEmpty {
                         GlassCard {
                             Text("No workout days yet.")
@@ -32,7 +345,7 @@ struct PlanListView: View {
                         ForEach(planDays) { day in
                             NavigationLink {
                                 WorkoutDayPrototypeView(
-                                    plan: activePlan,
+                                    plan: plan,
                                     day: day,
                                     exercises: exercises
                                 )
@@ -42,7 +355,7 @@ struct PlanListView: View {
                                         VStack(alignment: .leading, spacing: 8) {
                                             Text(day.name)
                                                 .font(.title3.weight(.semibold))
-                                            Text(day.notes.isEmpty ? activePlan?.name ?? "Workout day" : day.notes)
+                                            Text(day.notes.isEmpty ? plan.name : day.notes)
                                                 .font(.subheadline)
                                                 .foregroundStyle(SpotterPalette.textSecondary)
                                             Text("\(day.exercises.count) exercises")
@@ -68,56 +381,9 @@ struct PlanListView: View {
                 .padding(.bottom, 34)
             }
         }
+        .navigationTitle(plan.name)
+        .navigationBarTitleDisplayMode(.large)
         .spotterScreenChrome()
-        .toolbar {
-            ToolbarItem(placement: .topBarTrailing) {
-                Button {
-                    newWorkoutName = nextWorkoutName
-                    showingNewWorkoutPrompt = true
-                } label: {
-                    Image(systemName: "plus.circle.fill")
-                        .symbolRenderingMode(.hierarchical)
-                        .foregroundStyle(SpotterPalette.accentSoft)
-                }
-                .accessibilityLabel("Create Workout")
-            }
-        }
-        .alert("New Workout", isPresented: $showingNewWorkoutPrompt) {
-            TextField("Name", text: $newWorkoutName)
-            Button("Create") {
-                createWorkout()
-            }
-            Button("Cancel", role: .cancel) {}
-        } message: {
-            Text("Create an active workout plan with one empty day.")
-        }
-    }
-
-    private var activePlan: WorkoutPlanModel? {
-        plans.first { $0.isActive && !$0.isArchived } ?? plans.first { !$0.isArchived }
-    }
-
-    private var planDays: [WorkoutDayModel] {
-        activePlan?.days.sorted { $0.orderIndex < $1.orderIndex } ?? []
-    }
-
-    private var nextWorkoutName: String {
-        "Workout \(plans.filter { !$0.isArchived }.count + 1)"
-    }
-
-    private func createWorkout() {
-        let trimmedName = newWorkoutName.trimmingCharacters(in: .whitespacesAndNewlines)
-        let plan = SpotterRepository.insertPlan(
-            named: trimmedName.isEmpty ? nextWorkoutName : trimmedName,
-            in: modelContext
-        )
-
-        for existingPlan in plans where existingPlan.id != plan.id {
-            existingPlan.isActive = false
-            existingPlan.updatedAt = Date()
-        }
-
-        _ = SpotterRepository.insertDay(named: "Day 1", into: plan)
     }
 }
 

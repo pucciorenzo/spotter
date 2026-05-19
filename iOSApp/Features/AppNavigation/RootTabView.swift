@@ -14,15 +14,7 @@ struct RootTabView: View {
             }
             .spotterNavigationChrome()
             .tabItem {
-                Label("Home", systemImage: "house")
-            }
-
-            NavigationStack {
-                ExerciseListView()
-            }
-            .spotterNavigationChrome()
-            .tabItem {
-                Label("Library", systemImage: "square.grid.2x2")
+                Label("Today", systemImage: "calendar")
             }
 
             NavigationStack {
@@ -30,7 +22,7 @@ struct RootTabView: View {
             }
             .spotterNavigationChrome()
             .tabItem {
-                Label("Workout", systemImage: "play.circle")
+                Label("Plans", systemImage: "list.bullet.rectangle")
             }
 
             NavigationStack {
@@ -38,7 +30,7 @@ struct RootTabView: View {
             }
             .spotterNavigationChrome()
             .tabItem {
-                Label("History", systemImage: "clock")
+                Label("Progress", systemImage: "chart.line.uptrend.xyaxis")
             }
 
             NavigationStack {
@@ -46,7 +38,7 @@ struct RootTabView: View {
             }
             .spotterNavigationChrome()
             .tabItem {
-                Label("Settings", systemImage: "gearshape")
+                Label("Profile", systemImage: "person.crop.circle")
             }
         }
         .environmentObject(watchSyncManager)
