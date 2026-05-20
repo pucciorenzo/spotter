@@ -8,6 +8,7 @@ struct RootTabView: View {
     @StateObject private var watchSyncManager = PhoneWatchSyncManager()
     @StateObject private var activeWorkoutRepository = MockActiveWorkoutRepository()
     @StateObject private var healthKitManager = HealthKitWorkoutManager()
+    @StateObject private var liveActivityManager = ActiveWorkoutLiveActivityManager()
     @State private var showingActiveWorkout = false
     private let dataProvider: any SpotterDataProviding = MockSpotterRepository.preview
 
@@ -77,7 +78,8 @@ struct RootTabView: View {
         .fullScreenCover(isPresented: $showingActiveWorkout) {
             ActiveWorkoutView(
                 repository: activeWorkoutRepository,
-                healthKitManager: healthKitManager
+                healthKitManager: healthKitManager,
+                liveActivityManager: liveActivityManager
             )
         }
         .environmentObject(watchSyncManager)

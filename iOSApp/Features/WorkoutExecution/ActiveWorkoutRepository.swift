@@ -13,6 +13,9 @@ protocol ActiveWorkoutProviding: ObservableObject {
     func updateRIR(_ rir: Int?)
     func completeCurrentSet()
     func skipCurrentSet()
+    func pauseWorkout()
+    func resumeWorkout()
+    func endWorkout()
     func addSet(to exerciseId: UUID)
     func removeSet(_ setId: UUID, from exerciseId: UUID)
     func tickRest()
@@ -25,6 +28,8 @@ struct ActiveWorkoutSession: Identifiable {
     var exercises: [ActiveWorkoutExercise]
     var currentExerciseId: UUID
     var currentSetId: UUID
+    var isPaused: Bool
+    var restDurationSeconds: Int
     var restRemainingSeconds: Int
     var restStartedAt: Date?
     var lastAutosavedAt: Date
@@ -205,6 +210,8 @@ final class MockActiveWorkoutRepository: ActiveWorkoutProviding {
             exercises: [pullUp, row, plank],
             currentExerciseId: pullUp.id,
             currentSetId: pullUp.sets[0].id,
+            isPaused: false,
+            restDurationSeconds: 0,
             restRemainingSeconds: 0,
             restStartedAt: nil,
             lastAutosavedAt: Date()
@@ -243,7 +250,9 @@ final class MockActiveWorkoutRepository: ActiveWorkoutProviding {
             guard let indexes = currentIndexes(in: session) else { return }
             session.exercises[indexes.exercise].sets[indexes.set].isCompleted = true
             session.exercises[indexes.exercise].sets[indexes.set].isSkipped = false
-            session.restRemainingSeconds = session.exercises[indexes.exercise].sets[indexes.set].restSeconds
+            let restSeconds = session.exercises[indexes.exercise].sets[indexes.set].restSeconds
+            session.restDurationSeconds = restSeconds
+            session.restRemainingSeconds = restSeconds
             session.restStartedAt = Date()
             advanceSelection(in: &session, after: indexes)
         }
@@ -256,6 +265,26 @@ final class MockActiveWorkoutRepository: ActiveWorkoutProviding {
             session.exercises[indexes.exercise].sets[indexes.set].isCompleted = false
             advanceSelection(in: &session, after: indexes)
         }
+    }
+
+    func pauseWorkout() {
+        mutateSession { session in
+            session.isPaused = true
+        }
+    }
+
+    func resumeWorkout() {
+        mutateSession { session in
+            if session.restStartedAt != nil {
+                let elapsedBeforePause = max(0, session.restDurationSeconds - session.restRemainingSeconds)
+                session.restStartedAt = Date().addingTimeInterval(TimeInterval(-elapsedBeforePause))
+            }
+            session.isPaused = false
+        }
+    }
+
+    func endWorkout() {
+        session = nil
     }
 
     func addSet(to exerciseId: UUID) {
@@ -291,7 +320,7 @@ final class MockActiveWorkoutRepository: ActiveWorkoutProviding {
     }
 
     func tickRest() {
-        guard session?.restStartedAt != nil else { return }
+        guard session?.restStartedAt != nil, session?.isPaused == false else { return }
         mutateSession { session in
             session.restRemainingSeconds -= 1
         }
