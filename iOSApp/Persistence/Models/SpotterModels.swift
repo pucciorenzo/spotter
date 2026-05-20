@@ -131,6 +131,7 @@ final class WorkoutPlanModel {
     @Relationship(deleteRule: .cascade) var days: [WorkoutDayModel]
     var isActive: Bool
     var isArchived: Bool
+    var version: Int
     var createdAt: Date
     var updatedAt: Date
 
@@ -142,6 +143,7 @@ final class WorkoutPlanModel {
         days = dto.days.map { WorkoutDayModel(dto: $0) }
         isActive = dto.isActive
         isArchived = dto.isArchived
+        version = 1
         createdAt = dto.createdAt
         updatedAt = dto.updatedAt
     }
@@ -155,6 +157,7 @@ final class WorkoutPlanModel {
         days = []
         isActive = true
         isArchived = false
+        version = 1
         createdAt = now
         updatedAt = now
     }
@@ -237,6 +240,8 @@ final class WorkoutExerciseModel {
     var tempo: String?
     var notes: String
     var supersetGroupId: UUID?
+    var blockKindRawValue: String
+    var mavTargetSets: Int?
     var autoProgressionEnabled: Bool
 
     init(dto: WorkoutExerciseDTO) {
@@ -262,6 +267,8 @@ final class WorkoutExerciseModel {
         tempo = dto.tempo
         notes = dto.notes
         supersetGroupId = dto.supersetGroupId
+        blockKindRawValue = WorkoutBlockKind.normal.rawValue
+        mavTargetSets = nil
         autoProgressionEnabled = dto.autoProgressionEnabled
     }
 
@@ -288,6 +295,8 @@ final class WorkoutExerciseModel {
         tempo = nil
         notes = ""
         supersetGroupId = nil
+        blockKindRawValue = WorkoutBlockKind.normal.rawValue
+        mavTargetSets = nil
         autoProgressionEnabled = true
     }
 
@@ -299,6 +308,11 @@ final class WorkoutExerciseModel {
     var loadUnit: LoadUnit {
         get { LoadUnit(rawValue: loadUnitRawValue) ?? .kg }
         set { loadUnitRawValue = newValue.rawValue }
+    }
+
+    var blockKind: WorkoutBlockKind {
+        get { WorkoutBlockKind(rawValue: blockKindRawValue) ?? .normal }
+        set { blockKindRawValue = newValue.rawValue }
     }
 
     func toDTO() -> WorkoutExerciseDTO {
@@ -335,6 +349,8 @@ final class WorkoutSessionModel {
     @Attribute(.unique) var id: UUID
     var planId: UUID?
     var dayId: UUID?
+    var planSnapshotId: UUID?
+    var planSnapshotData: Data?
     var planNameSnapshot: String
     var dayNameSnapshot: String
     var startedAt: Date
@@ -351,6 +367,8 @@ final class WorkoutSessionModel {
         id = dto.id
         planId = dto.planId
         dayId = dto.dayId
+        planSnapshotId = nil
+        planSnapshotData = nil
         planNameSnapshot = dto.planNameSnapshot
         dayNameSnapshot = dto.dayNameSnapshot
         startedAt = dto.startedAt
@@ -375,6 +393,8 @@ final class WorkoutSessionModel {
     }
 
     func update(from dto: WorkoutSessionDTO) {
+        guard status != .completed else { return }
+
         planId = dto.planId
         dayId = dto.dayId
         planNameSnapshot = dto.planNameSnapshot
@@ -407,6 +427,91 @@ final class WorkoutSessionModel {
             createdAt: createdAt,
             updatedAt: updatedAt
         )
+    }
+}
+
+enum WorkoutBlockKind: String, Codable, CaseIterable {
+    case normal
+    case superset
+    case mav
+}
+
+@Model
+final class WorkoutPlanSnapshotModel {
+    @Attribute(.unique) var id: UUID
+    var planId: UUID
+    var version: Int
+    var snapshotData: Data
+    var createdAt: Date
+
+    init(plan: WorkoutPlanDTO, version: Int, encoder: JSONEncoder = JSONEncoder(), createdAt: Date = Date()) throws {
+        id = UUID()
+        planId = plan.id
+        self.version = version
+        snapshotData = try encoder.encode(plan)
+        self.createdAt = createdAt
+    }
+
+    func toDTO(decoder: JSONDecoder = JSONDecoder()) throws -> WorkoutPlanDTO {
+        try decoder.decode(WorkoutPlanDTO.self, from: snapshotData)
+    }
+}
+
+@Model
+final class ActiveWorkoutStateModel {
+    @Attribute(.unique) var id: UUID
+    var sessionId: UUID
+    var stateData: Data
+    var planSnapshotData: Data?
+    var daySnapshotData: Data?
+    var createdAt: Date
+    var updatedAt: Date
+    var lastAutosavedAt: Date
+
+    init(
+        state: WorkoutExecutionState,
+        planSnapshot: WorkoutPlanDTO?,
+        daySnapshot: WorkoutDayDTO?,
+        encoder: JSONEncoder = JSONEncoder(),
+        savedAt: Date = Date()
+    ) throws {
+        id = UUID()
+        sessionId = state.session.id
+        stateData = try encoder.encode(state)
+        planSnapshotData = try planSnapshot.map { try encoder.encode($0) }
+        daySnapshotData = try daySnapshot.map { try encoder.encode($0) }
+        createdAt = savedAt
+        updatedAt = savedAt
+        lastAutosavedAt = state.session.updatedAt
+    }
+
+    func update(
+        state: WorkoutExecutionState,
+        planSnapshot: WorkoutPlanDTO?,
+        daySnapshot: WorkoutDayDTO?,
+        encoder: JSONEncoder = JSONEncoder(),
+        savedAt: Date = Date()
+    ) throws {
+        sessionId = state.session.id
+        stateData = try encoder.encode(state)
+        planSnapshotData = try planSnapshot.map { try encoder.encode($0) }
+        daySnapshotData = try daySnapshot.map { try encoder.encode($0) }
+        updatedAt = savedAt
+        lastAutosavedAt = state.session.updatedAt
+    }
+
+    func toState(decoder: JSONDecoder = JSONDecoder()) throws -> WorkoutExecutionState {
+        try decoder.decode(WorkoutExecutionState.self, from: stateData)
+    }
+
+    func toPlanSnapshot(decoder: JSONDecoder = JSONDecoder()) throws -> WorkoutPlanDTO? {
+        guard let planSnapshotData else { return nil }
+        return try decoder.decode(WorkoutPlanDTO.self, from: planSnapshotData)
+    }
+
+    func toDaySnapshot(decoder: JSONDecoder = JSONDecoder()) throws -> WorkoutDayDTO? {
+        guard let daySnapshotData else { return nil }
+        return try decoder.decode(WorkoutDayDTO.self, from: daySnapshotData)
     }
 }
 
