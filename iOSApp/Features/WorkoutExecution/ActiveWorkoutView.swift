@@ -2,6 +2,7 @@ import SwiftUI
 
 struct ActiveWorkoutView: View {
     @ObservedObject var repository: MockActiveWorkoutRepository
+    @ObservedObject var healthKitManager: HealthKitWorkoutManager
     @Environment(\.dismiss) private var dismiss
     private let timer = Timer.publish(every: 1, on: .main, in: .common).autoconnect()
 
@@ -16,6 +17,11 @@ struct ActiveWorkoutView: View {
                     ScrollView {
                         VStack(alignment: .leading, spacing: 18) {
                             ActiveWorkoutHeader(session: session)
+
+                            HealthWorkoutPanel(
+                                session: session,
+                                healthKitManager: healthKitManager
+                            )
 
                             CurrentSetPanel(
                                 session: session,
@@ -38,7 +44,8 @@ struct ActiveWorkoutView: View {
 
                     ActiveWorkoutBottomBar(
                         set: currentSet,
-                        repository: repository
+                        repository: repository,
+                        healthKitManager: healthKitManager
                     )
                     .padding(.horizontal, 20)
                     .padding(.bottom, 18)
@@ -57,6 +64,7 @@ struct ActiveWorkoutView: View {
         }
         .onReceive(timer) { _ in
             repository.tickRest()
+            healthKitManager.tick()
         }
     }
 }
@@ -325,11 +333,13 @@ private struct ActiveSetRow: View {
 private struct ActiveWorkoutBottomBar: View {
     let set: ActiveWorkoutSet
     @ObservedObject var repository: MockActiveWorkoutRepository
+    @ObservedObject var healthKitManager: HealthKitWorkoutManager
 
     var body: some View {
         VStack(spacing: 10) {
             GlassButton(title: set.isCompleted ? "Completed" : "Complete Set", systemImage: "checkmark") {
                 repository.completeCurrentSet()
+                healthKitManager.refreshMetrics()
             }
             HStack(spacing: 10) {
                 GlassButton(title: "Skip", systemImage: "forward.end", style: .secondary) {
@@ -338,6 +348,116 @@ private struct ActiveWorkoutBottomBar: View {
                 GlassButton(title: "Rest \(set.restSeconds)s", systemImage: "timer", style: .secondary)
             }
         }
+    }
+}
+
+private struct HealthWorkoutPanel: View {
+    let session: ActiveWorkoutSession
+    @ObservedObject var healthKitManager: HealthKitWorkoutManager
+
+    var body: some View {
+        GlassCard(cornerRadius: 24, padding: 16) {
+            VStack(alignment: .leading, spacing: 14) {
+                HStack(spacing: 12) {
+                    Image(systemName: "heart.fill")
+                        .symbolRenderingMode(.hierarchical)
+                        .foregroundStyle(SpotterPalette.accentSoft)
+
+                    VStack(alignment: .leading, spacing: 3) {
+                        Text("Apple Workout")
+                            .font(.headline)
+                        Text(statusText)
+                            .font(.caption)
+                            .foregroundStyle(SpotterPalette.textSecondary)
+                    }
+
+                    Spacer()
+
+                    Button(action: toggleWorkout) {
+                        Text(healthKitManager.isParallelWorkoutActive ? "End" : "Start")
+                            .font(.subheadline.weight(.semibold))
+                            .padding(.horizontal, 14)
+                            .padding(.vertical, 8)
+                            .background(.thinMaterial, in: Capsule())
+                    }
+                    .buttonStyle(.plain)
+                }
+
+                HStack(spacing: 10) {
+                    HealthMetricPill(
+                        title: "Time",
+                        value: formatTime(healthKitManager.durationSeconds),
+                        systemImage: "timer"
+                    )
+                    HealthMetricPill(
+                        title: "Energy",
+                        value: "\(Int(healthKitManager.activeEnergyKilocalories.rounded())) kcal",
+                        systemImage: "flame"
+                    )
+                    HealthMetricPill(
+                        title: "Heart",
+                        value: heartRateText,
+                        systemImage: "waveform.path.ecg"
+                    )
+                }
+
+                if let error = healthKitManager.lastErrorMessage {
+                    Text(error)
+                        .font(.caption)
+                        .foregroundStyle(.orange)
+                        .lineLimit(2)
+                }
+            }
+        }
+    }
+
+    private var statusText: String {
+        if !healthKitManager.isHealthDataAvailable {
+            return "Health unavailable on this device."
+        }
+
+        if healthKitManager.isParallelWorkoutActive {
+            return "Saving duration, active energy and heart rate locally."
+        }
+
+        return "\(healthKitManager.authorizationStatusText). Optional parallel Apple workout."
+    }
+
+    private var heartRateText: String {
+        guard let bpm = healthKitManager.currentHeartRateBPM else {
+            return "-- bpm"
+        }
+        return "\(Int(bpm.rounded())) bpm"
+    }
+
+    private func toggleWorkout() {
+        if healthKitManager.isParallelWorkoutActive {
+            healthKitManager.finishParallelWorkout()
+        } else {
+            healthKitManager.startParallelWorkout(named: "\(session.planName) - \(session.dayName)")
+        }
+    }
+}
+
+private struct HealthMetricPill: View {
+    let title: String
+    let value: String
+    let systemImage: String
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 5) {
+            Label(title, systemImage: systemImage)
+                .font(.caption2.weight(.semibold))
+                .foregroundStyle(SpotterPalette.textSecondary)
+            Text(value)
+                .font(.caption.monospacedDigit().weight(.semibold))
+                .foregroundStyle(SpotterPalette.textPrimary)
+                .lineLimit(1)
+                .minimumScaleFactor(0.74)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(10)
+        .background(.white.opacity(0.08), in: RoundedRectangle(cornerRadius: 16, style: .continuous))
     }
 }
 
@@ -445,6 +565,9 @@ private func format(_ value: Double) -> String {
 }
 
 #Preview {
-    ActiveWorkoutView(repository: MockActiveWorkoutRepository())
+    ActiveWorkoutView(
+        repository: MockActiveWorkoutRepository(),
+        healthKitManager: HealthKitWorkoutManager()
+    )
         .preferredColorScheme(.dark)
 }

@@ -36,6 +36,7 @@
 		A1000000000000000000001B /* ActiveWorkoutRepository.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2000000000000000000001A /* ActiveWorkoutRepository.swift */; };
 		A1000000000000000000001C /* ActiveWorkoutView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2000000000000000000001B /* ActiveWorkoutView.swift */; };
 		A1000000000000000000001D /* WorkoutRepositories.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2000000000000000000001C /* WorkoutRepositories.swift */; };
+		A1000000000000000000001E /* HealthKitWorkoutManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2000000000000000000001D /* HealthKitWorkoutManager.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -91,6 +92,7 @@
 		A2000000000000000000001A /* ActiveWorkoutRepository.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = iOSApp/Features/WorkoutExecution/ActiveWorkoutRepository.swift; sourceTree = "<group>"; };
 		A2000000000000000000001B /* ActiveWorkoutView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = iOSApp/Features/WorkoutExecution/ActiveWorkoutView.swift; sourceTree = "<group>"; };
 		A2000000000000000000001C /* WorkoutRepositories.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = iOSApp/Persistence/Repositories/WorkoutRepositories.swift; sourceTree = "<group>"; };
+		A2000000000000000000001D /* HealthKitWorkoutManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = iOSApp/Health/HealthKitWorkoutManager.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -139,6 +141,7 @@
 				A20000000000000000000010 /* ModelContainerProvider.swift */,
 				A20000000000000000000011 /* SnapshotBuilder.swift */,
 				A20000000000000000000012 /* PhoneWatchSyncManager.swift */,
+				A2000000000000000000001D /* HealthKitWorkoutManager.swift */,
 				A20000000000000000000017 /* SpotterDesignSystem.swift */,
 				A20000000000000000000019 /* SpotterDataProvider.swift */,
 				A2000000000000000000001A /* ActiveWorkoutRepository.swift */,
@@ -278,6 +281,7 @@
 				A1000000000000000000001A /* SpotterDataProvider.swift in Sources */,
 				A1000000000000000000001B /* ActiveWorkoutRepository.swift in Sources */,
 				A1000000000000000000001C /* ActiveWorkoutView.swift in Sources */,
+				A1000000000000000000001E /* HealthKitWorkoutManager.swift in Sources */,
 				A10000000000000000000010 /* SeedData.swift in Sources */,
 				A10000000000000000000011 /* ModelContainerProvider.swift in Sources */,
 				A10000000000000000000012 /* SnapshotBuilder.swift in Sources */,

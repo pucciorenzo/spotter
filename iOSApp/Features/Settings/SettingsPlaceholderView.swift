@@ -2,6 +2,7 @@ import SwiftUI
 
 struct ProfileView: View {
     let dataProvider: any SpotterDataProviding
+    @ObservedObject var healthKitManager: HealthKitWorkoutManager
     @State private var promptForSetResults = true
 
     private var profile: SpotterProfileSnapshot {
@@ -35,10 +36,40 @@ struct ProfileView: View {
                     }
 
                     ProfileSection(title: "Health") {
-                        ProfileRow(title: "Status", value: profile.healthStatus, systemImage: "heart")
-                        Text("Health integration is planned as an optional local permission.")
+                        ProfileRow(
+                            title: "Status",
+                            value: healthKitManager.authorizationStatusText,
+                            systemImage: "heart"
+                        )
+
+                        HStack(spacing: 12) {
+                            ProfileRow(
+                                title: "Apple Workout",
+                                value: healthKitManager.isParallelWorkoutActive ? "Running" : "Optional",
+                                systemImage: "figure.strengthtraining.traditional"
+                            )
+                        }
+
+                        Button {
+                            healthKitManager.requestAuthorization()
+                        } label: {
+                            Label("Connect Apple Health", systemImage: "heart.text.square")
+                                .font(.subheadline.weight(.semibold))
+                                .frame(maxWidth: .infinity)
+                                .padding(.vertical, 12)
+                                .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 18, style: .continuous))
+                        }
+                        .buttonStyle(.plain)
+
+                        Text("Optional. Spotter stays local-first and can save workout duration, active energy and heart rate with permission.")
                             .font(.caption)
                             .foregroundStyle(SpotterPalette.textSecondary)
+
+                        if let error = healthKitManager.lastErrorMessage {
+                            Text(error)
+                                .font(.caption)
+                                .foregroundStyle(.orange)
+                        }
                     }
 
                     ProfileSection(title: "Data") {
@@ -128,7 +159,10 @@ private struct ProfileActionRow: View {
 
 #Preview {
     NavigationStack {
-        ProfileView(dataProvider: MockSpotterRepository.preview)
+        ProfileView(
+            dataProvider: MockSpotterRepository.preview,
+            healthKitManager: HealthKitWorkoutManager()
+        )
             .preferredColorScheme(.dark)
     }
 }
