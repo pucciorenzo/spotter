@@ -131,7 +131,7 @@ final class WorkoutPlanModel {
     @Relationship(deleteRule: .cascade) var days: [WorkoutDayModel]
     var isActive: Bool
     var isArchived: Bool
-    var version: Int
+    var version: Int = 1
     var createdAt: Date
     var updatedAt: Date
 
@@ -240,7 +240,7 @@ final class WorkoutExerciseModel {
     var tempo: String?
     var notes: String
     var supersetGroupId: UUID?
-    var blockKindRawValue: String
+    var blockKindRawValue: String = WorkoutBlockKind.normal.rawValue
     var mavTargetSets: Int?
     var autoProgressionEnabled: Bool
 
