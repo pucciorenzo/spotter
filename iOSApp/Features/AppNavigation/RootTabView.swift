@@ -91,6 +91,12 @@ struct RootTabView: View {
         .onChange(of: snapshotVersion) { _, _ in
             publishWatchSnapshot()
         }
+        .onOpenURL { url in
+            guard url.scheme == "spotter", url.host == "active-workout" else {
+                return
+            }
+            showingActiveWorkout = activeWorkoutRepository.session != nil
+        }
     }
 
     private var snapshotVersion: String {

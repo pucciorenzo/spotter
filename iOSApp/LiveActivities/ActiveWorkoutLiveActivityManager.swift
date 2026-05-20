@@ -99,6 +99,7 @@ final class ActiveWorkoutLiveActivityManager: ObservableObject {
         return SpotterWorkoutActivityAttributes.ContentState(
             exerciseName: exercise?.name ?? session.dayName,
             setLabel: setLabel(exercise: exercise, set: set),
+            compactSetLabel: compactSetLabel(exercise: exercise, set: set),
             restStartedAt: paused ? nil : session.restStartedAt,
             restDurationSeconds: restDuration,
             restRemainingSeconds: restRemaining,
@@ -111,5 +112,11 @@ final class ActiveWorkoutLiveActivityManager: ObservableObject {
         guard let exercise, let set else { return "No set" }
         let kind = set.isWarmup ? "Warm-up" : "Set"
         return "\(kind) \(set.index) of \(exercise.sets.count)"
+    }
+
+    private func compactSetLabel(exercise: ActiveWorkoutExercise?, set: ActiveWorkoutSet?) -> String {
+        guard let exercise, let set else { return "--" }
+        let prefix = set.isWarmup ? "W" : "S"
+        return "\(prefix)\(set.index)/\(exercise.sets.count)"
     }
 }
