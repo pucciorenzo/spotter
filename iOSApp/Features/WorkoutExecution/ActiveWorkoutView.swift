@@ -3,6 +3,7 @@ import SwiftUI
 struct ActiveWorkoutView: View {
     @ObservedObject var repository: MockActiveWorkoutRepository
     @ObservedObject var healthKitManager: HealthKitWorkoutManager
+    @ObservedObject var liveActivityManager: ActiveWorkoutLiveActivityManager
     @Environment(\.dismiss) private var dismiss
     private let timer = Timer.publish(every: 1, on: .main, in: .common).autoconnect()
 
@@ -45,7 +46,8 @@ struct ActiveWorkoutView: View {
                     ActiveWorkoutBottomBar(
                         set: currentSet,
                         repository: repository,
-                        healthKitManager: healthKitManager
+                        healthKitManager: healthKitManager,
+                        liveActivityManager: liveActivityManager
                     )
                     .padding(.horizontal, 20)
                     .padding(.bottom, 18)
@@ -59,13 +61,82 @@ struct ActiveWorkoutView: View {
                         dismiss()
                     }
                 }
+                ToolbarItemGroup(placement: .primaryAction) {
+                    if let session = repository.session {
+                        Button {
+                            togglePause(session: session)
+                        } label: {
+                            Image(systemName: session.isPaused ? "play.fill" : "pause.fill")
+                        }
+                        .accessibilityLabel(session.isPaused ? "Resume Workout" : "Pause Workout")
+
+                        Button(role: .destructive) {
+                            endWorkout(session: session)
+                        } label: {
+                            Image(systemName: "stop.fill")
+                        }
+                        .accessibilityLabel("End Workout")
+                    }
+                }
             }
             .spotterScreenChrome()
         }
+        .onAppear {
+            if let session = repository.session {
+                liveActivityManager.startOrUpdate(session: session)
+            }
+        }
         .onReceive(timer) { _ in
             repository.tickRest()
-            healthKitManager.tick()
+            if repository.session?.isPaused == false {
+                healthKitManager.tick()
+            }
+            if let session = repository.session {
+                liveActivityManager.update(session: session)
+            }
         }
+        .onChange(of: activityVersion) { _, _ in
+            if let session = repository.session {
+                liveActivityManager.startOrUpdate(session: session)
+            }
+        }
+    }
+
+    private var activityVersion: String {
+        guard let session = repository.session else { return "none" }
+        return [
+            session.id.uuidString,
+            session.currentExerciseId.uuidString,
+            session.currentSetId.uuidString,
+            "\(session.isPaused)",
+            "\(session.restDurationSeconds)",
+            "\(session.restRemainingSeconds)",
+            "\(session.restStartedAt?.timeIntervalSince1970 ?? 0)",
+            "\(session.lastAutosavedAt.timeIntervalSince1970)",
+            "\(session.completedSetCount)",
+            "\(session.totalSetCount)"
+        ].joined(separator: ":")
+    }
+
+    private func togglePause(session: ActiveWorkoutSession) {
+        if session.isPaused {
+            repository.resumeWorkout()
+            if let updated = repository.session {
+                liveActivityManager.resume(session: updated)
+            }
+        } else {
+            repository.pauseWorkout()
+            if let updated = repository.session {
+                liveActivityManager.pause(session: updated)
+            }
+        }
+    }
+
+    private func endWorkout(session: ActiveWorkoutSession) {
+        liveActivityManager.end(session: session)
+        healthKitManager.finishParallelWorkout()
+        repository.endWorkout()
+        dismiss()
     }
 }
 
@@ -334,16 +405,23 @@ private struct ActiveWorkoutBottomBar: View {
     let set: ActiveWorkoutSet
     @ObservedObject var repository: MockActiveWorkoutRepository
     @ObservedObject var healthKitManager: HealthKitWorkoutManager
+    @ObservedObject var liveActivityManager: ActiveWorkoutLiveActivityManager
 
     var body: some View {
         VStack(spacing: 10) {
             GlassButton(title: set.isCompleted ? "Completed" : "Complete Set", systemImage: "checkmark") {
                 repository.completeCurrentSet()
                 healthKitManager.refreshMetrics()
+                if let session = repository.session {
+                    liveActivityManager.update(session: session)
+                }
             }
             HStack(spacing: 10) {
                 GlassButton(title: "Skip", systemImage: "forward.end", style: .secondary) {
                     repository.skipCurrentSet()
+                    if let session = repository.session {
+                        liveActivityManager.update(session: session)
+                    }
                 }
                 GlassButton(title: "Rest \(set.restSeconds)s", systemImage: "timer", style: .secondary)
             }
@@ -567,7 +645,8 @@ private func format(_ value: Double) -> String {
 #Preview {
     ActiveWorkoutView(
         repository: MockActiveWorkoutRepository(),
-        healthKitManager: HealthKitWorkoutManager()
+        healthKitManager: HealthKitWorkoutManager(),
+        liveActivityManager: ActiveWorkoutLiveActivityManager()
     )
         .preferredColorScheme(.dark)
 }
