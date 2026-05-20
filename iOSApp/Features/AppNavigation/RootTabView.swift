@@ -7,6 +7,7 @@ struct RootTabView: View {
     @Query(sort: \WorkoutPlanModel.name) private var plans: [WorkoutPlanModel]
     @StateObject private var watchSyncManager = PhoneWatchSyncManager()
     @StateObject private var activeWorkoutRepository = MockActiveWorkoutRepository()
+    @StateObject private var healthKitManager = HealthKitWorkoutManager()
     @State private var showingActiveWorkout = false
     private let dataProvider: any SpotterDataProviding = MockSpotterRepository.preview
 
@@ -54,7 +55,10 @@ struct RootTabView: View {
                 }
 
                 NavigationStack {
-                    ProfileView(dataProvider: dataProvider)
+                    ProfileView(
+                        dataProvider: dataProvider,
+                        healthKitManager: healthKitManager
+                    )
                 }
                 .spotterNavigationChrome()
                 .tabItem {
@@ -71,7 +75,10 @@ struct RootTabView: View {
             }
         }
         .fullScreenCover(isPresented: $showingActiveWorkout) {
-            ActiveWorkoutView(repository: activeWorkoutRepository)
+            ActiveWorkoutView(
+                repository: activeWorkoutRepository,
+                healthKitManager: healthKitManager
+            )
         }
         .environmentObject(watchSyncManager)
         .task {
