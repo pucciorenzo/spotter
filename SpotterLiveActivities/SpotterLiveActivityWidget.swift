@@ -14,7 +14,7 @@ struct SpotterWorkoutLiveActivity: Widget {
     var body: some WidgetConfiguration {
         ActivityConfiguration(for: SpotterWorkoutActivityAttributes.self) { context in
             WorkoutLiveActivityLockScreenView(context: context)
-                .widgetURL(resumeURL)
+                .widgetURL(spotterWorkoutResumeURL)
                 .activityBackgroundTint(.black.opacity(0.66))
                 .activitySystemActionForegroundColor(.white)
         } dynamicIsland: { context in
@@ -46,7 +46,7 @@ struct SpotterWorkoutLiveActivity: Widget {
                 }
 
                 DynamicIslandExpandedRegion(.bottom) {
-                    Link(destination: resumeURL) {
+                    Link(destination: spotterWorkoutResumeURL) {
                         HStack(spacing: 8) {
                             Text(context.state.setLabel)
                                 .lineLimit(1)
@@ -74,12 +74,8 @@ struct SpotterWorkoutLiveActivity: Widget {
                 Image(systemName: context.state.isPaused ? "pause.fill" : "timer")
                     .foregroundStyle(.white)
             }
-            .widgetURL(resumeURL)
+            .widgetURL(spotterWorkoutResumeURL)
         }
-    }
-
-    private var resumeURL: URL {
-        URL(string: "spotter://active-workout")!
     }
 }
 
@@ -87,36 +83,99 @@ private struct WorkoutLiveActivityLockScreenView: View {
     let context: ActivityViewContext<SpotterWorkoutActivityAttributes>
 
     var body: some View {
-        HStack(spacing: 14) {
-            Image(systemName: context.state.isPaused ? "pause.fill" : "figure.strengthtraining.traditional")
-                .font(.title2)
-                .foregroundStyle(.white)
-                .frame(width: 42, height: 42)
-                .background(.white.opacity(0.13), in: Circle())
+        VStack(alignment: .leading, spacing: 14) {
+            HStack(spacing: 10) {
+                Label(statusText, systemImage: context.state.isPaused ? "pause.fill" : "figure.strengthtraining.traditional")
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(.white.opacity(0.66))
+                    .lineLimit(1)
 
-            VStack(alignment: .leading, spacing: 4) {
-                Text(context.state.exerciseName)
-                    .font(.headline)
+                Spacer(minLength: 8)
+
+                Link(destination: spotterWorkoutResumeURL) {
+                    HStack(spacing: 5) {
+                        Text(context.state.isPaused ? "Resume" : "Open")
+                        Image(systemName: "chevron.right")
+                            .font(.caption2.weight(.bold))
+                    }
+                    .font(.caption.weight(.semibold))
                     .foregroundStyle(.white)
-                    .lineLimit(1)
-                Text(context.state.setLabel)
-                    .font(.subheadline)
-                    .foregroundStyle(.white.opacity(0.72))
-                    .lineLimit(1)
+                    .padding(.horizontal, 10)
+                    .padding(.vertical, 6)
+                    .background(.white.opacity(0.12), in: Capsule())
+                }
             }
 
-            Spacer(minLength: 12)
+            Text(context.state.exerciseName)
+                .font(.title3.weight(.semibold))
+                .foregroundStyle(.white)
+                .lineLimit(1)
+                .minimumScaleFactor(0.78)
 
-            VStack(alignment: .trailing, spacing: 4) {
-                Text("Rest")
-                    .font(.caption2.weight(.semibold))
-                    .foregroundStyle(.white.opacity(0.62))
-                RestTimerView(state: context.state)
-                    .font(.title3.monospacedDigit().weight(.semibold))
-                    .foregroundStyle(.white)
+            HStack(spacing: 10) {
+                LockScreenMetric(
+                    title: "Set",
+                    systemImage: "checklist"
+                ) {
+                    Text(context.state.setLabel)
+                }
+
+                LockScreenMetric(
+                    title: "Rest",
+                    systemImage: "timer"
+                ) {
+                    RestTimerView(state: context.state)
+                }
+                .monospacedDigit()
             }
         }
-        .padding(18)
+        .padding(.horizontal, 18)
+        .padding(.vertical, 16)
+    }
+
+    private var statusText: String {
+        if context.state.isEnded {
+            return "Workout ended"
+        }
+        if context.state.isPaused {
+            return "Workout paused"
+        }
+        return context.attributes.workoutName
+    }
+
+}
+
+private struct LockScreenMetric<Content: View>: View {
+    let title: String
+    let systemImage: String
+    let content: Content
+
+    init(
+        title: String,
+        systemImage: String,
+        @ViewBuilder content: () -> Content
+    ) {
+        self.title = title
+        self.systemImage = systemImage
+        self.content = content()
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 5) {
+            Label(title, systemImage: systemImage)
+                .font(.caption2.weight(.semibold))
+                .foregroundStyle(.white.opacity(0.58))
+                .lineLimit(1)
+            content
+                .font(.subheadline.weight(.semibold))
+                .foregroundStyle(.white)
+                .lineLimit(1)
+                .minimumScaleFactor(0.78)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(.horizontal, 12)
+        .padding(.vertical, 10)
+        .background(.white.opacity(0.09), in: RoundedRectangle(cornerRadius: 14, style: .continuous))
     }
 }
 
@@ -176,3 +235,5 @@ private struct RestTimerView: View {
         return String(format: "%d:%02d", minutes, remaining)
     }
 }
+
+private let spotterWorkoutResumeURL = URL(string: "spotter://active-workout")!
