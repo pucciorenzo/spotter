@@ -6,6 +6,7 @@ public struct SpotterWorkoutActivityAttributes: ActivityAttributes {
     public struct ContentState: Codable, Hashable {
         public var exerciseName: String
         public var setLabel: String
+        public var compactSetLabel: String
         public var restStartedAt: Date?
         public var restDurationSeconds: Int
         public var restRemainingSeconds: Int
@@ -15,6 +16,7 @@ public struct SpotterWorkoutActivityAttributes: ActivityAttributes {
         public init(
             exerciseName: String,
             setLabel: String,
+            compactSetLabel: String,
             restStartedAt: Date?,
             restDurationSeconds: Int,
             restRemainingSeconds: Int,
@@ -23,6 +25,7 @@ public struct SpotterWorkoutActivityAttributes: ActivityAttributes {
         ) {
             self.exerciseName = exerciseName
             self.setLabel = setLabel
+            self.compactSetLabel = compactSetLabel
             self.restStartedAt = restStartedAt
             self.restDurationSeconds = restDurationSeconds
             self.restRemainingSeconds = restRemainingSeconds

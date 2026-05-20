@@ -409,6 +409,14 @@
 				DEVELOPMENT_ASSET_PATHS = "";
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_CFBundleDisplayName = Spotter;
+				INFOPLIST_KEY_CFBundleURLTypes = (
+					{
+						CFBundleURLName = com.vincenzocosi.spotter;
+						CFBundleURLSchemes = (
+							spotter,
+						);
+					},
+				);
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.healthcare-fitness";
 				INFOPLIST_KEY_NSHealthShareUsageDescription = "Spotter can read Health permissions to confirm workout access.";
 				INFOPLIST_KEY_NSHealthUpdateUsageDescription = "Spotter can save completed workouts to Apple Health.";
@@ -439,6 +447,14 @@
 				DEVELOPMENT_ASSET_PATHS = "";
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_CFBundleDisplayName = Spotter;
+				INFOPLIST_KEY_CFBundleURLTypes = (
+					{
+						CFBundleURLName = com.vincenzocosi.spotter;
+						CFBundleURLSchemes = (
+							spotter,
+						);
+					},
+				);
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.healthcare-fitness";
 				INFOPLIST_KEY_NSHealthShareUsageDescription = "Spotter can read Health permissions to confirm workout access.";
 				INFOPLIST_KEY_NSHealthUpdateUsageDescription = "Spotter can save completed workouts to Apple Health.";
