@@ -375,15 +375,19 @@ private struct EffortControl: View {
     let increment: () -> Void
 
     var body: some View {
-        HStack(spacing: 10) {
+        VStack(spacing: 12) {
             Text(title)
-                .font(.subheadline.weight(.semibold))
-            Spacer()
-            StepButton(systemImage: "minus", action: decrement, size: 34)
-            Text(value)
-                .font(.headline.monospacedDigit())
-                .frame(width: 42)
-            StepButton(systemImage: "plus", action: increment, size: 34)
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(SpotterPalette.textSecondary)
+            HStack(spacing: 10) {
+                StepButton(systemImage: "minus", action: decrement, size: 34)
+                Text(value)
+                    .font(.headline.monospacedDigit())
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.72)
+                    .frame(maxWidth: .infinity)
+                StepButton(systemImage: "plus", action: increment, size: 34)
+            }
         }
         .padding(12)
         .background(.white.opacity(0.08), in: RoundedRectangle(cornerRadius: 20, style: .continuous))
