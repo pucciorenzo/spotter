@@ -3,7 +3,7 @@ import SwiftUI
 struct ExerciseListView: View {
     let dataProvider: any SpotterDataProviding
     @State private var searchText = ""
-    @State private var selectedCategory = "All"
+    @State private var selectedCategories: Set<String> = []
     @State private var showingCreateExerciseSheet = false
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
@@ -14,7 +14,7 @@ struct ExerciseListView: View {
     private var exercises: [SpotterExerciseSummary] {
         let query = searchText.trimmingCharacters(in: .whitespacesAndNewlines)
         return dataProvider.exercises.filter { exercise in
-            let matchesCategory = selectedCategory == "All" || exercise.primaryCategory == selectedCategory
+            let matchesCategory = selectedCategories.isEmpty || selectedCategories.contains(exercise.primaryCategory)
             let matchesQuery = query.isEmpty
                 || exercise.name.localizedCaseInsensitiveContains(query)
                 || exercise.primaryCategory.localizedCaseInsensitiveContains(query)
@@ -34,10 +34,10 @@ struct ExerciseListView: View {
                             ForEach(categories, id: \.self) { category in
                                 LibraryChip(
                                     title: category,
-                                    isSelected: selectedCategory == category
+                                    isSelected: isCategorySelected(category)
                                 ) {
                                     SpotterHaptics.selection()
-                                    selectedCategory = category
+                                    toggleCategory(category)
                                 }
                             }
                         }
@@ -105,6 +105,23 @@ struct ExerciseListView: View {
                 .presentationBackground(.ultraThinMaterial)
         }
         .spotterScreenChrome()
+    }
+
+    private func isCategorySelected(_ category: String) -> Bool {
+        category == "All" ? selectedCategories.isEmpty : selectedCategories.contains(category)
+    }
+
+    private func toggleCategory(_ category: String) {
+        guard category != "All" else {
+            selectedCategories.removeAll()
+            return
+        }
+
+        if selectedCategories.contains(category) {
+            selectedCategories.remove(category)
+        } else {
+            selectedCategories.insert(category)
+        }
     }
 }
 
