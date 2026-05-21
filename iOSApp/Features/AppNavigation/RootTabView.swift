@@ -5,6 +5,7 @@ struct RootTabView: View {
     @Environment(\.modelContext) private var modelContext
     @Query(sort: \ExerciseModel.name) private var exercises: [ExerciseModel]
     @Query(sort: \WorkoutPlanModel.name) private var plans: [WorkoutPlanModel]
+    @Query(sort: \WorkoutSessionModel.startedAt, order: .reverse) private var workoutSessions: [WorkoutSessionModel]
     @StateObject private var watchSyncManager = PhoneWatchSyncManager()
     @StateObject private var activeWorkoutRepository = MockActiveWorkoutRepository()
     @StateObject private var healthKitManager = HealthKitWorkoutManager()
@@ -140,11 +141,23 @@ struct RootTabView: View {
                 ].joined(separator: ":")
             }
             .joined(separator: "|")
-        return "\(exerciseVersion)#\(planVersion)"
+        let sessionVersion = workoutSessions
+            .filter { $0.status == .completed }
+            .prefix(20)
+            .map { session in
+                [
+                    session.id.uuidString,
+                    "\(session.updatedAt.timeIntervalSince1970)",
+                    "\(session.setLogs.count)"
+                ].joined(separator: ":")
+            }
+            .joined(separator: "|")
+
+        return "\(exerciseVersion)#\(planVersion)#\(sessionVersion)"
     }
 
     private func publishWatchSnapshot() {
-        let snapshot = SnapshotBuilder.makeSnapshot(exercises: exercises, plans: plans)
+        let snapshot = SnapshotBuilder.makeSnapshot(exercises: exercises, plans: plans, sessions: workoutSessions)
         watchSyncManager.publishSnapshot(snapshot)
     }
 }

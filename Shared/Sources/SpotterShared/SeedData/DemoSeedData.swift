@@ -101,6 +101,62 @@ public enum DemoSeedData {
         ]
     }()
 
+    public static let recentSessions: [WorkoutSessionDTO] = {
+        guard let plan = plans.first,
+              let day = plan.days.first else {
+            return []
+        }
+
+        let startedAt = referenceDate.addingTimeInterval(10 * 86_400)
+        let endedAt = startedAt.addingTimeInterval(3_180)
+        let sessionId = stableId(for: "session-\(plan.id.uuidString)-\(day.id.uuidString)-previous")
+
+        let logs = day.exercises.flatMap { exercise -> [WorkoutSetLogDTO] in
+            let name = exercises.first(where: { $0.id == exercise.exerciseId })?.name ?? "Exercise"
+            switch name {
+            case "Bench Press":
+                return [
+                    setLog(sessionId: sessionId, exercise: exercise, name: name, setIndex: 1, reps: 8, duration: nil, load: 60, rpe: 7.5, rir: 2, completedAt: startedAt.addingTimeInterval(480)),
+                    setLog(sessionId: sessionId, exercise: exercise, name: name, setIndex: 2, reps: 7, duration: nil, load: 60, rpe: 8, rir: 2, completedAt: startedAt.addingTimeInterval(660)),
+                    setLog(sessionId: sessionId, exercise: exercise, name: name, setIndex: 3, reps: 6, duration: nil, load: 60, rpe: 8.5, rir: 1, completedAt: startedAt.addingTimeInterval(840))
+                ]
+            case "Squat":
+                return [
+                    setLog(sessionId: sessionId, exercise: exercise, name: name, setIndex: 1, reps: 8, duration: nil, load: 80, rpe: 7, rir: 3, completedAt: startedAt.addingTimeInterval(1_200)),
+                    setLog(sessionId: sessionId, exercise: exercise, name: name, setIndex: 2, reps: 7, duration: nil, load: 80, rpe: 8, rir: 2, completedAt: startedAt.addingTimeInterval(1_440)),
+                    setLog(sessionId: sessionId, exercise: exercise, name: name, setIndex: 3, reps: 6, duration: nil, load: 80, rpe: 8.5, rir: 1, completedAt: startedAt.addingTimeInterval(1_680))
+                ]
+            case "Barbell Row":
+                return [
+                    setLog(sessionId: sessionId, exercise: exercise, name: name, setIndex: 1, reps: 10, duration: nil, load: 50, rpe: 7.5, rir: 2, completedAt: startedAt.addingTimeInterval(2_100)),
+                    setLog(sessionId: sessionId, exercise: exercise, name: name, setIndex: 2, reps: 9, duration: nil, load: 50, rpe: 8, rir: 2, completedAt: startedAt.addingTimeInterval(2_280)),
+                    setLog(sessionId: sessionId, exercise: exercise, name: name, setIndex: 3, reps: 9, duration: nil, load: 50, rpe: 8.5, rir: 1, completedAt: startedAt.addingTimeInterval(2_460))
+                ]
+            default:
+                return []
+            }
+        }
+
+        return [
+            WorkoutSessionDTO(
+                id: sessionId,
+                planId: plan.id,
+                dayId: day.id,
+                planNameSnapshot: plan.name,
+                dayNameSnapshot: day.name,
+                startedAt: startedAt,
+                endedAt: endedAt,
+                durationSeconds: Int(endedAt.timeIntervalSince(startedAt)),
+                source: .iphone,
+                status: .completed,
+                setLogs: logs,
+                notes: "",
+                createdAt: startedAt,
+                updatedAt: endedAt
+            )
+        ]
+    }()
+
     private static let referenceDate = Date(timeIntervalSince1970: 1_735_689_600)
 
     private static func exercise(
@@ -183,6 +239,45 @@ public enum DemoSeedData {
 
     fileprivate static func stableSeedId(for value: String) -> UUID {
         stableId(for: value)
+    }
+
+    private static func setLog(
+        sessionId: UUID,
+        exercise: WorkoutExerciseDTO,
+        name: String,
+        setIndex: Int,
+        reps: Int?,
+        duration: Int?,
+        load: Double?,
+        rpe: Double?,
+        rir: Int?,
+        completedAt: Date
+    ) -> WorkoutSetLogDTO {
+        WorkoutSetLogDTO(
+            id: stableId(for: "set-log-\(sessionId.uuidString)-\(exercise.id.uuidString)-\(setIndex)"),
+            sessionId: sessionId,
+            exerciseId: exercise.exerciseId,
+            originalExerciseId: nil,
+            workoutExerciseId: exercise.id,
+            exerciseNameSnapshot: name,
+            setIndex: setIndex,
+            isWarmup: false,
+            completionType: .completed,
+            targetReps: exercise.targetReps ?? exercise.targetRepsMax ?? exercise.targetRepsMin,
+            targetDurationSeconds: exercise.targetDurationSeconds,
+            targetLoad: exercise.startingLoad,
+            targetLoadUnit: exercise.loadUnit,
+            completedReps: reps,
+            completedDurationSeconds: duration,
+            completedLoad: load,
+            completedLoadUnit: exercise.loadUnit,
+            restPlannedSeconds: exercise.restSeconds,
+            restActualSeconds: exercise.restSeconds,
+            rpe: rpe,
+            rir: rir,
+            notes: "",
+            completedAt: completedAt
+        )
     }
 }
 

@@ -31,7 +31,11 @@ struct ActiveWorkoutView: View {
                                 repository: repository
                             )
 
-                            PreviousPerformanceCard(suggestion: currentExercise.previousPerformance)
+                            if let suggestion = currentExercise.previousPerformance {
+                                PreviousPerformanceCard(suggestion: suggestion) {
+                                    repository.applyPreviousSuggestion()
+                                }
+                            }
 
                             WorkoutExerciseList(
                                 session: session,
@@ -219,26 +223,44 @@ private struct CurrentSetPanel: View {
 
                 switch set.kind {
                 case .repsWeight:
-                    HStack(spacing: 12) {
+                    HStack(spacing: 8) {
                         FastNumberControl(
                             title: "Reps",
                             value: "\(set.reps)",
+                            inputMode: .integer,
                             decrement: { repository.updateReps(set.reps - 1) },
-                            increment: { repository.updateReps(set.reps + 1) }
+                            increment: { repository.updateReps(set.reps + 1) },
+                            updateText: { text in
+                                if let reps = Int(text) {
+                                    repository.updateReps(reps)
+                                }
+                            }
                         )
                         FastNumberControl(
-                            title: "Weight",
-                            value: "\(format(set.weight)) kg",
+                            title: "Weight (kg)",
+                            value: format(set.weight),
+                            inputMode: .decimal,
                             decrement: { repository.updateWeight(set.weight - 2.5) },
-                            increment: { repository.updateWeight(set.weight + 2.5) }
+                            increment: { repository.updateWeight(set.weight + 2.5) },
+                            updateText: { text in
+                                if let weight = Double(text.replacingOccurrences(of: ",", with: ".")) {
+                                    repository.updateWeight(weight)
+                                }
+                            }
                         )
                     }
                 case .duration:
                     FastNumberControl(
-                        title: "Duration",
-                        value: "\(set.durationSeconds)s",
+                        title: "Duration (s)",
+                        value: "\(set.durationSeconds)",
+                        inputMode: .integer,
                         decrement: { repository.updateDuration(set.durationSeconds - 5) },
-                        increment: { repository.updateDuration(set.durationSeconds + 5) }
+                        increment: { repository.updateDuration(set.durationSeconds + 5) },
+                        updateText: { text in
+                            if let seconds = Int(text) {
+                                repository.updateDuration(seconds)
+                            }
+                        }
                     )
                 }
 
@@ -271,14 +293,32 @@ private struct CurrentSetPanel: View {
 }
 
 private struct PreviousPerformanceCard: View {
-    let suggestion: PreviousPerformanceSuggestion
+    let suggestion: WorkoutLoggingSuggestion
+    let applySuggestion: () -> Void
 
     var body: some View {
         GlassCard(cornerRadius: 24, padding: 16) {
             VStack(alignment: .leading, spacing: 10) {
-                Label("Previous Performance", systemImage: "clock.arrow.circlepath")
-                    .font(.headline)
-                    .foregroundStyle(SpotterPalette.accentSoft)
+                HStack(spacing: 10) {
+                    Label("Previous", systemImage: "clock.arrow.circlepath")
+                        .font(.headline)
+                        .foregroundStyle(SpotterPalette.accentSoft)
+
+                    Spacer()
+
+                    Button(action: applySuggestion) {
+                        Label(suggestion.reuseLabel, systemImage: "arrow.uturn.backward.circle")
+                            .font(.caption.weight(.semibold))
+                            .lineLimit(1)
+                            .minimumScaleFactor(0.72)
+                            .padding(.horizontal, 10)
+                            .padding(.vertical, 7)
+                            .background(.thinMaterial, in: Capsule())
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityLabel("Reuse previous values")
+                }
+
                 Text(suggestion.lastTime)
                     .font(.subheadline.weight(.medium))
                 Text(suggestion.trend)
@@ -540,29 +580,107 @@ private struct HealthMetricPill: View {
 }
 
 private struct FastNumberControl: View {
+    enum InputMode {
+        case integer
+        case decimal
+    }
+
     let title: String
     let value: String
+    let inputMode: InputMode
     let decrement: () -> Void
     let increment: () -> Void
+    let updateText: (String) -> Void
 
     var body: some View {
-        VStack(spacing: 12) {
+        VStack(spacing: 10) {
             Text(title)
                 .font(.caption.weight(.semibold))
                 .foregroundStyle(SpotterPalette.textSecondary)
-            HStack(spacing: 12) {
-                StepButton(systemImage: "minus", action: decrement)
-                Text(value)
-                    .font(.system(size: 34, weight: .semibold, design: .rounded))
-                    .monospacedDigit()
-                    .lineLimit(1)
-                    .minimumScaleFactor(0.62)
-                    .frame(maxWidth: .infinity)
-                StepButton(systemImage: "plus", action: increment)
+            HStack(spacing: 6) {
+                StepButton(systemImage: "minus", action: decrement, size: 34)
+                EditableNumberText(
+                    value: value,
+                    inputMode: inputMode,
+                    updateText: updateText
+                )
+                StepButton(systemImage: "plus", action: increment, size: 34)
             }
         }
-        .padding(14)
+        .padding(12)
         .background(.white.opacity(0.08), in: RoundedRectangle(cornerRadius: 22, style: .continuous))
+    }
+}
+
+private struct EditableNumberText: View {
+    let value: String
+    let inputMode: FastNumberControl.InputMode
+    let updateText: (String) -> Void
+    @State private var text = ""
+    @FocusState private var isFocused: Bool
+
+    var body: some View {
+        TextField("", text: textBinding)
+            .font(.system(size: 28, weight: .semibold, design: .rounded))
+            .monospacedDigit()
+            .keyboardType(inputMode == .decimal ? .decimalPad : .numberPad)
+            .multilineTextAlignment(.center)
+            .lineLimit(1)
+            .minimumScaleFactor(0.74)
+            .allowsTightening(true)
+            .layoutPriority(1)
+            .frame(maxWidth: .infinity)
+            .focused($isFocused)
+            .onAppear {
+                text = value
+            }
+            .onChange(of: value) { _, newValue in
+                guard !isFocused else { return }
+                text = newValue
+            }
+            .toolbar {
+                if isFocused {
+                    ToolbarItemGroup(placement: .keyboard) {
+                        Spacer()
+                        Button("Done") {
+                            isFocused = false
+                        }
+                    }
+                }
+            }
+    }
+
+    private var textBinding: Binding<String> {
+        Binding(
+            get: { text },
+            set: { newValue in
+                let sanitized = sanitize(newValue)
+                text = sanitized
+                guard !sanitized.isEmpty, sanitized != "." else { return }
+                updateText(sanitized)
+            }
+        )
+    }
+
+    private func sanitize(_ rawValue: String) -> String {
+        switch inputMode {
+        case .integer:
+            return rawValue.filter(\.isNumber)
+        case .decimal:
+            var output = ""
+            var hasSeparator = false
+
+            for character in rawValue.replacingOccurrences(of: ",", with: ".") {
+                if character.isNumber {
+                    output.append(character)
+                } else if character == ".", !hasSeparator {
+                    output.append(character)
+                    hasSeparator = true
+                }
+            }
+
+            return output
+        }
     }
 }
 

@@ -10,6 +10,8 @@ final class WatchWorkoutViewModel: ObservableObject {
     @Published var repsValue: Double = 0
     @Published var durationValue: Double = 0
     @Published var loadValue: Double = 0
+    @Published var rpeValue: Double = 0
+    @Published var rirValue: Double = 0
     @Published private(set) var lastAutosavedAt = Date()
     @Published var errorMessage: String?
 
@@ -155,6 +157,28 @@ final class WatchWorkoutViewModel: ObservableObject {
         return exerciseName(for: exercises[nextIndex].exerciseId)
     }
 
+    var currentSuggestion: WatchWorkoutLoggingSuggestion? {
+        guard let currentExercise, let snapshot else {
+            return nil
+        }
+
+        let effectiveId = effectiveExerciseId(for: currentExercise)
+        let matches = snapshot.recentSessions
+            .flatMap(\.setLogs)
+            .filter {
+                $0.completionType == .completed
+                    && ($0.exerciseId == effectiveId || $0.originalExerciseId == effectiveId)
+                    && $0.setIndex == nextSetNumber
+            }
+            .sorted { $0.completedAt > $1.completedAt }
+
+        guard let latest = matches.first else {
+            return nil
+        }
+
+        return WatchWorkoutLoggingSuggestion(log: latest, previousLog: matches.dropFirst().first)
+    }
+
     func configure(snapshot: SyncSnapshot?) {
         self.snapshot = snapshot
     }
@@ -179,15 +203,40 @@ final class WatchWorkoutViewModel: ObservableObject {
         saveActiveWorkout()
     }
 
+    func applyPreviousSuggestion() {
+        guard let suggestion = currentSuggestion else {
+            return
+        }
+
+        if let reps = suggestion.previousReps {
+            repsValue = Double(reps)
+        }
+        if let duration = suggestion.previousDurationSeconds {
+            durationValue = Double(duration)
+        }
+        if let load = suggestion.previousLoad {
+            loadValue = load
+        }
+        if let rpe = suggestion.previousRPE {
+            rpeValue = rpe
+        }
+        if let rir = suggestion.previousRIR {
+            rirValue = Double(rir)
+        }
+        saveActiveWorkout()
+    }
+
     func completeCurrentSet() {
         completeCurrentSet(
             reps: usesDuration ? nil : Int(repsValue),
             durationSeconds: usesDuration ? Int(durationValue) : nil,
-            load: currentExercise?.loadUnit == .bodyweight ? nil : loadValue
+            load: currentExercise?.loadUnit == .bodyweight ? nil : loadValue,
+            rpe: rpeValue > 0 ? rpeValue : nil,
+            rir: rirValue >= 0 ? Int(rirValue) : nil
         )
     }
 
-    func completeCurrentSet(reps: Int?, durationSeconds: Int?, load: Double?) {
+    func completeCurrentSet(reps: Int?, durationSeconds: Int?, load: Double?, rpe: Double? = nil, rir: Int? = nil) {
         guard let exercise = currentExercise else {
             return
         }
@@ -199,7 +248,9 @@ final class WatchWorkoutViewModel: ObservableObject {
             exerciseName: exerciseName(for: exercise.exerciseId),
             completedReps: reps,
             completedDurationSeconds: durationSeconds,
-            completedLoad: exercise.loadUnit == .bodyweight ? nil : load
+            completedLoad: exercise.loadUnit == .bodyweight ? nil : load,
+            rpe: rpe,
+            rir: rir
         )
 
         saveActiveWorkout()
@@ -336,12 +387,16 @@ final class WatchWorkoutViewModel: ObservableObject {
             repsValue = 0
             durationValue = 0
             loadValue = 0
+            rpeValue = 0
+            rirValue = -1
             return
         }
 
         repsValue = Double(exercise.targetReps ?? exercise.targetRepsMax ?? exercise.targetRepsMin ?? 0)
         durationValue = Double(exercise.targetDurationSeconds ?? exercise.targetDurationMaxSeconds ?? exercise.targetDurationMinSeconds ?? 0)
         loadValue = exercise.startingLoad ?? 0
+        rpeValue = 0
+        rirValue = -1
     }
 
     private func exerciseName(for id: UUID) -> String {
@@ -374,5 +429,93 @@ final class WatchWorkoutViewModel: ObservableObject {
         } catch {
             errorMessage = "Unable to save workout."
         }
+    }
+}
+
+struct WatchWorkoutLoggingSuggestion: Equatable {
+    let lastTime: String
+    let trend: String
+    let reuseLabel: String
+    let previousReps: Int?
+    let previousDurationSeconds: Int?
+    let previousLoad: Double?
+    let previousRPE: Double?
+    let previousRIR: Int?
+
+    init(log: WorkoutSetLogDTO, previousLog: WorkoutSetLogDTO?) {
+        previousReps = log.completedReps
+        previousDurationSeconds = log.completedDurationSeconds
+        previousLoad = log.completedLoad
+        previousRPE = log.rpe
+        previousRIR = log.rir
+        lastTime = "Last: \(Self.summary(log))"
+        trend = Self.trend(log: log, previousLog: previousLog)
+        reuseLabel = Self.reuseLabel(log)
+    }
+
+    private static func summary(_ log: WorkoutSetLogDTO) -> String {
+        if let seconds = log.completedDurationSeconds {
+            return "\(seconds)s\(effort(log))"
+        }
+
+        let reps = log.completedReps.map(String.init) ?? "-"
+        if let load = log.completedLoad, load > 0 {
+            return "\(format(load)) \(log.completedLoadUnit.rawValue) x \(reps)\(effort(log))"
+        }
+
+        return "\(reps) reps\(effort(log))"
+    }
+
+    private static func reuseLabel(_ log: WorkoutSetLogDTO) -> String {
+        if let seconds = log.completedDurationSeconds {
+            return "\(seconds)s"
+        }
+
+        let reps = log.completedReps.map(String.init) ?? "-"
+        guard let load = log.completedLoad, load > 0 else {
+            return "\(reps) reps"
+        }
+
+        return "\(format(load)) \(log.completedLoadUnit.rawValue) x \(reps)"
+    }
+
+    private static func trend(log: WorkoutSetLogDTO, previousLog: WorkoutSetLogDTO?) -> String {
+        guard let previousLog else {
+            return "Tap to reuse."
+        }
+
+        if log.completedLoad == previousLog.completedLoad,
+           let reps = log.completedReps,
+           let previousReps = previousLog.completedReps {
+            let delta = reps - previousReps
+            if delta > 0 { return "+\(delta) reps" }
+            if delta < 0 { return "\(delta) reps" }
+            return "same reps"
+        }
+
+        if let seconds = log.completedDurationSeconds,
+           let previousSeconds = previousLog.completedDurationSeconds {
+            let delta = seconds - previousSeconds
+            if delta > 0 { return "+\(delta)s" }
+            if delta < 0 { return "\(delta)s" }
+            return "same time"
+        }
+
+        return "Tap to reuse."
+    }
+
+    private static func effort(_ log: WorkoutSetLogDTO) -> String {
+        let values = [
+            log.rpe.map { "RPE \(format($0))" },
+            log.rir.map { "RIR \($0)" }
+        ].compactMap { $0 }
+
+        return values.isEmpty ? "" : " · \(values.joined(separator: " / "))"
+    }
+
+    private static func format(_ value: Double) -> String {
+        value.truncatingRemainder(dividingBy: 1) == 0
+            ? "\(Int(value))"
+            : String(format: "%.1f", value)
     }
 }
