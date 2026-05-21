@@ -31,7 +31,11 @@ struct ActiveWorkoutView: View {
                                 repository: repository
                             )
 
-                            PreviousPerformanceCard(suggestion: currentExercise.previousPerformance)
+                            if let suggestion = currentExercise.previousPerformance {
+                                PreviousPerformanceCard(suggestion: suggestion) {
+                                    repository.applyPreviousSuggestion()
+                                }
+                            }
 
                             WorkoutExerciseList(
                                 session: session,
@@ -271,14 +275,32 @@ private struct CurrentSetPanel: View {
 }
 
 private struct PreviousPerformanceCard: View {
-    let suggestion: PreviousPerformanceSuggestion
+    let suggestion: WorkoutLoggingSuggestion
+    let applySuggestion: () -> Void
 
     var body: some View {
         GlassCard(cornerRadius: 24, padding: 16) {
             VStack(alignment: .leading, spacing: 10) {
-                Label("Previous Performance", systemImage: "clock.arrow.circlepath")
-                    .font(.headline)
-                    .foregroundStyle(SpotterPalette.accentSoft)
+                HStack(spacing: 10) {
+                    Label("Previous", systemImage: "clock.arrow.circlepath")
+                        .font(.headline)
+                        .foregroundStyle(SpotterPalette.accentSoft)
+
+                    Spacer()
+
+                    Button(action: applySuggestion) {
+                        Label(suggestion.reuseLabel, systemImage: "arrow.uturn.backward.circle")
+                            .font(.caption.weight(.semibold))
+                            .lineLimit(1)
+                            .minimumScaleFactor(0.72)
+                            .padding(.horizontal, 10)
+                            .padding(.vertical, 7)
+                            .background(.thinMaterial, in: Capsule())
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityLabel("Reuse previous values")
+                }
+
                 Text(suggestion.lastTime)
                     .font(.subheadline.weight(.medium))
                 Text(suggestion.trend)

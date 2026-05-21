@@ -23,6 +23,15 @@ enum SeedData {
             }
         }
 
+        let sessionDescriptor = FetchDescriptor<WorkoutSessionModel>()
+        let existingSessionIds = Set((try? context.fetch(sessionDescriptor).map(\.id)) ?? [])
+
+        for session in DemoSeedData.recentSessions {
+            if !existingSessionIds.contains(session.id) {
+                context.insert(WorkoutSessionModel(dto: session))
+            }
+        }
+
         try? context.save()
     }
 }

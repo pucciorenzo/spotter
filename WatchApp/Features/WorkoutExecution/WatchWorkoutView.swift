@@ -24,6 +24,10 @@ struct WatchWorkoutView: View {
                 if viewModel.canCompleteSet {
                     inputCard
 
+                    if let suggestion = viewModel.currentSuggestion {
+                        suggestionCard(suggestion)
+                    }
+
                     WatchGlassButton(title: "Complete Set", systemImage: "checkmark") {
                         viewModel.completeCurrentSet()
                         syncManager.publishActiveWorkoutState(viewModel.state)
@@ -75,6 +79,9 @@ struct WatchWorkoutView: View {
         .onChange(of: syncManager.activeWorkoutState) { _, state in
             viewModel.applySyncedState(state)
         }
+        .onChange(of: syncManager.snapshot) { _, snapshot in
+            viewModel.configure(snapshot: snapshot)
+        }
         .onChange(of: viewModel.repsValue) { _, _ in
             autosaveDraftInput()
         }
@@ -82,6 +89,12 @@ struct WatchWorkoutView: View {
             autosaveDraftInput()
         }
         .onChange(of: viewModel.durationValue) { _, _ in
+            autosaveDraftInput()
+        }
+        .onChange(of: viewModel.rpeValue) { _, _ in
+            autosaveDraftInput()
+        }
+        .onChange(of: viewModel.rirValue) { _, _ in
             autosaveDraftInput()
         }
         .onChange(of: viewModel.didFinish) { _, didFinish in
@@ -155,6 +168,58 @@ struct WatchWorkoutView: View {
                         step: 2.5
                     )
                 }
+
+                HStack(spacing: 8) {
+                    FastWatchNumberField(
+                        title: "RPE",
+                        suffix: "",
+                        value: $viewModel.rpeValue,
+                        range: 0...10,
+                        step: 0.5,
+                        nilValue: 0,
+                        nilLabel: "-"
+                    )
+                    FastWatchNumberField(
+                        title: "RIR",
+                        suffix: "",
+                        value: $viewModel.rirValue,
+                        range: -1...10,
+                        step: 1,
+                        nilValue: -1,
+                        nilLabel: "-"
+                    )
+                }
+            }
+        }
+    }
+
+    private func suggestionCard(_ suggestion: WatchWorkoutLoggingSuggestion) -> some View {
+        WatchGlassCard {
+            HStack(spacing: 8) {
+                VStack(alignment: .leading, spacing: 3) {
+                    Text(suggestion.lastTime)
+                        .font(.caption.weight(.semibold))
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.72)
+                    Text(suggestion.trend)
+                        .font(.caption2)
+                        .foregroundStyle(.secondary)
+                        .lineLimit(1)
+                }
+
+                Spacer(minLength: 4)
+
+                Button {
+                    viewModel.applyPreviousSuggestion()
+                    syncManager.publishActiveWorkoutState(viewModel.state)
+                } label: {
+                    Text(suggestion.reuseLabel)
+                        .font(.caption2.weight(.semibold))
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.64)
+                }
+                .buttonStyle(.bordered)
+                .controlSize(.small)
             }
         }
     }
@@ -374,6 +439,8 @@ private struct FastWatchNumberField: View {
     @Binding var value: Double
     let range: ClosedRange<Double>
     let step: Double
+    var nilValue: Double?
+    var nilLabel: String?
 
     var body: some View {
         VStack(alignment: .leading, spacing: 5) {
@@ -417,6 +484,10 @@ private struct FastWatchNumberField: View {
     }
 
     private var displayText: String {
+        if let nilValue, value == nilValue {
+            return nilLabel ?? "-"
+        }
+
         let formattedValue = value.truncatingRemainder(dividingBy: 1) == 0
             ? String(Int(value))
             : String(format: "%.1f", value)
