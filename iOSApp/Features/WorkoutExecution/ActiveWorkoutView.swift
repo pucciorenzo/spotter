@@ -223,7 +223,7 @@ private struct CurrentSetPanel: View {
 
                 switch set.kind {
                 case .repsWeight:
-                    HStack(spacing: 12) {
+                    HStack(spacing: 8) {
                         FastNumberControl(
                             title: "Reps",
                             value: "\(set.reps)",
@@ -568,22 +568,24 @@ private struct FastNumberControl: View {
     let increment: () -> Void
 
     var body: some View {
-        VStack(spacing: 12) {
+        VStack(spacing: 10) {
             Text(title)
                 .font(.caption.weight(.semibold))
                 .foregroundStyle(SpotterPalette.textSecondary)
-            HStack(spacing: 12) {
-                StepButton(systemImage: "minus", action: decrement)
+            HStack(spacing: 6) {
+                StepButton(systemImage: "minus", action: decrement, size: 34)
                 Text(value)
-                    .font(.system(size: 34, weight: .semibold, design: .rounded))
+                    .font(.system(size: 28, weight: .semibold, design: .rounded))
                     .monospacedDigit()
                     .lineLimit(1)
-                    .minimumScaleFactor(0.62)
+                    .minimumScaleFactor(0.55)
+                    .allowsTightening(true)
+                    .layoutPriority(1)
                     .frame(maxWidth: .infinity)
-                StepButton(systemImage: "plus", action: increment)
+                StepButton(systemImage: "plus", action: increment, size: 34)
             }
         }
-        .padding(14)
+        .padding(12)
         .background(.white.opacity(0.08), in: RoundedRectangle(cornerRadius: 22, style: .continuous))
     }
 }
