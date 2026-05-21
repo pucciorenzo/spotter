@@ -16,6 +16,7 @@ final class WatchWorkoutViewModel: ObservableObject {
     private let plan: WorkoutPlanDTO
     private let day: WorkoutDayDTO
     private let cacheStore: WatchCacheStore
+    private let deviceId: String
     private var snapshot: SyncSnapshot?
 
     init(
@@ -26,6 +27,7 @@ final class WatchWorkoutViewModel: ObservableObject {
         self.plan = plan
         self.day = day
         self.cacheStore = cacheStore
+        self.deviceId = cacheStore.loadOrCreateDeviceIdentifier()
 
         if let activeState = cacheStore.loadActiveWorkout(),
            activeState.session.status == .inProgress,
@@ -159,18 +161,21 @@ final class WatchWorkoutViewModel: ObservableObject {
 
     func applySyncedState(_ syncedState: WorkoutExecutionState?) {
         guard let syncedState,
-              syncedState.session.id == state.session.id,
-              syncedState.session.updatedAt > state.session.updatedAt else {
+              syncedState.session.id == state.session.id else {
             return
         }
 
-        state = syncedState
-        lastAutosavedAt = syncedState.session.updatedAt
+        let mergedState = state.mergedWithRemote(syncedState)
+        guard mergedState.syncFingerprint != state.syncFingerprint else {
+            return
+        }
+
+        state = mergedState
+        persistActiveWorkout(markMutation: false)
         loadCurrentTargets()
     }
 
     func autosaveDraftInput() {
-        state.session.updatedAt = Date()
         saveActiveWorkout()
     }
 
@@ -356,7 +361,14 @@ final class WatchWorkoutViewModel: ObservableObject {
     }
 
     private func saveActiveWorkout() {
+        persistActiveWorkout(markMutation: true)
+    }
+
+    private func persistActiveWorkout(markMutation: Bool) {
         do {
+            if markMutation {
+                state.markMutation(deviceId: deviceId)
+            }
             try cacheStore.saveActiveWorkout(state)
             lastAutosavedAt = state.session.updatedAt
         } catch {

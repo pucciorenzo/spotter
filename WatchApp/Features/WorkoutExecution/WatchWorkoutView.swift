@@ -86,6 +86,7 @@ struct WatchWorkoutView: View {
         }
         .onChange(of: viewModel.didFinish) { _, didFinish in
             if didFinish {
+                syncManager.clearActiveWorkoutState()
                 syncManager.syncQueuedCompletedWorkouts()
                 dismiss()
             }

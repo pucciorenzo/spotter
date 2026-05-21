@@ -20,6 +20,7 @@ final class WatchPhoneSyncManager: NSObject, ObservableObject {
     private let encoder = JSONEncoder()
     private let decoder = JSONDecoder()
     private let session: WCSession?
+    private var lastSentActiveWorkoutFingerprint: String?
 
     override convenience init() {
         self.init(cacheStore: WatchCacheStore())
@@ -28,6 +29,7 @@ final class WatchPhoneSyncManager: NSObject, ObservableObject {
     init(cacheStore: WatchCacheStore) {
         self.cacheStore = cacheStore
         snapshot = cacheStore.loadSnapshot()
+        activeWorkoutState = cacheStore.loadActiveWorkout()
         queuedCompletedWorkoutCount = cacheStore.loadQueuedCompletedWorkouts().count
         session = WCSession.isSupported() ? .default : nil
 
@@ -59,6 +61,31 @@ final class WatchPhoneSyncManager: NSObject, ObservableObject {
                 }
             } else {
                 session.transferUserInfo(["message": data])
+            }
+        } catch {
+            lastErrorMessage = error.localizedDescription
+        }
+    }
+
+    func requestActiveWorkoutState() {
+        guard let session else { return }
+
+        do {
+            let data = try encoder.encode(SyncMessage.activeWorkoutRequest())
+            let dictionary = ["message": data]
+
+            if session.isReachable {
+                session.sendMessage(dictionary) { [weak self] reply in
+                    Task { @MainActor in
+                        self?.handleIncomingMessage(reply)
+                    }
+                } errorHandler: { [weak self] error in
+                    Task { @MainActor in
+                        self?.lastErrorMessage = error.localizedDescription
+                    }
+                }
+            } else {
+                session.transferUserInfo(dictionary)
             }
         } catch {
             lastErrorMessage = error.localizedDescription
@@ -97,7 +124,18 @@ final class WatchPhoneSyncManager: NSObject, ObservableObject {
     }
 
     func publishActiveWorkoutState(_ state: WorkoutExecutionState) {
+        guard state.syncFingerprint != lastSentActiveWorkoutFingerprint else {
+            return
+        }
+
         activeWorkoutState = state
+        lastSentActiveWorkoutFingerprint = state.syncFingerprint
+
+        do {
+            try cacheStore.saveActiveWorkout(state)
+        } catch {
+            lastErrorMessage = error.localizedDescription
+        }
 
         guard let session else { return }
 
@@ -105,6 +143,8 @@ final class WatchPhoneSyncManager: NSObject, ObservableObject {
             let message = try SyncMessage.activeWorkoutUpdated(state, encoder: encoder)
             let data = try encoder.encode(message)
             let dictionary = ["message": data]
+
+            try session.updateApplicationContext(dictionary)
 
             if session.isReachable {
                 session.sendMessage(dictionary) { [weak self] reply in
@@ -116,9 +156,19 @@ final class WatchPhoneSyncManager: NSObject, ObservableObject {
                         self?.lastErrorMessage = error.localizedDescription
                     }
                 }
-            } else {
-                session.transferUserInfo(dictionary)
             }
+        } catch {
+            lastErrorMessage = error.localizedDescription
+        }
+    }
+
+    func clearActiveWorkoutState() {
+        activeWorkoutState = nil
+        lastSentActiveWorkoutFingerprint = nil
+
+        do {
+            try cacheStore.clearActiveWorkout()
+            lastErrorMessage = nil
         } catch {
             lastErrorMessage = error.localizedDescription
         }
@@ -146,8 +196,19 @@ final class WatchPhoneSyncManager: NSObject, ObservableObject {
     }
 
     private func handleActiveWorkoutState(_ state: WorkoutExecutionState) {
-        activeWorkoutState = state
+        let mergedState = activeWorkoutState?.mergedWithRemote(state) ?? state
+        guard mergedState.syncFingerprint != activeWorkoutState?.syncFingerprint else {
+            return
+        }
+
+        activeWorkoutState = mergedState
         lastErrorMessage = nil
+
+        do {
+            try cacheStore.saveActiveWorkout(mergedState)
+        } catch {
+            lastErrorMessage = error.localizedDescription
+        }
     }
 
     private func handleIncomingMessage(_ dictionary: [String: Any]) {
@@ -168,7 +229,7 @@ final class WatchPhoneSyncManager: NSObject, ObservableObject {
         case .workoutAck:
             guard let ack = try? message.decodeWorkoutAck(decoder: decoder) else { return }
             handleWorkoutAck(ack)
-        case .snapshotRequest, .workoutCompleted:
+        case .snapshotRequest, .activeWorkoutRequest, .workoutCompleted:
             return
         }
     }
@@ -186,7 +247,11 @@ extension WatchPhoneSyncManager: WCSessionDelegate {
             activationStateDescription = String(describing: activationState)
             lastErrorMessage = error?.localizedDescription
             requestSnapshot()
+            requestActiveWorkoutState()
             syncQueuedCompletedWorkouts()
+            if let activeWorkoutState {
+                publishActiveWorkoutState(activeWorkoutState)
+            }
         }
     }
 
@@ -199,6 +264,17 @@ extension WatchPhoneSyncManager: WCSessionDelegate {
     nonisolated func session(_ session: WCSession, didReceiveMessage message: [String: Any]) {
         Task { @MainActor in
             handleIncomingMessage(message)
+        }
+    }
+
+    nonisolated func session(
+        _ session: WCSession,
+        didReceiveMessage message: [String: Any],
+        replyHandler: @escaping ([String: Any]) -> Void
+    ) {
+        Task { @MainActor in
+            handleIncomingMessage(message)
+            replyHandler([:])
         }
     }
 
