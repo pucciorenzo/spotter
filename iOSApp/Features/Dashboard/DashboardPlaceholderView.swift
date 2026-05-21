@@ -18,15 +18,12 @@ struct TodayView: View {
                 VStack(alignment: .leading, spacing: 22) {
                     TodayHeader(snapshot: snapshot)
 
-                    if let session = activeWorkoutRepository.session {
-                        ActiveWorkoutBanner(session: session, action: showActiveWorkout)
-                    }
-
                     if let suggestedWorkout = snapshot.suggestedWorkout {
-                        SuggestedWorkoutCard(workout: suggestedWorkout) {
-                            activeWorkoutRepository.startMockWorkout()
-                            showActiveWorkout()
-                        }
+                        SuggestedWorkoutCard(
+                            workout: suggestedWorkout,
+                            activeSession: activeWorkoutRepository.session,
+                            action: primaryWorkoutAction
+                        )
                     } else {
                         TodayEmptyPlanCard()
                     }
@@ -80,6 +77,14 @@ struct TodayView: View {
             ? [GridItem(.flexible())]
             : [GridItem(.flexible()), GridItem(.flexible())]
     }
+
+    private func primaryWorkoutAction() {
+        if activeWorkoutRepository.session == nil {
+            activeWorkoutRepository.startMockWorkout()
+        }
+
+        showActiveWorkout()
+    }
 }
 
 private struct TodayHeader: View {
@@ -107,7 +112,8 @@ private struct TodayHeader: View {
 
 private struct SuggestedWorkoutCard: View {
     let workout: SpotterSuggestedWorkout
-    let startWorkout: () -> Void
+    let activeSession: ActiveWorkoutSession?
+    let action: () -> Void
 
     var body: some View {
         GlassCard {
@@ -148,49 +154,20 @@ private struct SuggestedWorkoutCard: View {
                 }
                 .foregroundStyle(SpotterPalette.textSecondary)
 
-                GlassButton(title: "Start", systemImage: "play.fill", action: startWorkout)
-                    .accessibilityLabel("Start \(workout.dayName)")
+                GlassButton(
+                    title: activeSession == nil ? "Start" : "Resume",
+                    systemImage: activeSession == nil ? "play.fill" : "arrow.clockwise",
+                    action: action
+                )
+                .accessibilityLabel(activeSession == nil ? "Start \(workout.dayName)" : "Resume active workout")
+                .accessibilityValue(activeSessionValue)
             }
         }
     }
-}
 
-private struct ActiveWorkoutBanner: View {
-    let session: ActiveWorkoutSession
-    let action: () -> Void
-
-    var body: some View {
-        Button(action: action) {
-            HStack(spacing: 14) {
-                Image(systemName: "figure.strengthtraining.traditional")
-                    .font(.title3)
-                    .symbolRenderingMode(.hierarchical)
-                    .foregroundStyle(SpotterPalette.accentSoft)
-
-                VStack(alignment: .leading, spacing: 3) {
-                    Text(session.currentExercise?.name ?? session.dayName)
-                        .font(.headline)
-                    Text("\(session.dayName) - \(session.completedSetCount)/\(session.totalSetCount) sets")
-                        .font(.caption)
-                        .foregroundStyle(SpotterPalette.textSecondary)
-                }
-
-                Spacer()
-
-                Text("Resume")
-                    .font(.subheadline.weight(.semibold))
-                    .foregroundStyle(SpotterPalette.accentSoft)
-            }
-            .padding(16)
-            .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 24, style: .continuous))
-            .overlay {
-                RoundedRectangle(cornerRadius: 24, style: .continuous)
-                    .strokeBorder(SpotterPalette.glassStroke, lineWidth: 1)
-            }
-        }
-        .buttonStyle(.plain)
-        .accessibilityLabel("Resume active workout")
-        .accessibilityValue("\(session.currentExercise?.name ?? session.dayName), \(session.completedSetCount) of \(session.totalSetCount) sets")
+    private var activeSessionValue: String {
+        guard let activeSession else { return workout.dayName }
+        return "\(activeSession.currentExercise?.name ?? activeSession.dayName), \(activeSession.completedSetCount) of \(activeSession.totalSetCount) sets"
     }
 }
 

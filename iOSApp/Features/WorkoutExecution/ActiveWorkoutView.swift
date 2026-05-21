@@ -9,6 +9,7 @@ struct ActiveWorkoutView: View {
     @AppStorage("activeWorkoutFocusModeDefault") private var focusModeDefault = false
     @State private var isFocusMode = false
     @State private var didApplyFocusDefault = false
+    @State private var showingStopConfirmation = false
     private let timer = Timer.publish(every: 1, on: .main, in: .common).autoconnect()
 
     var body: some View {
@@ -74,14 +75,39 @@ struct ActiveWorkoutView: View {
                     .padding(.horizontal, 20)
                     .padding(.bottom, 18)
                 }
+
             }
             .animation(reduceMotion ? nil : .easeInOut(duration: 0.24), value: isFocusMode)
             .navigationTitle(isFocusMode ? "Focus" : "Active Workout")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button("Close") {
-                        dismiss()
+                    if repository.session != nil {
+                        Button {
+                            SpotterHaptics.selection()
+                            withAnimation(reduceMotion ? nil : .spring(response: 0.24, dampingFraction: 0.88)) {
+                                showingStopConfirmation = true
+                            }
+                        } label: {
+                            Label("Stop", systemImage: "stop.fill")
+                        }
+                        .foregroundStyle(.white)
+                        .tint(.white)
+                        .accessibilityLabel("Stop Workout")
+                        .popover(
+                            isPresented: $showingStopConfirmation,
+                            attachmentAnchor: .point(.center),
+                            arrowEdge: .top
+                        ) {
+                            StopWorkoutConfirmationPopover(
+                                completedSets: repository.session?.completedSetCount ?? 0,
+                                totalSets: repository.session?.totalSetCount ?? 0,
+                                save: { stopWorkout(shouldSave: true) },
+                                discard: { stopWorkout(shouldSave: false) }
+                            )
+                            .presentationCompactAdaptation(.popover)
+                            .presentationBackground(.clear)
+                        }
                     }
                 }
                 ToolbarItemGroup(placement: .primaryAction) {
@@ -102,13 +128,6 @@ struct ActiveWorkoutView: View {
                             Image(systemName: session.isPaused ? "play.fill" : "pause.fill")
                         }
                         .accessibilityLabel(session.isPaused ? "Resume Workout" : "Pause Workout")
-
-                        Button(role: .destructive) {
-                            endWorkout(session: session)
-                        } label: {
-                            Image(systemName: "stop.fill")
-                        }
-                        .accessibilityLabel("End Workout")
                     }
                 }
             }
@@ -170,12 +189,136 @@ struct ActiveWorkoutView: View {
         }
     }
 
-    private func endWorkout(session: ActiveWorkoutSession) {
-        SpotterHaptics.notification(.success)
+    private func stopWorkout(shouldSave: Bool) {
+        guard let session = repository.session else {
+            dismiss()
+            return
+        }
+
+        SpotterHaptics.notification(shouldSave ? .success : .warning)
         liveActivityManager.end(session: session)
         healthKitManager.finishParallelWorkout()
-        repository.endWorkout()
+
+        if shouldSave {
+            repository.endWorkout()
+        } else {
+            repository.discardWorkout()
+        }
+
         dismiss()
+    }
+}
+
+private struct StopWorkoutConfirmationPopover: View {
+    let completedSets: Int
+    let totalSets: Int
+    let save: () -> Void
+    let discard: () -> Void
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            VStack(alignment: .leading, spacing: 4) {
+                Text("Stop workout?")
+                    .font(.subheadline.weight(.medium))
+                    .foregroundStyle(.white.opacity(0.92))
+                Text("\(completedSets) of \(totalSets) sets logged")
+                    .font(.caption)
+                    .foregroundStyle(.white.opacity(0.58))
+            }
+
+            VStack(spacing: 10) {
+                StopWorkoutPopoverButton(
+                    title: "Save Workout",
+                    style: .primary,
+                    action: save
+                )
+
+                StopWorkoutPopoverButton(
+                    title: "Discard Workout",
+                    style: .destructive,
+                    action: discard
+                )
+            }
+        }
+        .padding(16)
+        .frame(width: 292)
+        .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 24, style: .continuous))
+        .background(Color.black.opacity(0.22), in: RoundedRectangle(cornerRadius: 24, style: .continuous))
+        .glassEffect(
+            .regular.interactive(true),
+            in: RoundedRectangle(cornerRadius: 24, style: .continuous)
+        )
+        .overlay {
+            RoundedRectangle(cornerRadius: 24, style: .continuous)
+                .strokeBorder(.white.opacity(0.22), lineWidth: 1)
+        }
+        .overlay(alignment: .topLeading) {
+            RoundedRectangle(cornerRadius: 24, style: .continuous)
+                .stroke(.white.opacity(0.20), lineWidth: 0.8)
+                .blur(radius: 0.8)
+                .padding(1)
+                .mask(
+                    LinearGradient(
+                        colors: [Color.white, Color.white.opacity(0.0)],
+                        startPoint: .topLeading,
+                        endPoint: .bottomTrailing
+                    )
+                )
+        }
+        .shadow(color: .black.opacity(0.26), radius: 22, y: 12)
+        .preferredColorScheme(.dark)
+        .accessibilityElement(children: .contain)
+    }
+}
+
+private struct StopWorkoutPopoverButton: View {
+    enum Style {
+        case primary
+        case destructive
+    }
+
+    let title: String
+    let style: Style
+    let action: () -> Void
+
+    var body: some View {
+        Button {
+            SpotterHaptics.selection()
+            action()
+        } label: {
+            Text(title)
+                .font(.callout.weight(.medium))
+                .lineLimit(1)
+                .minimumScaleFactor(0.82)
+                .frame(maxWidth: .infinity)
+                .frame(minHeight: 46)
+                .foregroundStyle(foreground)
+                .background(background, in: RoundedRectangle(cornerRadius: 20, style: .continuous))
+                .overlay {
+                    RoundedRectangle(cornerRadius: 20, style: .continuous)
+                        .strokeBorder(.white.opacity(0.12), lineWidth: 1)
+                }
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel(title)
+    }
+
+    private var foreground: Color {
+        switch style {
+        case .primary:
+            return .white.opacity(0.92)
+        case .destructive:
+            return .red.opacity(0.92)
+        }
+    }
+
+    private var background: some ShapeStyle {
+        switch style {
+        case .primary:
+            return AnyShapeStyle(.white.opacity(0.10))
+        case .destructive:
+            return AnyShapeStyle(Color.red.opacity(0.08))
+        }
     }
 }
 

@@ -16,6 +16,7 @@ protocol ActiveWorkoutProviding: ObservableObject {
     func pauseWorkout()
     func resumeWorkout()
     func endWorkout()
+    func discardWorkout()
     func addSet(to exerciseId: UUID)
     func removeSet(_ setId: UUID, from exerciseId: UUID)
     func tickRest()
@@ -467,6 +468,10 @@ final class MockActiveWorkoutRepository: ActiveWorkoutProviding {
     }
 
     func endWorkout() {
+        session = nil
+    }
+
+    func discardWorkout() {
         session = nil
     }
 
