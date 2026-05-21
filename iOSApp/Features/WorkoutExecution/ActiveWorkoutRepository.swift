@@ -505,7 +505,9 @@ final class MockActiveWorkoutRepository: ActiveWorkoutProviding {
     func tickRest() {
         guard session?.restStartedAt != nil, session?.isPaused == false else { return }
         mutateSession { session in
-            session.restRemainingSeconds -= 1
+            guard let restStartedAt = session.restStartedAt else { return }
+            let elapsedSeconds = max(0, Int(Date().timeIntervalSince(restStartedAt)))
+            session.restRemainingSeconds = session.restDurationSeconds - elapsedSeconds
         }
     }
 

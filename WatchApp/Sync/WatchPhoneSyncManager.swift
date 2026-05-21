@@ -201,11 +201,16 @@ final class WatchPhoneSyncManager: NSObject, ObservableObject {
             return
         }
 
-        activeWorkoutState = mergedState
+        lastSentActiveWorkoutFingerprint = mergedState.syncFingerprint
+        activeWorkoutState = mergedState.session.status == .inProgress ? mergedState : nil
         lastErrorMessage = nil
 
         do {
-            try cacheStore.saveActiveWorkout(mergedState)
+            if mergedState.session.status == .inProgress {
+                try cacheStore.saveActiveWorkout(mergedState)
+            } else {
+                try cacheStore.clearActiveWorkout()
+            }
         } catch {
             lastErrorMessage = error.localizedDescription
         }
