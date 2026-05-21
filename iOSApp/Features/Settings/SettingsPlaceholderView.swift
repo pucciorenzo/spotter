@@ -3,6 +3,7 @@ import SwiftUI
 struct ProfileView: View {
     let dataProvider: any SpotterDataProviding
     @ObservedObject var healthKitManager: HealthKitWorkoutManager
+    @AppStorage("activeWorkoutFocusModeDefault") private var focusModeDefault = false
     @State private var promptForSetResults = true
 
     private var profile: SpotterProfileSnapshot {
@@ -27,6 +28,11 @@ struct ProfileView: View {
                     }
 
                     ProfileSection(title: "Workout Defaults") {
+                        Toggle(isOn: $focusModeDefault) {
+                            Label("Start Workouts in Focus Mode", systemImage: "scope")
+                        }
+                        .tint(SpotterPalette.accentSoft)
+
                         Toggle(isOn: $promptForSetResults) {
                             Label("Prompt for Set Results", systemImage: "keyboard")
                         }

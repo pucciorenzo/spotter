@@ -5,7 +5,9 @@ struct ActiveWorkoutView: View {
     @ObservedObject var healthKitManager: HealthKitWorkoutManager
     @ObservedObject var liveActivityManager: ActiveWorkoutLiveActivityManager
     @Environment(\.dismiss) private var dismiss
+    @AppStorage("activeWorkoutFocusModeDefault") private var focusModeDefault = false
     @State private var isFocusMode = false
+    @State private var didApplyFocusDefault = false
     private let timer = Timer.publish(every: 1, on: .main, in: .common).autoconnect()
 
     var body: some View {
@@ -110,6 +112,10 @@ struct ActiveWorkoutView: View {
             .spotterScreenChrome()
         }
         .onAppear {
+            if !didApplyFocusDefault {
+                isFocusMode = focusModeDefault
+                didApplyFocusDefault = true
+            }
             if let session = repository.session {
                 liveActivityManager.startOrUpdate(session: session)
             }
