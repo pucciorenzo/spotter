@@ -5,6 +5,9 @@ struct ActiveWorkoutView: View {
     @ObservedObject var healthKitManager: HealthKitWorkoutManager
     @ObservedObject var liveActivityManager: ActiveWorkoutLiveActivityManager
     @Environment(\.dismiss) private var dismiss
+    @AppStorage("activeWorkoutFocusModeDefault") private var focusModeDefault = false
+    @State private var isFocusMode = false
+    @State private var didApplyFocusDefault = false
     private let timer = Timer.publish(every: 1, on: .main, in: .common).autoconnect()
 
     var body: some View {
@@ -15,36 +18,49 @@ struct ActiveWorkoutView: View {
                 if let session = repository.session,
                    let currentExercise = session.currentExercise,
                    let currentSet = session.currentSet {
-                    ScrollView {
-                        VStack(alignment: .leading, spacing: 18) {
-                            ActiveWorkoutHeader(session: session)
-
-                            HealthWorkoutPanel(
-                                session: session,
-                                healthKitManager: healthKitManager
-                            )
-
-                            CurrentSetPanel(
-                                session: session,
-                                exercise: currentExercise,
-                                set: currentSet,
-                                repository: repository
-                            )
-
-                            if let suggestion = currentExercise.previousPerformance {
-                                PreviousPerformanceCard(suggestion: suggestion) {
-                                    repository.applyPreviousSuggestion()
-                                }
-                            }
-
-                            WorkoutExerciseList(
-                                session: session,
-                                repository: repository
-                            )
-                        }
+                    if isFocusMode {
+                        ActiveWorkoutFocusContent(
+                            session: session,
+                            exercise: currentExercise,
+                            set: currentSet,
+                            repository: repository
+                        )
                         .padding(.horizontal, 20)
                         .padding(.top, 18)
-                        .padding(.bottom, 138)
+                        .padding(.bottom, 136)
+                        .transition(.opacity.combined(with: .scale(scale: 0.98)))
+                    } else {
+                        ScrollView {
+                            VStack(alignment: .leading, spacing: 18) {
+                                ActiveWorkoutHeader(session: session)
+
+                                HealthWorkoutPanel(
+                                    session: session,
+                                    healthKitManager: healthKitManager
+                                )
+
+                                CurrentSetPanel(
+                                    session: session,
+                                    exercise: currentExercise,
+                                    set: currentSet,
+                                    repository: repository
+                                )
+
+                                if let suggestion = currentExercise.previousPerformance {
+                                    PreviousPerformanceCard(suggestion: suggestion) {
+                                        repository.applyPreviousSuggestion()
+                                    }
+                                }
+
+                                WorkoutExerciseList(
+                                    session: session,
+                                    repository: repository
+                                )
+                            }
+                            .padding(.horizontal, 20)
+                            .padding(.top, 18)
+                            .padding(.bottom, 138)
+                        }
                     }
 
                     ActiveWorkoutBottomBar(
@@ -57,7 +73,8 @@ struct ActiveWorkoutView: View {
                     .padding(.bottom, 18)
                 }
             }
-            .navigationTitle("Active Workout")
+            .animation(.easeInOut(duration: 0.24), value: isFocusMode)
+            .navigationTitle(isFocusMode ? "Focus" : "Active Workout")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
@@ -67,6 +84,15 @@ struct ActiveWorkoutView: View {
                 }
                 ToolbarItemGroup(placement: .primaryAction) {
                     if let session = repository.session {
+                        Button {
+                            withAnimation(.easeInOut(duration: 0.24)) {
+                                isFocusMode.toggle()
+                            }
+                        } label: {
+                            Image(systemName: isFocusMode ? "rectangle.expand.vertical" : "scope")
+                        }
+                        .accessibilityLabel(isFocusMode ? "Exit Focus Mode" : "Enter Focus Mode")
+
                         Button {
                             togglePause(session: session)
                         } label: {
@@ -86,6 +112,10 @@ struct ActiveWorkoutView: View {
             .spotterScreenChrome()
         }
         .onAppear {
+            if !didApplyFocusDefault {
+                isFocusMode = focusModeDefault
+                didApplyFocusDefault = true
+            }
             if let session = repository.session {
                 liveActivityManager.startOrUpdate(session: session)
             }
@@ -141,6 +171,162 @@ struct ActiveWorkoutView: View {
         healthKitManager.finishParallelWorkout()
         repository.endWorkout()
         dismiss()
+    }
+}
+
+private struct ActiveWorkoutFocusContent: View {
+    let session: ActiveWorkoutSession
+    let exercise: ActiveWorkoutExercise
+    let set: ActiveWorkoutSet
+    @ObservedObject var repository: MockActiveWorkoutRepository
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 18) {
+            GlassCard(cornerRadius: 30, padding: 22) {
+                VStack(alignment: .leading, spacing: 18) {
+                    HStack(alignment: .top, spacing: 14) {
+                        VStack(alignment: .leading, spacing: 8) {
+                            Text(exercise.name)
+                                .font(.system(size: 42, weight: .semibold, design: .rounded))
+                                .lineLimit(2)
+                                .minimumScaleFactor(0.64)
+                            Text(setLabel)
+                                .font(.title3.weight(.semibold))
+                                .foregroundStyle(SpotterPalette.accentSoft)
+                        }
+
+                        Spacer(minLength: 8)
+
+                        VStack(alignment: .trailing, spacing: 5) {
+                            Text(restText)
+                                .font(.system(size: 34, weight: .semibold, design: .rounded))
+                                .monospacedDigit()
+                                .foregroundStyle(restIsRunning ? SpotterPalette.accentSoft : SpotterPalette.textPrimary)
+                            Text("\(session.estimatedRemainingMinutes) min left")
+                                .font(.caption.weight(.semibold))
+                                .foregroundStyle(SpotterPalette.textSecondary)
+                        }
+                    }
+
+                    ActiveMetricPill(
+                        title: session.nextExercise.map { "Next: \($0.name)" } ?? "Last exercise",
+                        systemImage: "forward.end"
+                    )
+                }
+            }
+            .overlay {
+                RoundedRectangle(cornerRadius: 30, style: .continuous)
+                    .strokeBorder(SpotterPalette.accent.opacity(0.46), lineWidth: 1.5)
+            }
+
+            FocusSetInputPanel(
+                set: set,
+                exercise: exercise,
+                repository: repository
+            )
+
+            if let suggestion = exercise.previousPerformance {
+                PreviousPerformanceCard(suggestion: suggestion) {
+                    repository.applyPreviousSuggestion()
+                }
+            }
+
+            Spacer(minLength: 0)
+        }
+    }
+
+    private var setLabel: String {
+        let prefix = set.isWarmup ? "Warm-up" : "Working"
+        return "\(prefix) Set \(set.index) of \(exercise.sets.count)"
+    }
+
+    private var restIsRunning: Bool {
+        session.restStartedAt != nil
+    }
+
+    private var restText: String {
+        guard session.restStartedAt != nil else {
+            return "0:00"
+        }
+
+        if session.restRemainingSeconds >= 0 {
+            return formatTime(session.restRemainingSeconds)
+        }
+
+        return "+\(formatTime(abs(session.restRemainingSeconds)))"
+    }
+}
+
+private struct FocusSetInputPanel: View {
+    let set: ActiveWorkoutSet
+    let exercise: ActiveWorkoutExercise
+    @ObservedObject var repository: MockActiveWorkoutRepository
+
+    var body: some View {
+        GlassCard(cornerRadius: 30, padding: 18) {
+            VStack(spacing: 14) {
+                switch set.kind {
+                case .repsWeight:
+                    VStack(spacing: 12) {
+                        FastNumberControl(
+                            title: "Reps",
+                            value: "\(set.reps)",
+                            inputMode: .integer,
+                            prominence: .focus,
+                            decrement: { repository.updateReps(set.reps - 1) },
+                            increment: { repository.updateReps(set.reps + 1) },
+                            updateText: { text in
+                                if let reps = Int(text) {
+                                    repository.updateReps(reps)
+                                }
+                            }
+                        )
+                        FastNumberControl(
+                            title: "Weight (kg)",
+                            value: format(set.weight),
+                            inputMode: .decimal,
+                            prominence: .focus,
+                            decrement: { repository.updateWeight(set.weight - 2.5) },
+                            increment: { repository.updateWeight(set.weight + 2.5) },
+                            updateText: { text in
+                                if let weight = Double(text.replacingOccurrences(of: ",", with: ".")) {
+                                    repository.updateWeight(weight)
+                                }
+                            }
+                        )
+                    }
+                case .duration:
+                    FastNumberControl(
+                        title: "Duration (s)",
+                        value: "\(set.durationSeconds)",
+                        inputMode: .integer,
+                        prominence: .focus,
+                        decrement: { repository.updateDuration(set.durationSeconds - 5) },
+                        increment: { repository.updateDuration(set.durationSeconds + 5) },
+                        updateText: { text in
+                            if let seconds = Int(text) {
+                                repository.updateDuration(seconds)
+                            }
+                        }
+                    )
+                }
+
+                HStack(spacing: 12) {
+                    EffortControl(
+                        title: "RPE",
+                        value: set.rpe.map { format($0) } ?? "-",
+                        decrement: { repository.updateRPE((set.rpe ?? 7) - 0.5) },
+                        increment: { repository.updateRPE((set.rpe ?? 7) + 0.5) }
+                    )
+                    EffortControl(
+                        title: "RIR",
+                        value: set.rir.map(String.init) ?? "-",
+                        decrement: { repository.updateRIR((set.rir ?? 2) - 1) },
+                        increment: { repository.updateRIR((set.rir ?? 2) + 1) }
+                    )
+                }
+            }
+        }
     }
 }
 
@@ -585,43 +771,51 @@ private struct FastNumberControl: View {
         case decimal
     }
 
+    enum Prominence {
+        case normal
+        case focus
+    }
+
     let title: String
     let value: String
     let inputMode: InputMode
+    var prominence: Prominence = .normal
     let decrement: () -> Void
     let increment: () -> Void
     let updateText: (String) -> Void
 
     var body: some View {
-        VStack(spacing: 10) {
+        VStack(spacing: prominence == .focus ? 14 : 10) {
             Text(title)
-                .font(.caption.weight(.semibold))
+                .font(prominence == .focus ? .headline.weight(.semibold) : .caption.weight(.semibold))
                 .foregroundStyle(SpotterPalette.textSecondary)
-            HStack(spacing: 6) {
-                StepButton(systemImage: "minus", action: decrement, size: 34)
+            HStack(spacing: prominence == .focus ? 12 : 6) {
+                StepButton(systemImage: "minus", action: decrement, size: prominence == .focus ? 48 : 34)
                 EditableNumberText(
                     value: value,
                     inputMode: inputMode,
+                    fontSize: prominence == .focus ? 46 : 28,
                     updateText: updateText
                 )
-                StepButton(systemImage: "plus", action: increment, size: 34)
+                StepButton(systemImage: "plus", action: increment, size: prominence == .focus ? 48 : 34)
             }
         }
-        .padding(12)
-        .background(.white.opacity(0.08), in: RoundedRectangle(cornerRadius: 22, style: .continuous))
+        .padding(prominence == .focus ? 18 : 12)
+        .background(.white.opacity(0.08), in: RoundedRectangle(cornerRadius: prominence == .focus ? 26 : 22, style: .continuous))
     }
 }
 
 private struct EditableNumberText: View {
     let value: String
     let inputMode: FastNumberControl.InputMode
+    var fontSize: CGFloat = 28
     let updateText: (String) -> Void
     @State private var text = ""
     @FocusState private var isFocused: Bool
 
     var body: some View {
         TextField("", text: textBinding)
-            .font(.system(size: 28, weight: .semibold, design: .rounded))
+            .font(.system(size: fontSize, weight: .semibold, design: .rounded))
             .monospacedDigit()
             .keyboardType(inputMode == .decimal ? .decimalPad : .numberPad)
             .multilineTextAlignment(.center)
