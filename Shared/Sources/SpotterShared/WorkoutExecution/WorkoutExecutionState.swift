@@ -93,8 +93,8 @@ public struct WorkoutExecutionState: Codable, Identifiable, Hashable {
         }
 
         var winner = remote.isNewer(than: self) ? remote : self
-        let localLogsById = Dictionary(uniqueKeysWithValues: session.setLogs.map { ($0.id, $0) })
-        let remoteLogsById = Dictionary(uniqueKeysWithValues: remote.session.setLogs.map { ($0.id, $0) })
+        let localLogsById = Self.latestLogsById(session.setLogs)
+        let remoteLogsById = Self.latestLogsById(remote.session.setLogs)
         let allIds = Set(localLogsById.keys).union(remoteLogsById.keys)
         var mergedLogs: [WorkoutSetLogDTO] = allIds.compactMap { id in
             switch (localLogsById[id], remoteLogsById[id]) {
@@ -134,6 +134,19 @@ public struct WorkoutExecutionState: Codable, Identifiable, Hashable {
         winner.session.durationSeconds = max(session.sessionDurationSecondsFallback, remote.session.sessionDurationSecondsFallback)
         winner.revision = max(revision, remote.revision)
         return winner
+    }
+
+    private static func latestLogsById(_ logs: [WorkoutSetLogDTO]) -> [UUID: WorkoutSetLogDTO] {
+        logs.reduce(into: [:]) { partial, log in
+            guard let existing = partial[log.id] else {
+                partial[log.id] = log
+                return
+            }
+
+            if log.completedAt >= existing.completedAt {
+                partial[log.id] = log
+            }
+        }
     }
 
     private func isNewer(than other: WorkoutExecutionState) -> Bool {
@@ -241,7 +254,9 @@ public enum WorkoutExecutionEngine {
             return sortedExercises
         }
 
-        let exerciseById = Dictionary(uniqueKeysWithValues: sortedExercises.map { ($0.id, $0) })
+        let exerciseById = sortedExercises.reduce(into: [UUID: WorkoutExerciseDTO]()) { partial, exercise in
+            partial[exercise.id] = exercise
+        }
         let ordered = state.exerciseOrder.compactMap { exerciseById[$0] }
         let missing = sortedExercises.filter { !state.exerciseOrder.contains($0.id) }
         return ordered + missing

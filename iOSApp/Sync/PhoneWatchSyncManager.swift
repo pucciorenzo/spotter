@@ -210,6 +210,7 @@ final class PhoneWatchSyncManager: NSObject, ObservableObject {
             if let incomingState = try? message.decodeActiveWorkoutState(decoder: decoder) {
                 let mergedState = activeWorkoutState?.mergedWithRemote(incomingState) ?? incomingState
                 if mergedState.syncFingerprint != activeWorkoutState?.syncFingerprint {
+                    lastSentActiveWorkoutFingerprint = mergedState.syncFingerprint
                     autosaveActiveWorkoutState(mergedState)
                     activeWorkoutState = mergedState.session.status == .inProgress ? mergedState : nil
                 }

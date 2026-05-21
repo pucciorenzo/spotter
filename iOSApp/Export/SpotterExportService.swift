@@ -151,40 +151,60 @@ enum SpotterExportService {
         ]]
 
         for plan in plans {
-            for day in plan.days.sorted(by: { $0.orderIndex < $1.orderIndex }) {
-                for exercise in day.exercises.sorted(by: { $0.orderIndex < $1.orderIndex }) {
-                    rows.append([
-                        plan.id.uuidString,
-                        plan.name,
-                        plan.goal,
-                        "\(plan.isActive)",
-                        day.id.uuidString,
-                        day.name,
-                        "\(day.orderIndex)",
-                        exercise.id.uuidString,
-                        exercise.exerciseId.uuidString,
-                        "\(exercise.orderIndex)",
-                        "\(exercise.numberOfSets)",
-                        "\(exercise.warmupSets)",
-                        exercise.targetType.rawValue,
-                        string(exercise.targetReps),
-                        string(exercise.targetRepsMin),
-                        string(exercise.targetRepsMax),
-                        string(exercise.targetDurationSeconds),
-                        string(exercise.startingLoad),
-                        exercise.loadUnit.rawValue,
-                        "\(exercise.restSeconds)",
-                        string(exercise.rpeTarget),
-                        string(exercise.rirTarget),
-                        exercise.supersetGroupId?.uuidString ?? "",
-                        "\(exercise.autoProgressionEnabled)",
-                        exercise.notes
-                    ])
+            let sortedDays = plan.days.sorted(by: { $0.orderIndex < $1.orderIndex })
+            if sortedDays.isEmpty {
+                rows.append(workoutPlanRow(plan: plan, day: nil, exercise: nil))
+                continue
+            }
+
+            for day in sortedDays {
+                let sortedExercises = day.exercises.sorted(by: { $0.orderIndex < $1.orderIndex })
+                if sortedExercises.isEmpty {
+                    rows.append(workoutPlanRow(plan: plan, day: day, exercise: nil))
+                    continue
+                }
+
+                for exercise in sortedExercises {
+                    rows.append(workoutPlanRow(plan: plan, day: day, exercise: exercise))
                 }
             }
         }
 
         return csv(rows)
+    }
+
+    private static func workoutPlanRow(
+        plan: WorkoutPlanDTO,
+        day: WorkoutDayDTO?,
+        exercise: WorkoutExerciseDTO?
+    ) -> [String] {
+        [
+            plan.id.uuidString,
+            plan.name,
+            plan.goal,
+            "\(plan.isActive)",
+            day?.id.uuidString ?? "",
+            day?.name ?? "",
+            day.map { "\($0.orderIndex)" } ?? "",
+            exercise?.id.uuidString ?? "",
+            exercise?.exerciseId.uuidString ?? "",
+            exercise.map { "\($0.orderIndex)" } ?? "",
+            exercise.map { "\($0.numberOfSets)" } ?? "",
+            exercise.map { "\($0.warmupSets)" } ?? "",
+            exercise?.targetType.rawValue ?? "",
+            string(exercise?.targetReps),
+            string(exercise?.targetRepsMin),
+            string(exercise?.targetRepsMax),
+            string(exercise?.targetDurationSeconds),
+            string(exercise?.startingLoad),
+            exercise?.loadUnit.rawValue ?? "",
+            exercise.map { "\($0.restSeconds)" } ?? "",
+            string(exercise?.rpeTarget),
+            string(exercise?.rirTarget),
+            exercise?.supersetGroupId?.uuidString ?? "",
+            exercise.map { "\($0.autoProgressionEnabled)" } ?? "",
+            exercise?.notes ?? ""
+        ]
     }
 
     private static func workoutSessionsCSV(_ sessions: [WorkoutSessionDTO]) -> String {
@@ -230,7 +250,16 @@ enum SpotterExportService {
     }
 
     private static func progressHistoryCSV(_ sessions: [WorkoutSessionDTO]) -> String {
-        let sessionById = Dictionary(uniqueKeysWithValues: sessions.map { ($0.id, $0) })
+        let sessionById = sessions.reduce(into: [UUID: WorkoutSessionDTO]()) { partial, session in
+            guard let existing = partial[session.id] else {
+                partial[session.id] = session
+                return
+            }
+
+            if session.updatedAt >= existing.updatedAt {
+                partial[session.id] = session
+            }
+        }
         var rows = [[
             "set_log_id",
             "session_id",
