@@ -5,6 +5,7 @@ struct ActiveWorkoutView: View {
     @ObservedObject var healthKitManager: HealthKitWorkoutManager
     @ObservedObject var liveActivityManager: ActiveWorkoutLiveActivityManager
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @AppStorage("activeWorkoutFocusModeDefault") private var focusModeDefault = false
     @State private var isFocusMode = false
     @State private var didApplyFocusDefault = false
@@ -61,6 +62,7 @@ struct ActiveWorkoutView: View {
                             .padding(.top, 18)
                             .padding(.bottom, 138)
                         }
+                        .scrollDismissesKeyboard(.interactively)
                     }
 
                     ActiveWorkoutBottomBar(
@@ -73,7 +75,7 @@ struct ActiveWorkoutView: View {
                     .padding(.bottom, 18)
                 }
             }
-            .animation(.easeInOut(duration: 0.24), value: isFocusMode)
+            .animation(reduceMotion ? nil : .easeInOut(duration: 0.24), value: isFocusMode)
             .navigationTitle(isFocusMode ? "Focus" : "Active Workout")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
@@ -85,7 +87,8 @@ struct ActiveWorkoutView: View {
                 ToolbarItemGroup(placement: .primaryAction) {
                     if let session = repository.session {
                         Button {
-                            withAnimation(.easeInOut(duration: 0.24)) {
+                            SpotterHaptics.selection()
+                            withAnimation(reduceMotion ? nil : .easeInOut(duration: 0.24)) {
                                 isFocusMode.toggle()
                             }
                         } label: {
@@ -153,6 +156,7 @@ struct ActiveWorkoutView: View {
     }
 
     private func togglePause(session: ActiveWorkoutSession) {
+        SpotterHaptics.impact(.light)
         if session.isPaused {
             repository.resumeWorkout()
             if let updated = repository.session {
@@ -167,6 +171,7 @@ struct ActiveWorkoutView: View {
     }
 
     private func endWorkout(session: ActiveWorkoutSession) {
+        SpotterHaptics.notification(.success)
         liveActivityManager.end(session: session)
         healthKitManager.finishParallelWorkout()
         repository.endWorkout()
@@ -261,6 +266,7 @@ private struct FocusSetInputPanel: View {
     let set: ActiveWorkoutSet
     let exercise: ActiveWorkoutExercise
     @ObservedObject var repository: MockActiveWorkoutRepository
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
 
     var body: some View {
         GlassCard(cornerRadius: 30, padding: 18) {
@@ -325,6 +331,7 @@ private struct FocusSetInputPanel: View {
                         increment: { repository.updateRIR((set.rir ?? 2) + 1) }
                     )
                 }
+                .stackedWhenAccessibility(dynamicTypeSize)
             }
         }
     }
@@ -381,6 +388,7 @@ private struct CurrentSetPanel: View {
     let exercise: ActiveWorkoutExercise
     let set: ActiveWorkoutSet
     @ObservedObject var repository: MockActiveWorkoutRepository
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
 
     var body: some View {
         GlassCard {
@@ -435,6 +443,7 @@ private struct CurrentSetPanel: View {
                             }
                         )
                     }
+                    .stackedWhenAccessibility(dynamicTypeSize)
                 case .duration:
                     FastNumberControl(
                         title: "Duration (s)",
@@ -464,6 +473,7 @@ private struct CurrentSetPanel: View {
                         increment: { repository.updateRIR((set.rir ?? 2) + 1) }
                     )
                 }
+                .stackedWhenAccessibility(dynamicTypeSize)
             }
         }
         .overlay {
@@ -503,6 +513,9 @@ private struct PreviousPerformanceCard: View {
                     }
                     .buttonStyle(.plain)
                     .accessibilityLabel("Reuse previous values")
+                    .simultaneousGesture(TapGesture().onEnded {
+                        SpotterHaptics.selection()
+                    })
                 }
 
                 Text(suggestion.lastTime)
@@ -578,6 +591,7 @@ private struct ActiveSetRow: View {
 
     var body: some View {
         Button {
+            SpotterHaptics.selection()
             repository.select(exerciseId: exercise.id, setId: set.id)
         } label: {
             HStack(spacing: 12) {
@@ -609,6 +623,7 @@ private struct ActiveSetRow: View {
                 }
 
                 Button {
+                    SpotterHaptics.impact(.light)
                     repository.removeSet(set.id, from: exercise.id)
                 } label: {
                     Image(systemName: "minus.circle")
@@ -624,6 +639,8 @@ private struct ActiveSetRow: View {
             }
         }
         .buttonStyle(.plain)
+        .accessibilityLabel("\(exercise.name), set \(set.index), \(set.resultText)")
+        .accessibilityHint(isCurrent ? "Current set. Double tap to keep selected." : "Double tap to select this set.")
     }
 }
 
@@ -636,6 +653,7 @@ private struct ActiveWorkoutBottomBar: View {
     var body: some View {
         VStack(spacing: 10) {
             GlassButton(title: set.isCompleted ? "Completed" : "Complete Set", systemImage: "checkmark") {
+                SpotterHaptics.notification(.success)
                 repository.completeCurrentSet()
                 healthKitManager.refreshMetrics()
                 if let session = repository.session {
@@ -644,6 +662,7 @@ private struct ActiveWorkoutBottomBar: View {
             }
             HStack(spacing: 10) {
                 GlassButton(title: "Skip", systemImage: "forward.end", style: .secondary) {
+                    SpotterHaptics.impact(.medium)
                     repository.skipCurrentSet()
                     if let session = repository.session {
                         liveActivityManager.update(session: session)
@@ -802,6 +821,7 @@ private struct FastNumberControl: View {
         }
         .padding(prominence == .focus ? 18 : 12)
         .background(.white.opacity(0.08), in: RoundedRectangle(cornerRadius: prominence == .focus ? 26 : 22, style: .continuous))
+        .accessibilityElement(children: .contain)
     }
 }
 
@@ -910,7 +930,10 @@ private struct StepButton: View {
     var size: CGFloat = 44
 
     var body: some View {
-        Button(action: action) {
+        Button {
+            SpotterHaptics.selection()
+            action()
+        } label: {
             Image(systemName: systemImage)
                 .font(.headline.weight(.semibold))
                 .frame(width: size, height: size)
@@ -920,6 +943,7 @@ private struct StepButton: View {
                 }
         }
         .buttonStyle(.plain)
+        .accessibilityLabel(systemImage == "plus" ? "Increase" : "Decrease")
     }
 }
 
@@ -961,4 +985,17 @@ private func format(_ value: Double) -> String {
         liveActivityManager: ActiveWorkoutLiveActivityManager()
     )
         .preferredColorScheme(.dark)
+}
+
+private extension View {
+    @ViewBuilder
+    func stackedWhenAccessibility(_ dynamicTypeSize: DynamicTypeSize) -> some View {
+        if dynamicTypeSize.isAccessibilitySize {
+            VStack(spacing: 12) {
+                self
+            }
+        } else {
+            self
+        }
+    }
 }

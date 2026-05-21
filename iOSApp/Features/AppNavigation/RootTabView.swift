@@ -11,6 +11,7 @@ struct RootTabView: View {
     @StateObject private var healthKitManager = HealthKitWorkoutManager()
     @StateObject private var liveActivityManager = ActiveWorkoutLiveActivityManager()
     @State private var showingActiveWorkout = false
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     private let dataProvider: any SpotterDataProviding = MockSpotterRepository.preview
 
     var body: some View {
@@ -70,12 +71,15 @@ struct RootTabView: View {
 
             if let session = activeWorkoutRepository.session {
                 ActiveWorkoutMiniPlayer(session: session) {
+                    SpotterHaptics.selection()
                     showingActiveWorkout = true
                 }
                 .padding(.horizontal, 16)
                 .padding(.bottom, 58)
+                .transition(reduceMotion ? .opacity : .move(edge: .bottom).combined(with: .opacity))
             }
         }
+        .animation(reduceMotion ? nil : .spring(response: 0.32, dampingFraction: 0.86), value: activeWorkoutRepository.session?.id)
         .fullScreenCover(isPresented: $showingActiveWorkout) {
             ActiveWorkoutView(
                 repository: activeWorkoutRepository,
@@ -204,6 +208,8 @@ private struct ActiveWorkoutMiniPlayer: View {
             .shadow(color: .black.opacity(0.28), radius: 20, y: 12)
         }
         .buttonStyle(.plain)
+        .accessibilityLabel("Resume active workout")
+        .accessibilityValue("\(session.currentExercise?.name ?? session.dayName), \(session.completedSetCount) of \(session.totalSetCount) sets")
     }
 
     private var restText: String {

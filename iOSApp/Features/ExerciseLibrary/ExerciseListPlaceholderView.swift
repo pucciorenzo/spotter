@@ -5,6 +5,7 @@ struct ExerciseListView: View {
     @State private var searchText = ""
     @State private var selectedCategory = "All"
     @State private var showingCreateExerciseSheet = false
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     private var categories: [String] {
         ["All"] + Array(Set(dataProvider.exercises.map(\.primaryCategory))).sorted()
@@ -35,6 +36,7 @@ struct ExerciseListView: View {
                                     title: category,
                                     isSelected: selectedCategory == category
                                 ) {
+                                    SpotterHaptics.selection()
                                     selectedCategory = category
                                 }
                             }
@@ -42,13 +44,19 @@ struct ExerciseListView: View {
                         .padding(.horizontal, 20)
                     }
 
-                    GlassCard(cornerRadius: 26, padding: 14) {
-                        if exercises.isEmpty {
-                            Text("No exercises match this filter.")
-                                .font(.subheadline)
-                                .foregroundStyle(SpotterPalette.textSecondary)
-                                .frame(maxWidth: .infinity, alignment: .leading)
-                        } else {
+                    if exercises.isEmpty {
+                        SpotterStateView(
+                            mode: .empty,
+                            title: "No matching exercises",
+                            message: "Adjust search or filters, or create a custom exercise.",
+                            systemImage: "magnifyingglass",
+                            actionTitle: "Create Exercise"
+                        ) {
+                            showingCreateExerciseSheet = true
+                        }
+                        .padding(.horizontal, 20)
+                    } else {
+                        GlassCard(cornerRadius: 26, padding: 14) {
                             VStack(spacing: 4) {
                                 ForEach(Array(exercises.enumerated()), id: \.element.id) { index, exercise in
                                     NavigationLink {
@@ -68,13 +76,14 @@ struct ExerciseListView: View {
                                 }
                             }
                         }
+                        .padding(.horizontal, 20)
                     }
-                    .padding(.horizontal, 20)
                 }
                 .padding(.top, 14)
                 .padding(.bottom, 34)
             }
         }
+        .animation(reduceMotion ? nil : .easeInOut(duration: 0.2), value: exercises.count)
         .navigationTitle("Exercises")
         .navigationBarTitleDisplayMode(.large)
         .searchable(text: $searchText, placement: .navigationBarDrawer(displayMode: .always), prompt: "Search Exercises")
@@ -182,6 +191,7 @@ private struct CreateExerciseSheet: View {
                         .spotterTextFieldStyle()
 
                     GlassButton(title: "Create Exercise", systemImage: "plus") {
+                        SpotterHaptics.notification(.success)
                         dismiss()
                     }
                     .disabled(name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
@@ -242,6 +252,8 @@ private struct LibraryChip: View {
                 }
         }
         .buttonStyle(.plain)
+        .accessibilityLabel(title)
+        .accessibilityValue(isSelected ? "Selected" : "Not selected")
     }
 }
 

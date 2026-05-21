@@ -48,7 +48,23 @@ enum SpotterAppearance {
     }
 }
 
+enum SpotterHaptics {
+    static func selection() {
+        UISelectionFeedbackGenerator().selectionChanged()
+    }
+
+    static func impact(_ style: UIImpactFeedbackGenerator.FeedbackStyle = .light) {
+        UIImpactFeedbackGenerator(style: style).impactOccurred()
+    }
+
+    static func notification(_ type: UINotificationFeedbackGenerator.FeedbackType) {
+        UINotificationFeedbackGenerator().notificationOccurred(type)
+    }
+}
+
 struct SpotterBackground: View {
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
     var body: some View {
         ZStack {
             LinearGradient(
@@ -61,15 +77,17 @@ struct SpotterBackground: View {
                 endPoint: .bottomTrailing
             )
 
-            RadialGradient(
-                colors: [
-                    SpotterPalette.accent.opacity(0.20),
-                    .clear
-                ],
-                center: .topTrailing,
-                startRadius: 20,
-                endRadius: 360
-            )
+            if !reduceMotion {
+                RadialGradient(
+                    colors: [
+                        SpotterPalette.accent.opacity(0.20),
+                        .clear
+                    ],
+                    center: .topTrailing,
+                    startRadius: 20,
+                    endRadius: 360
+                )
+            }
         }
         .ignoresSafeArea()
     }
@@ -122,6 +140,7 @@ struct GlassButton: View {
             }
             .frame(maxWidth: .infinity)
             .padding(.vertical, 15)
+            .frame(minHeight: 52)
             .foregroundStyle(style == .primary ? SpotterPalette.textPrimary : SpotterPalette.textPrimary)
             .background(buttonBackground, in: RoundedRectangle(cornerRadius: 22, style: .continuous))
             .overlay {
@@ -130,6 +149,7 @@ struct GlassButton: View {
             }
         }
         .buttonStyle(.plain)
+        .accessibilityAddTraits(.isButton)
     }
 
     private var buttonBackground: some ShapeStyle {
@@ -244,6 +264,60 @@ struct WorkoutProgressRing: View {
             }
         }
         .frame(width: 118, height: 118)
+    }
+}
+
+struct SpotterStateView: View {
+    enum Mode {
+        case empty
+        case loading
+        case error
+    }
+
+    let mode: Mode
+    let title: String
+    let message: String
+    let systemImage: String
+    var actionTitle: String?
+    var action: (() -> Void)?
+
+    var body: some View {
+        GlassCard(cornerRadius: 26, padding: 20) {
+            VStack(spacing: 14) {
+                Image(systemName: mode == .loading ? "progress.indicator" : systemImage)
+                    .font(.system(.title2, weight: .semibold))
+                    .symbolRenderingMode(.hierarchical)
+                    .foregroundStyle(mode == .error ? .orange : SpotterPalette.accentSoft)
+                    .frame(width: 54, height: 54)
+                    .background(.thinMaterial, in: Circle())
+                    .accessibilityHidden(true)
+
+                VStack(spacing: 6) {
+                    Text(title)
+                        .font(.headline)
+                        .multilineTextAlignment(.center)
+                    Text(message)
+                        .font(.subheadline)
+                        .foregroundStyle(SpotterPalette.textSecondary)
+                        .multilineTextAlignment(.center)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+
+                if let actionTitle, let action {
+                    Button(action: action) {
+                        Text(actionTitle)
+                            .font(.subheadline.weight(.semibold))
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 12)
+                            .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 18, style: .continuous))
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityLabel(actionTitle)
+                }
+            }
+            .frame(maxWidth: .infinity)
+        }
+        .accessibilityElement(children: .combine)
     }
 }
 
