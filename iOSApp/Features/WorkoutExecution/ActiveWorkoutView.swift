@@ -231,18 +231,16 @@ private struct CurrentSetPanel: View {
                             increment: { repository.updateReps(set.reps + 1) }
                         )
                         FastNumberControl(
-                            title: "Weight",
+                            title: "Weight (kg)",
                             value: format(set.weight),
-                            suffix: "kg",
                             decrement: { repository.updateWeight(set.weight - 2.5) },
                             increment: { repository.updateWeight(set.weight + 2.5) }
                         )
                     }
                 case .duration:
                     FastNumberControl(
-                        title: "Duration",
+                        title: "Duration (s)",
                         value: "\(set.durationSeconds)",
-                        suffix: "s",
                         decrement: { repository.updateDuration(set.durationSeconds - 5) },
                         increment: { repository.updateDuration(set.durationSeconds + 5) }
                     )
@@ -566,7 +564,6 @@ private struct HealthMetricPill: View {
 private struct FastNumberControl: View {
     let title: String
     let value: String
-    var suffix: String?
     let decrement: () -> Void
     let increment: () -> Void
 
@@ -577,21 +574,14 @@ private struct FastNumberControl: View {
                 .foregroundStyle(SpotterPalette.textSecondary)
             HStack(spacing: 6) {
                 StepButton(systemImage: "minus", action: decrement, size: 34)
-                HStack(alignment: .firstTextBaseline, spacing: 3) {
-                    Text(value)
-                        .font(.system(size: 28, weight: .semibold, design: .rounded))
-                        .monospacedDigit()
-                    if let suffix {
-                        Text(suffix)
-                            .font(.caption.weight(.semibold))
-                            .foregroundStyle(SpotterPalette.textSecondary)
-                    }
-                }
-                .lineLimit(1)
-                .minimumScaleFactor(0.74)
-                .allowsTightening(true)
-                .layoutPriority(1)
-                .frame(maxWidth: .infinity)
+                Text(value)
+                    .font(.system(size: 28, weight: .semibold, design: .rounded))
+                    .monospacedDigit()
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.74)
+                    .allowsTightening(true)
+                    .layoutPriority(1)
+                    .frame(maxWidth: .infinity)
                 StepButton(systemImage: "plus", action: increment, size: 34)
             }
         }
