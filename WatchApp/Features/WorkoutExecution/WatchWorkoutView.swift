@@ -7,6 +7,7 @@ struct WatchWorkoutView: View {
     @EnvironmentObject private var syncManager: WatchPhoneSyncManager
     @StateObject private var viewModel: WatchWorkoutViewModel
     @State private var now = Date()
+    @State private var isFocusMode = false
 
     init(plan: WorkoutPlanDTO, day: WorkoutDayDTO) {
         _viewModel = StateObject(wrappedValue: WatchWorkoutViewModel(plan: plan, day: day))
@@ -15,40 +16,45 @@ struct WatchWorkoutView: View {
     var body: some View {
         ScrollView {
             VStack(spacing: 8) {
-                currentSetCard
+                if isFocusMode {
+                    focusContent
+                        .transition(.opacity.combined(with: .scale(scale: 0.98)))
+                } else {
+                    currentSetCard
 
-                if let restText = viewModel.formattedRest(at: now) {
-                    restCard(restText)
-                }
-
-                if viewModel.canCompleteSet {
-                    inputCard
-
-                    if let suggestion = viewModel.currentSuggestion {
-                        suggestionCard(suggestion)
+                    if let restText = viewModel.formattedRest(at: now) {
+                        restCard(restText)
                     }
 
-                    WatchGlassButton(title: "Complete Set", systemImage: "checkmark") {
-                        viewModel.completeCurrentSet()
+                    if viewModel.canCompleteSet {
+                        inputCard
+
+                        if let suggestion = viewModel.currentSuggestion {
+                            suggestionCard(suggestion)
+                        }
+
+                        WatchGlassButton(title: "Complete Set", systemImage: "checkmark") {
+                            viewModel.completeCurrentSet()
+                            syncManager.publishActiveWorkoutState(viewModel.state)
+                        }
+                    }
+
+                    nextExerciseCard
+
+                    if viewModel.isWorkoutComplete {
+                        WatchGlassButton(title: "Finish", systemImage: "flag.checkered") {
+                            viewModel.finishWorkout()
+                        }
+                    }
+
+                    Button(role: .destructive) {
+                        viewModel.skipCurrentSet()
                         syncManager.publishActiveWorkoutState(viewModel.state)
+                    } label: {
+                        Label("Skip Set", systemImage: "forward.end.fill")
                     }
+                    .font(.caption)
                 }
-
-                nextExerciseCard
-
-                if viewModel.isWorkoutComplete {
-                    WatchGlassButton(title: "Finish", systemImage: "flag.checkered") {
-                        viewModel.finishWorkout()
-                    }
-                }
-
-                Button(role: .destructive) {
-                    viewModel.skipCurrentSet()
-                    syncManager.publishActiveWorkoutState(viewModel.state)
-                } label: {
-                    Label("Skip Set", systemImage: "forward.end.fill")
-                }
-                .font(.caption)
             }
             .padding(.horizontal, 7)
             .padding(.vertical, 8)
@@ -64,6 +70,18 @@ struct WatchWorkoutView: View {
             )
         }
         .navigationTitle(viewModel.state.session.dayNameSnapshot)
+        .toolbar {
+            ToolbarItem(placement: .confirmationAction) {
+                Button {
+                    withAnimation(.easeInOut(duration: 0.22)) {
+                        isFocusMode.toggle()
+                    }
+                } label: {
+                    Image(systemName: isFocusMode ? "list.bullet" : "scope")
+                }
+                .accessibilityLabel(isFocusMode ? "Exit Focus Mode" : "Enter Focus Mode")
+            }
+        }
         .onAppear {
             viewModel.configure(snapshot: syncManager.snapshot)
             viewModel.applySyncedState(syncManager.activeWorkoutState)
@@ -108,6 +126,51 @@ struct WatchWorkoutView: View {
             Button("OK", role: .cancel) {}
         } message: {
             Text(viewModel.errorMessage ?? "")
+        }
+    }
+
+    private var focusContent: some View {
+        VStack(spacing: 9) {
+            WatchGlassCard {
+                VStack(alignment: .leading, spacing: 6) {
+                    Text(viewModel.currentExerciseName)
+                        .font(.system(.title2, design: .rounded).weight(.semibold))
+                        .lineLimit(3)
+                        .minimumScaleFactor(0.72)
+                    Text(setProgressText)
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(WatchSpotterPalette.accent)
+                    if let restText = viewModel.formattedRest(at: now) {
+                        HStack(spacing: 5) {
+                            Image(systemName: "timer")
+                            Text(restText)
+                                .font(.system(size: 28, weight: .semibold, design: .rounded))
+                                .monospacedDigit()
+                        }
+                        .foregroundStyle(restIsOver ? .green : .primary)
+                    }
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+            }
+
+            if viewModel.canCompleteSet {
+                focusInputCard
+
+                WatchGlassButton(title: "Complete", systemImage: "checkmark") {
+                    viewModel.completeCurrentSet()
+                    syncManager.publishActiveWorkoutState(viewModel.state)
+                }
+            }
+
+            nextExerciseCard
+
+            Button(role: .destructive) {
+                viewModel.skipCurrentSet()
+                syncManager.publishActiveWorkoutState(viewModel.state)
+            } label: {
+                Label("Skip", systemImage: "forward.end.fill")
+            }
+            .font(.caption2)
         }
     }
 
@@ -187,6 +250,43 @@ struct WatchWorkoutView: View {
                         step: 1,
                         nilValue: -1,
                         nilLabel: "-"
+                    )
+                }
+            }
+        }
+    }
+
+    private var focusInputCard: some View {
+        WatchGlassCard {
+            VStack(spacing: 9) {
+                if viewModel.usesDuration {
+                    FastWatchNumberField(
+                        title: "Duration",
+                        suffix: "s",
+                        value: $viewModel.durationValue,
+                        range: 0...3600,
+                        step: 5,
+                        prominence: .focus
+                    )
+                } else {
+                    FastWatchNumberField(
+                        title: "Reps",
+                        suffix: "",
+                        value: $viewModel.repsValue,
+                        range: 0...200,
+                        step: 1,
+                        prominence: .focus
+                    )
+                }
+
+                if viewModel.currentExercise?.loadUnit != .bodyweight {
+                    FastWatchNumberField(
+                        title: "Weight",
+                        suffix: viewModel.currentExercise?.loadUnit.rawValue ?? "",
+                        value: $viewModel.loadValue,
+                        range: 0...500,
+                        step: 2.5,
+                        prominence: .focus
                     )
                 }
             }
@@ -434,6 +534,11 @@ private struct WatchExerciseReplacementView: View {
 }
 
 private struct FastWatchNumberField: View {
+    enum Prominence {
+        case normal
+        case focus
+    }
+
     let title: String
     let suffix: String
     @Binding var value: Double
@@ -441,23 +546,24 @@ private struct FastWatchNumberField: View {
     let step: Double
     var nilValue: Double?
     var nilLabel: String?
+    var prominence: Prominence = .normal
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 5) {
+        VStack(alignment: .leading, spacing: prominence == .focus ? 7 : 5) {
             Text(title)
-                .font(.caption2.weight(.semibold))
+                .font(prominence == .focus ? .caption.weight(.semibold) : .caption2.weight(.semibold))
                 .foregroundStyle(.secondary)
-            HStack(spacing: 8) {
+            HStack(spacing: prominence == .focus ? 10 : 8) {
                 Button {
                     value = max(range.lowerBound, value - step)
                 } label: {
                     Image(systemName: "minus")
-                        .frame(width: 30, height: 30)
+                        .frame(width: prominence == .focus ? 34 : 30, height: prominence == .focus ? 34 : 30)
                 }
                 .buttonStyle(.bordered)
 
                 Text(displayText)
-                    .font(.system(size: 25, weight: .semibold, design: .rounded).monospacedDigit())
+                    .font(.system(size: prominence == .focus ? 31 : 25, weight: .semibold, design: .rounded).monospacedDigit())
                     .lineLimit(1)
                     .minimumScaleFactor(0.72)
                     .frame(maxWidth: .infinity)
@@ -476,7 +582,7 @@ private struct FastWatchNumberField: View {
                     value = min(range.upperBound, value + step)
                 } label: {
                     Image(systemName: "plus")
-                        .frame(width: 30, height: 30)
+                        .frame(width: prominence == .focus ? 34 : 30, height: prominence == .focus ? 34 : 30)
                 }
                 .buttonStyle(.bordered)
             }
