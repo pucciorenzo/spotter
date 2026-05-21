@@ -2,6 +2,7 @@ import SwiftUI
 
 struct ProgressScreenView: View {
     let dataProvider: any SpotterDataProviding
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
 
     private var snapshot: SpotterProgressSnapshot {
         dataProvider.progress
@@ -13,7 +14,7 @@ struct ProgressScreenView: View {
 
             ScrollView {
                 VStack(alignment: .leading, spacing: 22) {
-                    LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 14) {
+                    LazyVGrid(columns: metricColumns, spacing: 14) {
                         ForEach(snapshot.headlineMetrics) { metric in
                             MetricCard(
                                 title: metric.title,
@@ -28,12 +29,21 @@ struct ProgressScreenView: View {
                         Text("Exercise Progress")
                             .font(.headline)
 
-                        GlassCard {
-                            VStack(spacing: 4) {
-                                ForEach(Array(snapshot.exerciseTrends.enumerated()), id: \.element.id) { index, trend in
-                                    ExerciseTrendRow(trend: trend)
-                                    if index < snapshot.exerciseTrends.count - 1 {
-                                        Divider().overlay(.white.opacity(0.10))
+                        if snapshot.exerciseTrends.isEmpty {
+                            SpotterStateView(
+                                mode: .empty,
+                                title: "No exercise history",
+                                message: "Exercise trends appear after completed workouts.",
+                                systemImage: "chart.line.uptrend.xyaxis"
+                            )
+                        } else {
+                            GlassCard {
+                                VStack(spacing: 4) {
+                                    ForEach(Array(snapshot.exerciseTrends.enumerated()), id: \.element.id) { index, trend in
+                                        ExerciseTrendRow(trend: trend)
+                                        if index < snapshot.exerciseTrends.count - 1 {
+                                            Divider().overlay(.white.opacity(0.10))
+                                        }
                                     }
                                 }
                             }
@@ -55,6 +65,12 @@ struct ProgressScreenView: View {
         .navigationTitle("Progress")
         .navigationBarTitleDisplayMode(.large)
         .spotterScreenChrome()
+    }
+
+    private var metricColumns: [GridItem] {
+        dynamicTypeSize.isAccessibilitySize
+            ? [GridItem(.flexible())]
+            : [GridItem(.flexible()), GridItem(.flexible())]
     }
 }
 

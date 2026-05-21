@@ -4,6 +4,7 @@ struct TodayView: View {
     let dataProvider: any SpotterDataProviding
     @ObservedObject var activeWorkoutRepository: MockActiveWorkoutRepository
     let showActiveWorkout: () -> Void
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
 
     private var snapshot: SpotterTodaySnapshot {
         dataProvider.today
@@ -30,7 +31,7 @@ struct TodayView: View {
                         TodayEmptyPlanCard()
                     }
 
-                    LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 14) {
+                    LazyVGrid(columns: metricColumns, spacing: 14) {
                         ForEach(snapshot.metrics) { metric in
                             MetricCard(
                                 title: metric.title,
@@ -45,13 +46,22 @@ struct TodayView: View {
                         Text("Recent Workouts")
                             .font(.headline)
 
-                        ScrollView(.horizontal, showsIndicators: false) {
-                            HStack(spacing: 14) {
-                                ForEach(snapshot.recentWorkouts) { workout in
-                                    RecentWorkoutCard(workout: workout)
+                        if snapshot.recentWorkouts.isEmpty {
+                            SpotterStateView(
+                                mode: .empty,
+                                title: "No workouts yet",
+                                message: "Completed sessions will appear here after you finish logging.",
+                                systemImage: "clock.arrow.circlepath"
+                            )
+                        } else {
+                            ScrollView(.horizontal, showsIndicators: false) {
+                                HStack(spacing: 14) {
+                                    ForEach(snapshot.recentWorkouts) { workout in
+                                        RecentWorkoutCard(workout: workout)
+                                    }
                                 }
+                                .padding(.vertical, 2)
                             }
-                            .padding(.vertical, 2)
                         }
                     }
                 }
@@ -63,6 +73,12 @@ struct TodayView: View {
         .navigationTitle("Today")
         .navigationBarTitleDisplayMode(.large)
         .spotterScreenChrome()
+    }
+
+    private var metricColumns: [GridItem] {
+        dynamicTypeSize.isAccessibilitySize
+            ? [GridItem(.flexible())]
+            : [GridItem(.flexible()), GridItem(.flexible())]
     }
 }
 
@@ -133,6 +149,7 @@ private struct SuggestedWorkoutCard: View {
                 .foregroundStyle(SpotterPalette.textSecondary)
 
                 GlassButton(title: "Start", systemImage: "play.fill", action: startWorkout)
+                    .accessibilityLabel("Start \(workout.dayName)")
             }
         }
     }
@@ -172,6 +189,8 @@ private struct ActiveWorkoutBanner: View {
             }
         }
         .buttonStyle(.plain)
+        .accessibilityLabel("Resume active workout")
+        .accessibilityValue("\(session.currentExercise?.name ?? session.dayName), \(session.completedSetCount) of \(session.totalSetCount) sets")
     }
 }
 
@@ -191,6 +210,7 @@ private struct TodayEmptyPlanCard: View {
                     .foregroundStyle(SpotterPalette.textSecondary)
 
                 GlassButton(title: "Create Plan", systemImage: "plus")
+                    .accessibilityLabel("Create workout plan")
             }
         }
     }
@@ -238,6 +258,7 @@ private struct TodayStatusPill: View {
                 Capsule()
                     .strokeBorder(SpotterPalette.glassStroke, lineWidth: 1)
             }
+            .accessibilityElement(children: .combine)
     }
 }
 

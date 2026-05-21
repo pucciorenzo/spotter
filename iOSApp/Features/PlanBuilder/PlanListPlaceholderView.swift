@@ -6,6 +6,7 @@ struct PlanListView: View {
     let showActiveWorkout: () -> Void
     @State private var searchText = ""
     @State private var showingCreatePlanSheet = false
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     private var plans: [SpotterPlanSummary] {
         let query = searchText.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -31,26 +32,38 @@ struct PlanListView: View {
             } else {
                 ScrollView {
                     VStack(spacing: 14) {
-                        ForEach(plans) { plan in
-                            NavigationLink {
-                                PlanDetailView(
-                                    plan: plan,
-                                    activeWorkoutRepository: activeWorkoutRepository,
-                                    showActiveWorkout: showActiveWorkout
-                                )
-                            } label: {
-                                PlanCard(plan: plan)
+                        if plans.isEmpty {
+                            SpotterStateView(
+                                mode: .empty,
+                                title: "No matching plans",
+                                message: "Try another search or create a new plan.",
+                                systemImage: "magnifyingglass",
+                                actionTitle: "Create Plan"
+                            ) {
+                                showingCreatePlanSheet = true
                             }
-                            .buttonStyle(.plain)
-                            .contextMenu {
-                                Button {
+                        } else {
+                            ForEach(plans) { plan in
+                                NavigationLink {
+                                    PlanDetailView(
+                                        plan: plan,
+                                        activeWorkoutRepository: activeWorkoutRepository,
+                                        showActiveWorkout: showActiveWorkout
+                                    )
                                 } label: {
-                                    Label("Make Active", systemImage: "checkmark.circle")
+                                    PlanCard(plan: plan)
                                 }
+                                .buttonStyle(.plain)
+                                .contextMenu {
+                                    Button {
+                                    } label: {
+                                        Label("Make Active", systemImage: "checkmark.circle")
+                                    }
 
-                                Button {
-                                } label: {
-                                    Label("Edit Plan", systemImage: "pencil")
+                                    Button {
+                                    } label: {
+                                        Label("Edit Plan", systemImage: "pencil")
+                                    }
                                 }
                             }
                         }
@@ -61,6 +74,7 @@ struct PlanListView: View {
                 }
             }
         }
+        .animation(reduceMotion ? nil : .easeInOut(duration: 0.2), value: plans.count)
         .navigationTitle("Plans")
         .navigationBarTitleDisplayMode(.large)
         .searchable(text: $searchText, placement: .navigationBarDrawer(displayMode: .always), prompt: "Search Plans")
@@ -187,6 +201,7 @@ private struct PlanDetailView: View {
             }
 
             GlassButton(title: "Start Workout", systemImage: "play.fill") {
+                SpotterHaptics.impact(.medium)
                 activeWorkoutRepository.startMockWorkout()
                 showActiveWorkout()
             }
@@ -246,6 +261,7 @@ private struct PlanDayDetailView: View {
             }
 
             GlassButton(title: "Start Workout", systemImage: "play.fill") {
+                SpotterHaptics.impact(.medium)
                 activeWorkoutRepository.startMockWorkout()
                 showActiveWorkout()
             }
@@ -286,6 +302,7 @@ private struct PlansEmptyState: View {
 
             GlassButton(title: "Create Plan", systemImage: "plus", action: onCreate)
                 .frame(maxWidth: 260)
+                .accessibilityLabel("Create workout plan")
 
             Spacer(minLength: 84)
         }
@@ -321,6 +338,7 @@ private struct CreatePlanSheet: View {
                         }
 
                     GlassButton(title: "Create Plan", systemImage: "plus") {
+                        SpotterHaptics.notification(.success)
                         dismiss()
                     }
                     .disabled(planName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)

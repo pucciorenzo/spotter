@@ -11,6 +11,7 @@ struct ProfileView: View {
     @State private var exportURLs: [URL] = []
     @State private var showingExporter = false
     @State private var exportErrorMessage: String?
+    @State private var isExporting = false
 
     private var profile: SpotterProfileSnapshot {
         dataProvider.profile
@@ -85,12 +86,30 @@ struct ProfileView: View {
                     }
 
                     ProfileSection(title: "Data") {
+                        if isExporting {
+                            HStack(spacing: 12) {
+                                ProgressView()
+                                    .tint(SpotterPalette.accentSoft)
+                                VStack(alignment: .leading, spacing: 3) {
+                                    Text("Preparing export")
+                                        .font(.subheadline.weight(.semibold))
+                                    Text("Creating local files on this device.")
+                                        .font(.caption)
+                                        .foregroundStyle(SpotterPalette.textSecondary)
+                                }
+                            }
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .accessibilityElement(children: .combine)
+                        }
+
                         ProfileActionRow(title: "Export CSV", systemImage: "tablecells") {
                             exportCSV()
                         }
+                        .disabled(isExporting)
                         ProfileActionRow(title: "Export JSON", systemImage: "curlybraces.square") {
                             exportJSON()
                         }
+                        .disabled(isExporting)
                         ProfileActionRow(title: "Import Data", systemImage: "square.and.arrow.down")
                         ProfileActionRow(title: "Privacy Information", systemImage: "lock.shield")
                     }
@@ -119,19 +138,27 @@ struct ProfileView: View {
     }
 
     private func exportCSV() {
+        isExporting = true
+        defer { isExporting = false }
         do {
             exportURLs = try SpotterExportService.makeCSVExport(context: modelContext)
+            SpotterHaptics.notification(.success)
             showingExporter = true
         } catch {
+            SpotterHaptics.notification(.error)
             exportErrorMessage = error.localizedDescription
         }
     }
 
     private func exportJSON() {
+        isExporting = true
+        defer { isExporting = false }
         do {
             exportURLs = try SpotterExportService.makeJSONExport(context: modelContext)
+            SpotterHaptics.notification(.success)
             showingExporter = true
         } catch {
+            SpotterHaptics.notification(.error)
             exportErrorMessage = error.localizedDescription
         }
     }
@@ -208,6 +235,7 @@ private struct ProfileActionRow: View {
             }
         }
         .buttonStyle(.plain)
+        .accessibilityLabel(title)
     }
 }
 
