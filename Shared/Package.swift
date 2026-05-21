@@ -15,6 +15,10 @@ let package = Package(
         )
     ],
     targets: [
-        .target(name: "SpotterShared")
+        .target(name: "SpotterShared"),
+        .testTarget(
+            name: "SpotterSharedTests",
+            dependencies: ["SpotterShared"]
+        )
     ]
 )
