@@ -10,6 +10,7 @@ struct PlanListView: View {
     let showActiveWorkout: () -> Void
     @State private var searchText = ""
     @State private var showingCreatePlanEditor = false
+    @State private var showsNavigationTitle = false
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     private var plans: [SpotterPlanSummary] {
@@ -88,8 +89,13 @@ struct PlanListView: View {
                     }
                 }
                 .padding(.horizontal, 20)
-                .padding(.top, 14)
+                .padding(.top, 8)
                 .padding(.bottom, 34)
+            }
+            .onScrollGeometryChange(for: Bool.self) { geometry in
+                geometry.contentOffset.y > 24
+            } action: { _, isScrolled in
+                showsNavigationTitle = isScrolled
             }
 
             if showingCreatePlanEditor {
@@ -103,10 +109,14 @@ struct PlanListView: View {
         }
         .animation(reduceMotion ? nil : .spring(response: 0.46, dampingFraction: 0.86), value: showingCreatePlanEditor)
         .animation(reduceMotion ? nil : .easeInOut(duration: 0.2), value: plans.count)
-        .navigationTitle("Plans")
-        .navigationBarTitleDisplayMode(.large)
+        .navigationTitle("")
+        .navigationBarTitleDisplayMode(.inline)
         .searchable(text: $searchText, placement: .navigationBarDrawer(displayMode: .always), prompt: "Search Plans")
         .toolbar {
+            ToolbarItem(placement: .principal) {
+                SpotterInlineNavigationTitle(title: "Plans", isVisible: showsNavigationTitle)
+            }
+
             ToolbarItem(placement: .topBarTrailing) {
                 if !showingCreatePlanEditor {
                     Button {

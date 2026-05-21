@@ -6,6 +6,7 @@ struct ExerciseListView: View {
     @State private var selectedCategories: Set<String> = []
     @State private var showingCreateExercise = false
     @State private var createExerciseSourceID = "create-exercise-toolbar"
+    @State private var showsNavigationTitle = false
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Namespace private var createTransitionNamespace
 
@@ -82,15 +83,24 @@ struct ExerciseListView: View {
                         .padding(.horizontal, 20)
                     }
                 }
-                .padding(.top, 14)
+                .padding(.top, 8)
                 .padding(.bottom, 34)
+            }
+            .onScrollGeometryChange(for: Bool.self) { geometry in
+                geometry.contentOffset.y > 24
+            } action: { _, isScrolled in
+                showsNavigationTitle = isScrolled
             }
         }
         .animation(reduceMotion ? nil : .easeInOut(duration: 0.2), value: exercises.count)
-        .navigationTitle("Exercises")
-        .navigationBarTitleDisplayMode(.large)
+        .navigationTitle("")
+        .navigationBarTitleDisplayMode(.inline)
         .searchable(text: $searchText, placement: .navigationBarDrawer(displayMode: .always), prompt: "Search Exercises")
         .toolbar {
+            ToolbarItem(placement: .principal) {
+                SpotterInlineNavigationTitle(title: "Exercises", isVisible: showsNavigationTitle)
+            }
+
             ToolbarItem(placement: .topBarTrailing) {
                 createExerciseButton(sourceID: "create-exercise-toolbar") {
                     GlassIconButtonLabel(systemImage: "plus")

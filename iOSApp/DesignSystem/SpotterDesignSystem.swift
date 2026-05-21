@@ -17,9 +17,9 @@ enum SpotterPalette {
 enum SpotterAppearance {
     static func configure() {
         let navAppearance = UINavigationBarAppearance()
-        navAppearance.configureWithOpaqueBackground()
-        navAppearance.backgroundColor = UIColor(red: 0.04, green: 0.06, blue: 0.09, alpha: 1.0)
-        navAppearance.shadowColor = UIColor.white.withAlphaComponent(0.08)
+        navAppearance.configureWithTransparentBackground()
+        navAppearance.backgroundColor = .clear
+        navAppearance.shadowColor = .clear
         navAppearance.titleTextAttributes = [
             .foregroundColor: UIColor.white.withAlphaComponent(0.96)
         ]
@@ -394,8 +394,7 @@ struct SpotterScreenChrome: ViewModifier {
             .foregroundStyle(SpotterPalette.textPrimary)
             .tint(SpotterPalette.accentSoft)
             .toolbarColorScheme(.dark, for: .navigationBar)
-            .toolbarBackground(SpotterPalette.navGlass, for: .navigationBar)
-            .toolbarBackground(.visible, for: .navigationBar)
+            .toolbarBackground(.hidden, for: .navigationBar)
             .toolbarColorScheme(.dark, for: .tabBar)
             .toolbarBackground(SpotterPalette.navGlass, for: .tabBar)
             .toolbarBackground(.visible, for: .tabBar)
@@ -434,9 +433,20 @@ extension View {
     }
 
     func spotterNavigationChrome() -> some View {
-        background(SpotterPalette.navGlass.ignoresSafeArea())
+        background(SpotterPalette.backgroundBottom.ignoresSafeArea())
             .toolbarColorScheme(.dark, for: .navigationBar)
-            .toolbarBackground(SpotterPalette.navGlass, for: .navigationBar)
-            .toolbarBackground(.visible, for: .navigationBar)
+            .toolbarBackground(.hidden, for: .navigationBar)
+    }
+}
+
+struct SpotterInlineNavigationTitle: View {
+    let title: String
+    let isVisible: Bool
+
+    var body: some View {
+        Text(title)
+            .font(.headline.weight(.semibold))
+            .foregroundStyle(SpotterPalette.textPrimary.opacity(isVisible ? 1 : 0))
+            .animation(.easeInOut(duration: 0.18), value: isVisible)
     }
 }
