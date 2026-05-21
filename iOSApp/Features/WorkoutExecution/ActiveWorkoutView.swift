@@ -21,15 +21,18 @@ struct ActiveWorkoutView: View {
                    let currentExercise = session.currentExercise,
                    let currentSet = session.currentSet {
                     if isFocusMode {
-                        ActiveWorkoutFocusContent(
-                            session: session,
-                            exercise: currentExercise,
-                            set: currentSet,
-                            repository: repository
-                        )
-                        .padding(.horizontal, 20)
-                        .padding(.top, 18)
-                        .padding(.bottom, 136)
+                        ScrollView {
+                            ActiveWorkoutFocusContent(
+                                session: session,
+                                exercise: currentExercise,
+                                set: currentSet,
+                                repository: repository
+                            )
+                            .padding(.horizontal, 20)
+                            .padding(.top, 18)
+                            .padding(.bottom, 136)
+                        }
+                        .scrollDismissesKeyboard(.interactively)
                         .transition(.opacity.combined(with: .scale(scale: 0.98)))
                     } else {
                         ScrollView {
@@ -156,6 +159,7 @@ struct ActiveWorkoutView: View {
                 liveActivityManager.startOrUpdate(session: session)
             }
         }
+        .interactiveDismissDisabled(isFocusMode)
     }
 
     private var activityVersion: String {
