@@ -1,10 +1,16 @@
 import SwiftUI
+import SwiftData
+import UIKit
 
 struct ProfileView: View {
     let dataProvider: any SpotterDataProviding
     @ObservedObject var healthKitManager: HealthKitWorkoutManager
+    @Environment(\.modelContext) private var modelContext
     @AppStorage("activeWorkoutFocusModeDefault") private var focusModeDefault = false
     @State private var promptForSetResults = true
+    @State private var exportURLs: [URL] = []
+    @State private var showingExporter = false
+    @State private var exportErrorMessage: String?
 
     private var profile: SpotterProfileSnapshot {
         dataProvider.profile
@@ -79,7 +85,12 @@ struct ProfileView: View {
                     }
 
                     ProfileSection(title: "Data") {
-                        ProfileActionRow(title: "Export Data", systemImage: "square.and.arrow.up")
+                        ProfileActionRow(title: "Export CSV", systemImage: "tablecells") {
+                            exportCSV()
+                        }
+                        ProfileActionRow(title: "Export JSON", systemImage: "curlybraces.square") {
+                            exportJSON()
+                        }
                         ProfileActionRow(title: "Import Data", systemImage: "square.and.arrow.down")
                         ProfileActionRow(title: "Privacy Information", systemImage: "lock.shield")
                     }
@@ -97,6 +108,43 @@ struct ProfileView: View {
         .navigationTitle("Profile")
         .navigationBarTitleDisplayMode(.large)
         .spotterScreenChrome()
+        .sheet(isPresented: $showingExporter) {
+            ActivityView(activityItems: exportURLs)
+        }
+        .alert("Export Failed", isPresented: exportErrorBinding) {
+            Button("OK", role: .cancel) {}
+        } message: {
+            Text(exportErrorMessage ?? "")
+        }
+    }
+
+    private func exportCSV() {
+        do {
+            exportURLs = try SpotterExportService.makeCSVExport(context: modelContext)
+            showingExporter = true
+        } catch {
+            exportErrorMessage = error.localizedDescription
+        }
+    }
+
+    private func exportJSON() {
+        do {
+            exportURLs = try SpotterExportService.makeJSONExport(context: modelContext)
+            showingExporter = true
+        } catch {
+            exportErrorMessage = error.localizedDescription
+        }
+    }
+
+    private var exportErrorBinding: Binding<Bool> {
+        Binding(
+            get: { exportErrorMessage != nil },
+            set: { isPresented in
+                if !isPresented {
+                    exportErrorMessage = nil
+                }
+            }
+        )
     }
 }
 
@@ -142,10 +190,10 @@ private struct ProfileRow: View {
 private struct ProfileActionRow: View {
     let title: String
     let systemImage: String
+    var action: () -> Void = {}
 
     var body: some View {
-        Button {
-        } label: {
+        Button(action: action) {
             HStack(spacing: 12) {
                 Image(systemName: systemImage)
                     .frame(width: 24)
@@ -160,6 +208,17 @@ private struct ProfileActionRow: View {
             }
         }
         .buttonStyle(.plain)
+    }
+}
+
+private struct ActivityView: UIViewControllerRepresentable {
+    let activityItems: [Any]
+
+    func makeUIViewController(context: Context) -> UIActivityViewController {
+        UIActivityViewController(activityItems: activityItems, applicationActivities: nil)
+    }
+
+    func updateUIViewController(_ uiViewController: UIActivityViewController, context: Context) {
     }
 }
 
