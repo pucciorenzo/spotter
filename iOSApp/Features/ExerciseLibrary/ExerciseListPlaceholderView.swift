@@ -4,8 +4,10 @@ struct ExerciseListView: View {
     let dataProvider: any SpotterDataProviding
     @State private var searchText = ""
     @State private var selectedCategories: Set<String> = []
-    @State private var showingCreateExerciseSheet = false
+    @State private var showingCreateExercise = false
+    @State private var createExerciseSourceID = "create-exercise-toolbar"
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Namespace private var createTransitionNamespace
 
     private var categories: [String] {
         ["All"] + Array(Set(dataProvider.exercises.map(\.primaryCategory))).sorted()
@@ -49,10 +51,11 @@ struct ExerciseListView: View {
                             mode: .empty,
                             title: "No matching exercises",
                             message: "Adjust search or filters, or create a custom exercise.",
-                            systemImage: "magnifyingglass",
-                            actionTitle: "Create Exercise"
-                        ) {
-                            showingCreateExerciseSheet = true
+                            systemImage: "magnifyingglass"
+                        )
+
+                        createExerciseButton(sourceID: "create-exercise-empty") {
+                            GlassButtonLabel(title: "Create Exercise", systemImage: "plus")
                         }
                         .padding(.horizontal, 20)
                     } else {
@@ -89,22 +92,31 @@ struct ExerciseListView: View {
         .searchable(text: $searchText, placement: .navigationBarDrawer(displayMode: .always), prompt: "Search Exercises")
         .toolbar {
             ToolbarItem(placement: .topBarTrailing) {
-                Button {
-                    showingCreateExerciseSheet = true
-                } label: {
-                    Image(systemName: "plus")
-                        .font(.headline.weight(.semibold))
+                createExerciseButton(sourceID: "create-exercise-toolbar") {
+                    GlassIconButtonLabel(systemImage: "plus")
                 }
                 .accessibilityLabel("Create Exercise")
             }
         }
-        .sheet(isPresented: $showingCreateExerciseSheet) {
-            CreateExerciseSheet()
-                .presentationDetents([.height(380), .medium])
-                .presentationDragIndicator(.visible)
-                .presentationBackground(.ultraThinMaterial)
+        .navigationDestination(isPresented: $showingCreateExercise) {
+            CreateExerciseView()
+                .spotterZoomDestination(createExerciseSourceID, in: createTransitionNamespace, reduceMotion: reduceMotion)
         }
         .spotterScreenChrome()
+    }
+
+    private func createExerciseButton<Label: View>(
+        sourceID: String,
+        @ViewBuilder label: () -> Label
+    ) -> some View {
+        Button {
+            createExerciseSourceID = sourceID
+            showingCreateExercise = true
+        } label: {
+            label()
+        }
+        .buttonStyle(.plain)
+        .spotterZoomSource(sourceID, in: createTransitionNamespace, reduceMotion: reduceMotion)
     }
 
     private func isCategorySelected(_ category: String) -> Bool {
@@ -181,55 +193,49 @@ private struct ExerciseDetailView: View {
     }
 }
 
-private struct CreateExerciseSheet: View {
+private struct CreateExerciseView: View {
     @Environment(\.dismiss) private var dismiss
     @State private var name = ""
     @State private var category = ""
     @State private var equipment = ""
-    @FocusState private var isNameFocused: Bool
 
     var body: some View {
-        NavigationStack {
-            ZStack {
-                SpotterBackground()
+        ZStack {
+            SpotterBackground()
 
-                VStack(spacing: 14) {
-                    TextField("Exercise Name", text: $name)
-                        .focused($isNameFocused)
-                        .textInputAutocapitalization(.words)
-                        .spotterTextFieldStyle()
+            VStack(spacing: 14) {
+                TextField("Exercise Name", text: $name)
+                    .textInputAutocapitalization(.words)
+                    .spotterTextFieldStyle()
 
-                    TextField("Primary Category", text: $category)
-                        .textInputAutocapitalization(.words)
-                        .spotterTextFieldStyle()
+                TextField("Primary Category", text: $category)
+                    .textInputAutocapitalization(.words)
+                    .spotterTextFieldStyle()
 
-                    TextField("Equipment", text: $equipment)
-                        .textInputAutocapitalization(.words)
-                        .spotterTextFieldStyle()
+                TextField("Equipment", text: $equipment)
+                    .textInputAutocapitalization(.words)
+                    .spotterTextFieldStyle()
 
-                    GlassButton(title: "Create Exercise", systemImage: "plus") {
-                        SpotterHaptics.notification(.success)
-                        dismiss()
-                    }
-                    .disabled(name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
-
-                    Spacer()
+                GlassButton(title: "Create Exercise", systemImage: "plus") {
+                    SpotterHaptics.notification(.success)
+                    dismiss()
                 }
-                .padding(22)
+                .disabled(name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+
+                Spacer()
             }
-            .navigationTitle("New Exercise")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .cancellationAction) {
-                    Button("Cancel") {
-                        dismiss()
-                    }
+            .padding(22)
+        }
+        .navigationTitle("New Exercise")
+        .navigationBarTitleDisplayMode(.inline)
+        .toolbar {
+            ToolbarItem(placement: .cancellationAction) {
+                Button("Cancel") {
+                    dismiss()
                 }
-            }
-            .task {
-                isNameFocused = true
             }
         }
+        .spotterScreenChrome()
     }
 }
 

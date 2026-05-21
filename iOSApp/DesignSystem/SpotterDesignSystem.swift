@@ -129,27 +129,37 @@ struct GlassButton: View {
 
     var body: some View {
         Button(action: action) {
-            HStack(spacing: 10) {
-                Image(systemName: systemImage)
-                    .font(.headline)
-                    .symbolRenderingMode(.hierarchical)
-                Text(title)
-                    .font(.headline.weight(.semibold))
-                    .lineLimit(1)
-                    .minimumScaleFactor(0.8)
-            }
-            .frame(maxWidth: .infinity)
-            .padding(.vertical, 15)
-            .frame(minHeight: 52)
-            .foregroundStyle(style == .primary ? SpotterPalette.textPrimary : SpotterPalette.textPrimary)
-            .background(buttonBackground, in: RoundedRectangle(cornerRadius: 22, style: .continuous))
-            .overlay {
-                RoundedRectangle(cornerRadius: 22, style: .continuous)
-                    .strokeBorder(.white.opacity(style == .primary ? 0.18 : 0.12), lineWidth: 1)
-            }
+            GlassButtonLabel(title: title, systemImage: systemImage, style: style)
         }
         .buttonStyle(.plain)
         .accessibilityAddTraits(.isButton)
+    }
+}
+
+struct GlassButtonLabel: View {
+    let title: String
+    let systemImage: String
+    var style: GlassButton.Style = .primary
+
+    var body: some View {
+        HStack(spacing: 10) {
+            Image(systemName: systemImage)
+                .font(.headline)
+                .symbolRenderingMode(.hierarchical)
+            Text(title)
+                .font(.headline.weight(.semibold))
+                .lineLimit(1)
+                .minimumScaleFactor(0.8)
+        }
+        .frame(maxWidth: .infinity)
+        .padding(.vertical, 15)
+        .frame(minHeight: 52)
+        .foregroundStyle(SpotterPalette.textPrimary)
+        .background(buttonBackground, in: RoundedRectangle(cornerRadius: 22, style: .continuous))
+        .overlay {
+            RoundedRectangle(cornerRadius: 22, style: .continuous)
+                .strokeBorder(.white.opacity(style == .primary ? 0.18 : 0.12), lineWidth: 1)
+        }
     }
 
     private var buttonBackground: some ShapeStyle {
@@ -160,6 +170,25 @@ struct GlassButton: View {
                 endPoint: .bottomTrailing
             ))
             : AnyShapeStyle(.thinMaterial)
+    }
+}
+
+struct GlassIconButtonLabel: View {
+    let systemImage: String
+    var diameter: CGFloat = 34
+
+    var body: some View {
+        Image(systemName: systemImage)
+            .font(.headline.weight(.semibold))
+            .symbolRenderingMode(.hierarchical)
+            .frame(width: diameter, height: diameter)
+            .foregroundStyle(SpotterPalette.textPrimary)
+            .background(.thinMaterial, in: Circle())
+            .overlay {
+                Circle()
+                    .strokeBorder(.white.opacity(0.18), lineWidth: 1)
+            }
+            .contentShape(Circle())
     }
 }
 
@@ -376,6 +405,32 @@ struct SpotterScreenChrome: ViewModifier {
 extension View {
     func spotterScreenChrome() -> some View {
         modifier(SpotterScreenChrome())
+    }
+
+    @ViewBuilder
+    func spotterZoomSource<ID: Hashable>(
+        _ id: ID,
+        in namespace: Namespace.ID,
+        reduceMotion: Bool
+    ) -> some View {
+        if reduceMotion {
+            self
+        } else {
+            matchedTransitionSource(id: id, in: namespace)
+        }
+    }
+
+    @ViewBuilder
+    func spotterZoomDestination<ID: Hashable>(
+        _ id: ID,
+        in namespace: Namespace.ID,
+        reduceMotion: Bool
+    ) -> some View {
+        if reduceMotion {
+            self
+        } else {
+            navigationTransition(.zoom(sourceID: id, in: namespace))
+        }
     }
 
     func spotterNavigationChrome() -> some View {
