@@ -17,6 +17,7 @@ final class PhoneWatchSyncManager: NSObject, ObservableObject {
     private var latestSnapshot: SyncSnapshot?
     private var modelContext: ModelContext?
     private var activeWorkoutStateRepository: ActiveWorkoutStateRepositoryProtocol?
+    private var lastSentActiveWorkoutFingerprint: String?
 
     override init() {
         if WCSession.isSupported() {
@@ -40,6 +41,7 @@ final class PhoneWatchSyncManager: NSObject, ObservableObject {
         let repository = SwiftDataActiveWorkoutStateRepository(context: modelContext)
         activeWorkoutStateRepository = repository
         activeWorkoutState = try? repository.loadActiveWorkout()?.state
+        sendActiveWorkoutState()
     }
 
     func publishSnapshot(_ snapshot: SyncSnapshot) {
@@ -68,7 +70,12 @@ final class PhoneWatchSyncManager: NSObject, ObservableObject {
     }
 
     func publishActiveWorkoutState(_ state: WorkoutExecutionState) {
+        guard state.syncFingerprint != lastSentActiveWorkoutFingerprint else {
+            return
+        }
+
         activeWorkoutState = state
+        lastSentActiveWorkoutFingerprint = state.syncFingerprint
         autosaveActiveWorkoutState(state)
 
         guard let session else { return }
@@ -90,6 +97,31 @@ final class PhoneWatchSyncManager: NSObject, ObservableObject {
             }
         } catch {
             lastErrorMessage = error.localizedDescription
+        }
+    }
+
+    private func sendActiveWorkoutState(replyHandler: (([String: Any]) -> Void)? = nil) {
+        guard let activeWorkoutState else {
+            replyHandler?([:])
+            return
+        }
+
+        do {
+            let message = try SyncMessage.activeWorkoutUpdated(activeWorkoutState, encoder: encoder)
+            let data = try encoder.encode(message)
+            let dictionary = ["message": data]
+
+            if let replyHandler {
+                replyHandler(dictionary)
+            } else if let session {
+                try session.updateApplicationContext(dictionary)
+                if session.isReachable {
+                    session.sendMessage(dictionary, replyHandler: nil)
+                }
+            }
+        } catch {
+            lastErrorMessage = error.localizedDescription
+            replyHandler?([:])
         }
     }
 
@@ -128,6 +160,10 @@ final class PhoneWatchSyncManager: NSObject, ObservableObject {
 
         do {
             try SpotterRepository.importCompletedWorkout(payload.session, in: modelContext)
+            if activeWorkoutState?.session.id == payload.session.id {
+                activeWorkoutState = nil
+                try activeWorkoutStateRepository?.clearActiveWorkout()
+            }
             lastWorkoutImportedAt = Date()
             lastErrorMessage = nil
             sendWorkoutAck(for: payload.session.id, replyHandler: replyHandler)
@@ -171,11 +207,16 @@ final class PhoneWatchSyncManager: NSObject, ObservableObject {
         case .snapshotRequest:
             sendLatestSnapshot(replyHandler: replyHandler)
         case .activeWorkoutUpdated:
-            activeWorkoutState = try? message.decodeActiveWorkoutState(decoder: decoder)
-            if let activeWorkoutState {
-                autosaveActiveWorkoutState(activeWorkoutState)
+            if let incomingState = try? message.decodeActiveWorkoutState(decoder: decoder) {
+                let mergedState = activeWorkoutState?.mergedWithRemote(incomingState) ?? incomingState
+                if mergedState.syncFingerprint != activeWorkoutState?.syncFingerprint {
+                    autosaveActiveWorkoutState(mergedState)
+                    activeWorkoutState = mergedState.session.status == .inProgress ? mergedState : nil
+                }
             }
-            replyHandler?([:])
+            sendActiveWorkoutState(replyHandler: replyHandler)
+        case .activeWorkoutRequest:
+            sendActiveWorkoutState(replyHandler: replyHandler)
         case .workoutCompleted:
             importCompletedWorkout(from: message, replyHandler: replyHandler)
         case .snapshotResponse, .workoutAck:
@@ -237,6 +278,12 @@ extension PhoneWatchSyncManager: WCSessionDelegate {
     nonisolated func session(_ session: WCSession, didReceiveUserInfo userInfo: [String: Any]) {
         Task { @MainActor in
             handleIncomingMessage(userInfo)
+        }
+    }
+
+    nonisolated func session(_ session: WCSession, didReceiveApplicationContext applicationContext: [String: Any]) {
+        Task { @MainActor in
+            handleIncomingMessage(applicationContext)
         }
     }
 }

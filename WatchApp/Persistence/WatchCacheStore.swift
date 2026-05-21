@@ -48,6 +48,23 @@ struct WatchCacheStore {
         try data.write(to: activeWorkoutURL(), options: [.atomic])
     }
 
+    func loadOrCreateDeviceIdentifier() -> String {
+        do {
+            let url = try deviceIdentifierURL()
+            if let value = try? String(contentsOf: url, encoding: .utf8), !value.isEmpty {
+                return value
+            }
+
+            let value = "watch-\(UUID().uuidString)"
+            let directory = try cacheDirectory()
+            try fileManager.createDirectory(at: directory, withIntermediateDirectories: true)
+            try value.write(to: url, atomically: true, encoding: .utf8)
+            return value
+        } catch {
+            return "watch-\(UUID().uuidString)"
+        }
+    }
+
     func clearActiveWorkout() throws {
         let url = try activeWorkoutURL()
         guard fileManager.fileExists(atPath: url.path) else {
@@ -98,6 +115,10 @@ struct WatchCacheStore {
 
     private func completedWorkoutQueueURL() throws -> URL {
         try cacheDirectory().appendingPathComponent("completed-workout-queue.json")
+    }
+
+    private func deviceIdentifierURL() throws -> URL {
+        try cacheDirectory().appendingPathComponent("device-id.txt")
     }
 
     private func cacheDirectory() throws -> URL {

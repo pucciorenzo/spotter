@@ -3,6 +3,7 @@ import Foundation
 public enum SyncMessageType: String, Codable, CaseIterable, Identifiable, Hashable {
     case snapshotRequest
     case snapshotResponse
+    case activeWorkoutRequest
     case activeWorkoutUpdated
     case workoutCompleted
     case workoutAck
@@ -40,6 +41,10 @@ public struct SyncMessage: Codable, Identifiable, Hashable {
     public static func workoutCompleted(_ payload: SyncWorkoutPayload, encoder: JSONEncoder = JSONEncoder()) throws -> SyncMessage {
         let payload = try encoder.encode(payload)
         return SyncMessage(type: .workoutCompleted, payload: payload)
+    }
+
+    public static func activeWorkoutRequest() -> SyncMessage {
+        SyncMessage(type: .activeWorkoutRequest)
     }
 
     public static func activeWorkoutUpdated(_ state: WorkoutExecutionState, encoder: JSONEncoder = JSONEncoder()) throws -> SyncMessage {

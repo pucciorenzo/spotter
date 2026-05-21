@@ -7,19 +7,28 @@ public struct WorkoutExecutionState: Codable, Identifiable, Hashable {
     public var rest: RestTimerState?
     public var exerciseOrder: [UUID]
     public var substitutions: [WorkoutExerciseSubstitution]
+    public var revision: Int
+    public var lastMutationId: UUID
+    public var lastMutationDeviceId: String
 
     public init(
         session: WorkoutSessionDTO,
         currentExerciseIndex: Int,
         rest: RestTimerState?,
         exerciseOrder: [UUID] = [],
-        substitutions: [WorkoutExerciseSubstitution] = []
+        substitutions: [WorkoutExerciseSubstitution] = [],
+        revision: Int = 0,
+        lastMutationId: UUID = UUID(),
+        lastMutationDeviceId: String = "unknown"
     ) {
         self.session = session
         self.currentExerciseIndex = currentExerciseIndex
         self.rest = rest
         self.exerciseOrder = exerciseOrder
         self.substitutions = substitutions
+        self.revision = revision
+        self.lastMutationId = lastMutationId
+        self.lastMutationDeviceId = lastMutationDeviceId
     }
 
     private enum CodingKeys: String, CodingKey {
@@ -28,6 +37,9 @@ public struct WorkoutExecutionState: Codable, Identifiable, Hashable {
         case rest
         case exerciseOrder
         case substitutions
+        case revision
+        case lastMutationId
+        case lastMutationDeviceId
     }
 
     public init(from decoder: Decoder) throws {
@@ -37,6 +49,9 @@ public struct WorkoutExecutionState: Codable, Identifiable, Hashable {
         rest = try container.decodeIfPresent(RestTimerState.self, forKey: .rest)
         exerciseOrder = try container.decodeIfPresent([UUID].self, forKey: .exerciseOrder) ?? []
         substitutions = try container.decodeIfPresent([WorkoutExerciseSubstitution].self, forKey: .substitutions) ?? []
+        revision = try container.decodeIfPresent(Int.self, forKey: .revision) ?? 0
+        lastMutationId = try container.decodeIfPresent(UUID.self, forKey: .lastMutationId) ?? UUID()
+        lastMutationDeviceId = try container.decodeIfPresent(String.self, forKey: .lastMutationDeviceId) ?? "unknown"
     }
 
     public func encode(to encoder: Encoder) throws {
@@ -46,6 +61,97 @@ public struct WorkoutExecutionState: Codable, Identifiable, Hashable {
         try container.encodeIfPresent(rest, forKey: .rest)
         try container.encode(exerciseOrder, forKey: .exerciseOrder)
         try container.encode(substitutions, forKey: .substitutions)
+        try container.encode(revision, forKey: .revision)
+        try container.encode(lastMutationId, forKey: .lastMutationId)
+        try container.encode(lastMutationDeviceId, forKey: .lastMutationDeviceId)
+    }
+
+    public var syncFingerprint: String {
+        [
+            session.id.uuidString,
+            "\(revision)",
+            lastMutationId.uuidString,
+            "\(session.updatedAt.timeIntervalSince1970)",
+            "\(session.setLogs.count)"
+        ].joined(separator: ":")
+    }
+
+    public mutating func markMutation(
+        deviceId: String,
+        mutationId: UUID = UUID(),
+        at date: Date = Date()
+    ) {
+        revision += 1
+        lastMutationId = mutationId
+        lastMutationDeviceId = deviceId
+        session.updatedAt = max(session.updatedAt, date)
+    }
+
+    public func mergedWithRemote(_ remote: WorkoutExecutionState) -> WorkoutExecutionState {
+        guard remote.session.id == session.id else {
+            return remote.isNewer(than: self) ? remote : self
+        }
+
+        var winner = remote.isNewer(than: self) ? remote : self
+        let localLogsById = Dictionary(uniqueKeysWithValues: session.setLogs.map { ($0.id, $0) })
+        let remoteLogsById = Dictionary(uniqueKeysWithValues: remote.session.setLogs.map { ($0.id, $0) })
+        let allIds = Set(localLogsById.keys).union(remoteLogsById.keys)
+        var mergedLogs: [WorkoutSetLogDTO] = allIds.compactMap { id in
+            switch (localLogsById[id], remoteLogsById[id]) {
+            case let (local?, remote?):
+                return remote.completedAt >= local.completedAt ? remote : local
+            case let (local?, nil):
+                return local
+            case let (nil, remote?):
+                return remote
+            case (nil, nil):
+                return nil
+            }
+        }
+
+        mergedLogs.sort { lhs, rhs in
+            if lhs.workoutExerciseId == rhs.workoutExerciseId {
+                if lhs.setIndex == rhs.setIndex {
+                    return lhs.completedAt < rhs.completedAt
+                }
+                return lhs.setIndex < rhs.setIndex
+            }
+            return lhs.completedAt < rhs.completedAt
+        }
+
+        var seenSetKeys = Set<String>()
+        var dedupedNewestFirst: [WorkoutSetLogDTO] = []
+        for log in mergedLogs.reversed() {
+            let sourceId = log.workoutExerciseId ?? log.exerciseId
+            let key = "\(sourceId.uuidString):\(log.setIndex)"
+            guard !seenSetKeys.contains(key) else { continue }
+            seenSetKeys.insert(key)
+            dedupedNewestFirst.append(log)
+        }
+        winner.session.setLogs = Array(dedupedNewestFirst.reversed())
+
+        winner.session.updatedAt = max(session.updatedAt, remote.session.updatedAt)
+        winner.session.durationSeconds = max(session.sessionDurationSecondsFallback, remote.session.sessionDurationSecondsFallback)
+        winner.revision = max(revision, remote.revision)
+        return winner
+    }
+
+    private func isNewer(than other: WorkoutExecutionState) -> Bool {
+        if revision != other.revision {
+            return revision > other.revision
+        }
+
+        if session.updatedAt != other.session.updatedAt {
+            return session.updatedAt > other.session.updatedAt
+        }
+
+        return lastMutationId.uuidString > other.lastMutationId.uuidString
+    }
+}
+
+private extension WorkoutSessionDTO {
+    var sessionDurationSecondsFallback: Int {
+        max(durationSeconds, Int(updatedAt.timeIntervalSince(startedAt)))
     }
 }
 
