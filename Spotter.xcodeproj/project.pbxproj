@@ -41,6 +41,7 @@
 		A10000000000000000000020 /* SpotterLiveActivityWidget.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2000000000000000000001F /* SpotterLiveActivityWidget.swift */; };
 		A10000000000000000000021 /* SpotterShared in Frameworks */ = {isa = PBXBuildFile; productRef = A70000000000000000000004 /* SpotterShared */; };
 		A10000000000000000000022 /* SpotterLiveActivities.appex in Embed App Extensions */ = {isa = PBXBuildFile; fileRef = A20000000000000000000020 /* SpotterLiveActivities.appex */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
+		A10000000000000000000023 /* SpotterExportService.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000000000000000000022 /* SpotterExportService.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -119,6 +120,7 @@
 		A2000000000000000000001F /* SpotterLiveActivityWidget.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SpotterLiveActivities/SpotterLiveActivityWidget.swift; sourceTree = "<group>"; };
 		A20000000000000000000020 /* SpotterLiveActivities.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = SpotterLiveActivities.appex; sourceTree = BUILT_PRODUCTS_DIR; };
 		A20000000000000000000021 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = SpotterLiveActivities/Info.plist; sourceTree = "<group>"; };
+		A20000000000000000000022 /* SpotterExportService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = iOSApp/Export/SpotterExportService.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -182,6 +184,7 @@
 				A20000000000000000000019 /* SpotterDataProvider.swift */,
 				A2000000000000000000001A /* ActiveWorkoutRepository.swift */,
 				A2000000000000000000001B /* ActiveWorkoutView.swift */,
+				A20000000000000000000022 /* SpotterExportService.swift */,
 			);
 			name = iOSApp;
 			sourceTree = "<group>";
@@ -358,6 +361,7 @@
 				A10000000000000000000011 /* ModelContainerProvider.swift in Sources */,
 				A10000000000000000000012 /* SnapshotBuilder.swift in Sources */,
 				A10000000000000000000013 /* PhoneWatchSyncManager.swift in Sources */,
+				A10000000000000000000023 /* SpotterExportService.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
