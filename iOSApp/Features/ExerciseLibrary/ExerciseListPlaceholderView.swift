@@ -1,5 +1,25 @@
 import SwiftUI
 
+private let exerciseCategoryTags = [
+    "Back",
+    "Biceps",
+    "Calves",
+    "Cardio",
+    "Chest",
+    "Core",
+    "Front Delts",
+    "Glutes",
+    "Hamstrings",
+    "Lats",
+    "Legs",
+    "Mobility",
+    "Posterior Chain",
+    "Quads",
+    "Rear Delts",
+    "Shoulders",
+    "Triceps"
+]
+
 struct ExerciseListView: View {
     let dataProvider: any SpotterDataProviding
     @State private var searchText = ""
@@ -11,17 +31,28 @@ struct ExerciseListView: View {
     @Namespace private var createTransitionNamespace
 
     private var categories: [String] {
-        ["All"] + Array(Set(dataProvider.exercises.map(\.primaryCategory))).sorted()
+        ["All"] + categoryOptions
+    }
+
+    private var categoryOptions: [String] {
+        let tags = dataProvider.exercises.reduce(into: Set<String>()) { result, exercise in
+            result.insert(exercise.primaryCategory)
+            result.formUnion(exercise.secondaryCategories)
+        }
+
+        return Array(tags.union(exerciseCategoryTags)).sorted()
     }
 
     private var exercises: [SpotterExerciseSummary] {
         let query = searchText.trimmingCharacters(in: .whitespacesAndNewlines)
         return dataProvider.exercises.filter { exercise in
-            let matchesCategory = selectedCategories.isEmpty || selectedCategories.contains(exercise.primaryCategory)
+            let exerciseTags = Set([exercise.primaryCategory] + exercise.secondaryCategories)
+            let matchesCategory = selectedCategories.isEmpty || !selectedCategories.isDisjoint(with: exerciseTags)
             let matchesQuery = query.isEmpty
                 || exercise.name.localizedCaseInsensitiveContains(query)
                 || exercise.primaryCategory.localizedCaseInsensitiveContains(query)
-                || exercise.equipment.localizedCaseInsensitiveContains(query)
+                || exercise.secondaryCategories.contains { $0.localizedCaseInsensitiveContains(query) }
+                || exercise.notes.localizedCaseInsensitiveContains(query)
             return matchesCategory && matchesQuery
         }
     }
@@ -68,7 +99,7 @@ struct ExerciseListView: View {
                                     } label: {
                                         ExerciseRow(
                                             name: exercise.name,
-                                            detail: "\(exercise.primaryCategory) - \(exercise.equipment)",
+                                            detail: "\(exercise.primaryCategory) - \(exercise.trackingType)",
                                             metric: exercise.trackingType
                                         )
                                     }
@@ -109,7 +140,7 @@ struct ExerciseListView: View {
             }
         }
         .navigationDestination(isPresented: $showingCreateExercise) {
-            CreateExerciseView()
+            CreateExerciseView(categoryOptions: categoryOptions)
                 .spotterZoomDestination(createExerciseSourceID, in: createTransitionNamespace, reduceMotion: reduceMotion)
         }
         .spotterScreenChrome()
@@ -159,7 +190,7 @@ private struct ExerciseDetailView: View {
                     ScreenHeader(
                         eyebrow: exercise.primaryCategory,
                         title: exercise.name,
-                        subtitle: "\(exercise.equipment) - \(exercise.movementPattern)"
+                        subtitle: "\(exercise.movementPattern) - \(exercise.trackingType)"
                     )
 
                     GlassCard {
@@ -167,7 +198,6 @@ private struct ExerciseDetailView: View {
                             DetailRow(title: "Tracking", value: exercise.trackingType)
                             DetailRow(title: "Primary", value: exercise.primaryCategory)
                             DetailRow(title: "Secondary", value: exercise.secondaryCategories.joined(separator: ", "))
-                            DetailRow(title: "Equipment", value: exercise.equipment)
                             DetailRow(title: "Pattern", value: exercise.movementPattern)
                         }
                     }
@@ -205,36 +235,74 @@ private struct ExerciseDetailView: View {
 
 private struct CreateExerciseView: View {
     @Environment(\.dismiss) private var dismiss
+    let categoryOptions: [String]
     @State private var name = ""
-    @State private var category = ""
-    @State private var equipment = ""
+    @State private var primaryCategory = ""
+    @State private var secondaryCategories: Set<String> = []
+    @State private var notes = ""
 
     var body: some View {
         ZStack {
             SpotterBackground()
 
-            VStack(spacing: 14) {
-                TextField("Exercise Name", text: $name)
-                    .textInputAutocapitalization(.words)
-                    .spotterTextFieldStyle()
+            ScrollView {
+                VStack(alignment: .leading, spacing: 18) {
+                    TextField("Exercise Name", text: $name)
+                        .textInputAutocapitalization(.words)
+                        .spotterTextFieldStyle()
 
-                TextField("Primary Category", text: $category)
-                    .textInputAutocapitalization(.words)
-                    .spotterTextFieldStyle()
+                    ExerciseTagSection(
+                        title: "Primary",
+                        subtitle: primaryCategory.isEmpty ? "Choose one tag" : primaryCategory,
+                        tags: categoryOptions,
+                        selectedTags: primarySelection
+                    ) { tag in
+                        SpotterHaptics.selection()
+                        if primaryCategory == tag {
+                            primaryCategory = ""
+                        } else {
+                            primaryCategory = tag
+                            secondaryCategories.remove(tag)
+                        }
+                    }
 
-                TextField("Equipment", text: $equipment)
-                    .textInputAutocapitalization(.words)
-                    .spotterTextFieldStyle()
+                    ExerciseTagSection(
+                        title: "Secondary",
+                        subtitle: secondaryCategories.isEmpty ? "Optional" : "\(secondaryCategories.count) selected",
+                        tags: categoryOptions.filter { $0 != primaryCategory },
+                        selectedTags: secondaryCategories
+                    ) { tag in
+                        SpotterHaptics.selection()
+                        if secondaryCategories.contains(tag) {
+                            secondaryCategories.remove(tag)
+                        } else {
+                            secondaryCategories.insert(tag)
+                        }
+                    }
 
-                GlassButton(title: "Create Exercise", systemImage: "plus") {
-                    SpotterHaptics.notification(.success)
-                    dismiss()
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text("Notes")
+                            .font(.headline)
+                        TextEditor(text: $notes)
+                            .frame(minHeight: 132)
+                            .scrollContentBackground(.hidden)
+                            .padding(12)
+                            .foregroundStyle(SpotterPalette.textPrimary)
+                            .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 18, style: .continuous))
+                            .overlay {
+                                RoundedRectangle(cornerRadius: 18, style: .continuous)
+                                    .strokeBorder(SpotterPalette.glassStroke, lineWidth: 1)
+                            }
+                    }
+
+                    GlassButton(title: "Create Exercise", systemImage: "plus") {
+                        SpotterHaptics.notification(.success)
+                        dismiss()
+                    }
+                    .disabled(!canCreate)
                 }
-                .disabled(name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
-
-                Spacer()
+                .padding(22)
             }
-            .padding(22)
         }
         .navigationTitle("New Exercise")
         .navigationBarTitleDisplayMode(.inline)
@@ -246,6 +314,54 @@ private struct CreateExerciseView: View {
             }
         }
         .spotterScreenChrome()
+    }
+
+    private var primarySelection: Set<String> {
+        primaryCategory.isEmpty ? [] : [primaryCategory]
+    }
+
+    private var canCreate: Bool {
+        !name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty && !primaryCategory.isEmpty
+    }
+}
+
+private struct ExerciseTagSection: View {
+    let title: String
+    let subtitle: String
+    let tags: [String]
+    let selectedTags: Set<String>
+    let toggle: (String) -> Void
+
+    private let columns = [
+        GridItem(.adaptive(minimum: 96), spacing: 10)
+    ]
+
+    var body: some View {
+        GlassCard(cornerRadius: 24, padding: 16) {
+            VStack(alignment: .leading, spacing: 12) {
+                HStack(alignment: .firstTextBaseline) {
+                    Text(title)
+                        .font(.headline)
+                    Spacer()
+                    Text(subtitle)
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(SpotterPalette.textSecondary)
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.72)
+                }
+
+                LazyVGrid(columns: columns, alignment: .leading, spacing: 10) {
+                    ForEach(tags, id: \.self) { tag in
+                        LibraryChip(
+                            title: tag,
+                            isSelected: selectedTags.contains(tag)
+                        ) {
+                            toggle(tag)
+                        }
+                    }
+                }
+            }
+        }
     }
 }
 
