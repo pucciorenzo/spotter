@@ -283,8 +283,8 @@ private struct ActiveWorkoutMiniBar: View {
                 return "Rest complete"
             }
 
-            if let nextExercise = session.nextExercise {
-                return "Next: \(nextExercise.name)"
+            if let target = session.nextPendingTarget {
+                return "Next: \(target.exercise.name) Set \(target.set.index)"
             }
 
             return session.currentExercise?.name ?? "Next set"

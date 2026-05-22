@@ -44,6 +44,10 @@ struct ActiveWorkoutView: View {
                                     healthKitManager: healthKitManager
                                 )
 
+                                if session.isResting {
+                                    ActiveRestStatusCard(session: session)
+                                }
+
                                 CurrentSetPanel(
                                     session: session,
                                     exercise: currentExercise,
@@ -71,6 +75,7 @@ struct ActiveWorkoutView: View {
 
                     if !isFocusMode {
                         ActiveWorkoutBottomBar(
+                            session: session,
                             set: currentSet,
                             repository: repository,
                             healthKitManager: healthKitManager,
@@ -342,25 +347,31 @@ private struct ActiveWorkoutFocusContent: View {
                 focusHeader
                     .layoutPriority(2)
 
-                FocusSetInputPanel(
-                    set: set,
-                    exercise: exercise,
-                    repository: repository
-                )
-                .layoutPriority(1)
+                if session.isResting {
+                    FocusRestPanel(session: session)
+                        .layoutPriority(1)
+                } else {
+                    FocusSetInputPanel(
+                        set: set,
+                        exercise: exercise,
+                        repository: repository
+                    )
+                    .layoutPriority(1)
 
-                if let suggestion = exercise.previousPerformance,
-                   proxy.size.height > 700,
-                   !dynamicTypeSize.isAccessibilitySize {
-                    FocusSuggestionStrip(suggestion: suggestion) {
-                        repository.applyPreviousSuggestion()
+                    if let suggestion = exercise.previousPerformance,
+                       proxy.size.height > 700,
+                       !dynamicTypeSize.isAccessibilitySize {
+                        FocusSuggestionStrip(suggestion: suggestion) {
+                            repository.applyPreviousSuggestion()
+                        }
+                        .layoutPriority(0)
                     }
-                    .layoutPriority(0)
                 }
 
                 Spacer(minLength: 0)
 
                 ActiveWorkoutBottomBar(
+                    session: session,
                     set: set,
                     repository: repository,
                     healthKitManager: healthKitManager,
@@ -392,7 +403,7 @@ private struct ActiveWorkoutFocusContent: View {
                         Text(restText)
                             .font(.system(size: 34, weight: .semibold, design: .rounded))
                             .monospacedDigit()
-                            .foregroundStyle(restIsRunning ? SpotterPalette.accentSoft : SpotterPalette.textPrimary)
+                            .foregroundStyle(SpotterPalette.textPrimary)
                         Text("\(session.estimatedRemainingMinutes) min left")
                             .font(.caption.weight(.semibold))
                             .foregroundStyle(SpotterPalette.textSecondary)
@@ -401,7 +412,7 @@ private struct ActiveWorkoutFocusContent: View {
 
                 HStack(spacing: 10) {
                     ActiveMetricPill(
-                        title: session.nextExercise.map { "Next: \($0.name)" } ?? "Last exercise",
+                        title: nextText,
                         systemImage: "forward.end"
                     )
                     ActiveMetricPill(
@@ -423,23 +434,26 @@ private struct ActiveWorkoutFocusContent: View {
 
     private var setLabel: String {
         let prefix = set.isWarmup ? "Warm-up" : "Working"
-        return "\(prefix) Set \(set.index) of \(exercise.sets.count)"
-    }
-
-    private var restIsRunning: Bool {
-        session.restStartedAt != nil
+        let label = "\(prefix) Set \(set.index) of \(exercise.sets.count)"
+        return session.isResting ? "Resting after \(label)" : label
     }
 
     private var restText: String {
-        guard session.restStartedAt != nil else {
-            return "0:00"
+        guard session.isResting else {
+            if set.kind == .duration {
+                return formatTime(set.durationSeconds)
+            }
+            return "Work"
         }
 
-        if session.restRemainingSeconds >= 0 {
-            return formatTime(session.restRemainingSeconds)
-        }
+        return "Rest"
+    }
 
-        return "+\(formatTime(abs(session.restRemainingSeconds)))"
+    private var nextText: String {
+        guard let target = session.nextPendingTarget else {
+            return "Last set"
+        }
+        return "Next: \(target.exercise.name) \(target.set.index)"
     }
 }
 
@@ -482,6 +496,59 @@ private struct FocusSuggestionStrip: View {
         }
         .buttonStyle(.plain)
         .accessibilityLabel("Reuse previous values")
+    }
+}
+
+private struct FocusRestPanel: View {
+    let session: ActiveWorkoutSession
+
+    var body: some View {
+        GlassCard(cornerRadius: 30, padding: 18) {
+            VStack(alignment: .leading, spacing: 16) {
+                HStack(alignment: .firstTextBaseline) {
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text("Rest")
+                            .font(.headline.weight(.semibold))
+                            .foregroundStyle(SpotterPalette.textSecondary)
+                        Text(restText)
+                            .font(.system(size: 54, weight: .semibold, design: .rounded))
+                            .monospacedDigit()
+                            .foregroundStyle(restIsOver ? .green : SpotterPalette.textPrimary)
+                            .lineLimit(1)
+                            .minimumScaleFactor(0.74)
+                    }
+
+                    Spacer()
+
+                    Text(restIsOver ? "Over" : "Left")
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(SpotterPalette.textSecondary)
+                }
+
+                HStack(spacing: 10) {
+                    ActiveMetricPill(title: nextText, systemImage: "forward.end")
+                    ActiveMetricPill(title: "You choose when", systemImage: "hand.tap")
+                }
+            }
+        }
+    }
+
+    private var restText: String {
+        if session.restRemainingSeconds >= 0 {
+            return formatTime(session.restRemainingSeconds)
+        }
+        return "+\(formatTime(abs(session.restRemainingSeconds)))"
+    }
+
+    private var restIsOver: Bool {
+        session.restRemainingSeconds <= 0
+    }
+
+    private var nextText: String {
+        guard let target = session.nextPendingTarget else {
+            return "No next set"
+        }
+        return "Next: \(target.exercise.name) \(target.set.index)"
     }
 }
 
@@ -583,7 +650,7 @@ private struct ActiveWorkoutHeader: View {
 
                 HStack(spacing: 10) {
                     ActiveMetricPill(title: session.currentExercise?.name ?? "Exercise", systemImage: "scope")
-                    ActiveMetricPill(title: session.nextExercise?.name ?? "Last exercise", systemImage: "forward.end")
+                    ActiveMetricPill(title: nextText, systemImage: "forward.end")
                 }
 
                 HStack(spacing: 10) {
@@ -596,13 +663,20 @@ private struct ActiveWorkoutHeader: View {
     }
 
     private var restText: String {
-        if session.restStartedAt == nil {
-            return "Rest idle"
+        if !session.isResting {
+            return "Work phase"
         }
         if session.restRemainingSeconds >= 0 {
             return "Rest \(formatTime(session.restRemainingSeconds))"
         }
         return "+\(formatTime(abs(session.restRemainingSeconds)))"
+    }
+
+    private var nextText: String {
+        guard let target = session.nextPendingTarget else {
+            return "Last set"
+        }
+        return "Next: \(target.exercise.name) \(target.set.index)"
     }
 }
 
@@ -632,7 +706,7 @@ private struct CurrentSetPanel: View {
                     VStack(alignment: .trailing, spacing: 4) {
                         Text(set.targetText)
                             .font(.headline.monospacedDigit())
-                        Text("\(set.restSeconds)s rest")
+                        Text(session.isResting ? "Resting now" : "\(set.restSeconds)s planned rest")
                             .font(.caption)
                             .foregroundStyle(SpotterPalette.textSecondary)
                     }
@@ -707,7 +781,66 @@ private struct CurrentSetPanel: View {
 
     private var setLabel: String {
         let prefix = set.isWarmup ? "Warm-up" : "Working"
-        return "\(prefix) Set \(set.index) of \(exercise.sets.count)"
+        let label = "\(prefix) Set \(set.index) of \(exercise.sets.count)"
+        return session.isResting ? "Resting after \(label)" : label
+    }
+}
+
+private struct ActiveRestStatusCard: View {
+    let session: ActiveWorkoutSession
+
+    var body: some View {
+        GlassCard(cornerRadius: 28, padding: 18) {
+            HStack(alignment: .center, spacing: 16) {
+                VStack(alignment: .leading, spacing: 6) {
+                    Text("Rest")
+                        .font(.headline.weight(.semibold))
+                        .foregroundStyle(SpotterPalette.textSecondary)
+                    Text(restText)
+                        .font(.system(size: 46, weight: .semibold, design: .rounded))
+                        .monospacedDigit()
+                        .foregroundStyle(restIsOver ? .green : SpotterPalette.textPrimary)
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.76)
+                }
+
+                Spacer(minLength: 8)
+
+                VStack(alignment: .trailing, spacing: 6) {
+                    Text(restIsOver ? "Over planned rest" : "Remaining")
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(SpotterPalette.textSecondary)
+                    Text(nextText)
+                        .font(.subheadline.weight(.semibold))
+                        .foregroundStyle(SpotterPalette.accentSoft)
+                        .multilineTextAlignment(.trailing)
+                        .lineLimit(2)
+                        .minimumScaleFactor(0.72)
+                }
+            }
+        }
+        .overlay {
+            RoundedRectangle(cornerRadius: 28, style: .continuous)
+                .strokeBorder(SpotterPalette.accent.opacity(0.34), lineWidth: 1)
+        }
+    }
+
+    private var restText: String {
+        if session.restRemainingSeconds >= 0 {
+            return formatTime(session.restRemainingSeconds)
+        }
+        return "+\(formatTime(abs(session.restRemainingSeconds)))"
+    }
+
+    private var restIsOver: Bool {
+        session.restRemainingSeconds <= 0
+    }
+
+    private var nextText: String {
+        guard let target = session.nextPendingTarget else {
+            return "No next set"
+        }
+        return "Next: \(target.exercise.name) Set \(target.set.index)"
     }
 }
 
@@ -868,6 +1001,7 @@ private struct ActiveSetRow: View {
 }
 
 private struct ActiveWorkoutBottomBar: View {
+    let session: ActiveWorkoutSession
     let set: ActiveWorkoutSet
     @ObservedObject var repository: MockActiveWorkoutRepository
     @ObservedObject var healthKitManager: HealthKitWorkoutManager
@@ -875,25 +1009,79 @@ private struct ActiveWorkoutBottomBar: View {
 
     var body: some View {
         VStack(spacing: 10) {
-            GlassButton(title: set.isCompleted ? "Completed" : "Complete Set", systemImage: "checkmark") {
-                SpotterHaptics.notification(.success)
-                repository.completeCurrentSet()
-                healthKitManager.refreshMetrics()
-                if let session = repository.session {
-                    liveActivityManager.update(session: session)
-                }
-            }
-            HStack(spacing: 10) {
-                GlassButton(title: "Skip", systemImage: "forward.end", style: .secondary) {
+            if session.isResting {
+                GlassButton(title: "Start Next Set", systemImage: "play.fill") {
                     SpotterHaptics.impact(.medium)
-                    repository.skipCurrentSet()
+                    repository.finishRest()
                     if let session = repository.session {
                         liveActivityManager.update(session: session)
                     }
                 }
-                GlassButton(title: "Rest \(set.restSeconds)s", systemImage: "timer", style: .secondary)
+
+                HStack(spacing: 10) {
+                    BottomInfoPill(title: restStatusText, systemImage: "timer")
+                    BottomInfoPill(title: nextSetText, systemImage: "forward.end")
+                }
+            } else if set.isCompleted {
+                GlassButton(title: "Set Complete", systemImage: "checkmark.circle", style: .secondary)
+            } else {
+                GlassButton(title: "Complete Set", systemImage: "checkmark") {
+                    SpotterHaptics.notification(.success)
+                    repository.completeCurrentSet()
+                    healthKitManager.refreshMetrics()
+                    if let session = repository.session {
+                        liveActivityManager.update(session: session)
+                    }
+                }
+
+                HStack(spacing: 10) {
+                    GlassButton(title: "Skip", systemImage: "forward.end", style: .secondary) {
+                        SpotterHaptics.impact(.medium)
+                        repository.skipCurrentSet()
+                        if let session = repository.session {
+                            liveActivityManager.update(session: session)
+                        }
+                    }
+                    BottomInfoPill(title: "Rest after set: \(set.restSeconds)s", systemImage: "timer")
+                }
             }
         }
+    }
+
+    private var restStatusText: String {
+        if session.restRemainingSeconds >= 0 {
+            return "Rest \(formatTime(session.restRemainingSeconds))"
+        }
+        return "Over +\(formatTime(abs(session.restRemainingSeconds)))"
+    }
+
+    private var nextSetText: String {
+        guard let target = session.nextPendingTarget else {
+            return "No next set"
+        }
+        return "\(target.exercise.name) \(target.set.index)"
+    }
+}
+
+private struct BottomInfoPill: View {
+    let title: String
+    let systemImage: String
+
+    var body: some View {
+        Label(title, systemImage: systemImage)
+            .font(.headline.weight(.semibold))
+            .lineLimit(1)
+            .minimumScaleFactor(0.72)
+            .frame(maxWidth: .infinity)
+            .padding(.vertical, 15)
+            .frame(minHeight: 52)
+            .foregroundStyle(SpotterPalette.textPrimary)
+            .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 22, style: .continuous))
+            .overlay {
+                RoundedRectangle(cornerRadius: 22, style: .continuous)
+                    .strokeBorder(.white.opacity(0.12), lineWidth: 1)
+            }
+            .accessibilityElement(children: .combine)
     }
 }
 
