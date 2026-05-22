@@ -799,11 +799,20 @@ private enum PlanExerciseExecutionMode: String, CaseIterable, Identifiable {
         }
     }
 
-    var usesGeneratedTargets: Bool {
+    var showsEditableSetTargets: Bool {
         switch self {
-        case .normal, .endurance, .mav, .rm, .amrap, .dropset:
+        case .mav, .dropset:
             true
+        case .normal, .endurance, .rm, .amrap, .superset, .circuit:
+            false
+        }
+    }
+
+    var showsStructurePreview: Bool {
+        switch self {
         case .superset, .circuit:
+            true
+        case .normal, .endurance, .mav, .rm, .amrap, .dropset:
             false
         }
     }
@@ -1322,9 +1331,9 @@ private struct WorkoutExerciseDraftCard: View {
 
             controlGrid
 
-            if exercise.executionMode.usesGeneratedTargets {
+            if exercise.executionMode.showsEditableSetTargets {
                 PlanGeneratedSetsEditor(exercise: $exercise)
-            } else {
+            } else if exercise.executionMode.showsStructurePreview {
                 PlanStructurePreview(exercise: exercise)
             }
 
