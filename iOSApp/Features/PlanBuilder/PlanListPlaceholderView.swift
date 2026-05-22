@@ -101,7 +101,7 @@ struct PlanListView: View {
                 }
                 .padding(.horizontal, 20)
                 .padding(.top, 8)
-                .padding(.bottom, 34)
+                .padding(.bottom, SpotterLayout.bottomScrollClearance)
             }
             .onScrollGeometryChange(for: Bool.self) { geometry in
                 geometry.contentOffset.y > 24
@@ -451,7 +451,7 @@ private struct PlanDetailView: View {
                 }
                 .padding(.horizontal, 20)
                 .padding(.top, 18)
-                .padding(.bottom, 112)
+                .padding(.bottom, SpotterLayout.bottomScrollClearance)
             }
 
             Button {
@@ -463,7 +463,7 @@ private struct PlanDetailView: View {
             }
             .buttonStyle(.plain)
                 .padding(.horizontal, 20)
-                .padding(.bottom, 18)
+                .padding(.bottom, SpotterLayout.bottomPinnedActionClearance)
         }
         .navigationTitle(plan.name)
         .navigationBarTitleDisplayMode(.large)
@@ -592,7 +592,7 @@ private struct PlanDayDetailView: View {
                 }
                 .padding(.horizontal, 20)
                 .padding(.top, 18)
-                .padding(.bottom, 112)
+                .padding(.bottom, SpotterLayout.bottomScrollClearance)
             }
 
             Button {
@@ -604,7 +604,7 @@ private struct PlanDayDetailView: View {
             }
             .buttonStyle(.plain)
                 .padding(.horizontal, 20)
-                .padding(.bottom, 18)
+                .padding(.bottom, SpotterLayout.bottomPinnedActionClearance)
         }
         .navigationTitle(day.name)
         .navigationBarTitleDisplayMode(.large)
@@ -1279,7 +1279,7 @@ private struct NewWorkoutPlanEditor: View {
                     }
                     .padding(.horizontal, 20)
                     .padding(.top, 12)
-                    .padding(.bottom, 180)
+                    .padding(.bottom, SpotterLayout.bottomScrollClearance)
                 }
             }
             .frame(maxWidth: .infinity)
