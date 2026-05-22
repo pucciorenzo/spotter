@@ -743,6 +743,9 @@ private enum PlanExerciseExecutionMode: String, CaseIterable, Identifiable {
     case mav
     case rm
     case amrap
+    case dropset
+    case superset
+    case circuit
 
     var id: String { rawValue }
 
@@ -753,6 +756,9 @@ private enum PlanExerciseExecutionMode: String, CaseIterable, Identifiable {
         case .mav: "MAV"
         case .rm: "RM"
         case .amrap: "AMRAP"
+        case .dropset: "Dropset"
+        case .superset: "Superset"
+        case .circuit: "Circuit"
         }
     }
 
@@ -761,8 +767,11 @@ private enum PlanExerciseExecutionMode: String, CaseIterable, Identifiable {
         case .normal: "Fixed reps"
         case .endurance: "Timed sets"
         case .mav: "+2.5% steps"
-        case .rm: "Top-set work"
+        case .rm: "Rep max"
         case .amrap: "As many reps"
+        case .dropset: "No-rest drops"
+        case .superset: "Back-to-back"
+        case .circuit: "Rounds"
         }
     }
 
@@ -773,6 +782,9 @@ private enum PlanExerciseExecutionMode: String, CaseIterable, Identifiable {
         case .mav: "chart.line.uptrend.xyaxis"
         case .rm: "target"
         case .amrap: "infinity"
+        case .dropset: "arrow.down.right.circle"
+        case .superset: "link"
+        case .circuit: "repeat.circle"
         }
     }
 
@@ -782,8 +794,26 @@ private enum PlanExerciseExecutionMode: String, CaseIterable, Identifiable {
             .fixedDuration
         case .amrap:
             .amrap
-        case .normal, .mav, .rm:
+        case .normal, .mav, .rm, .dropset, .superset, .circuit:
             .fixedReps
+        }
+    }
+
+    var usesGeneratedTargets: Bool {
+        switch self {
+        case .normal, .endurance, .mav, .rm, .amrap, .dropset:
+            true
+        case .superset, .circuit:
+            false
+        }
+    }
+
+    var supportsWarmups: Bool {
+        switch self {
+        case .normal, .endurance, .mav:
+            true
+        case .rm, .amrap, .dropset, .superset, .circuit:
+            false
         }
     }
 }
@@ -812,8 +842,12 @@ private struct WorkoutExerciseDraft: Identifiable {
     var baseReps = 10
     var baseWeight = 0.0
     var durationSeconds = 45
-    var rpeTarget: Double?
-    var rirTarget: Int?
+    var incrementPercent = 2.5
+    var targetRM = 1
+    var timeLimitSeconds: Int?
+    var restBetweenExercisesSeconds = 0
+    var linkedExerciseName = "Second exercise"
+    var circuitExercisesText = "Push Ups, Squats, Burpees"
     var notes = ""
     var plannedSets: [PlannedSetDraft]
 
@@ -825,7 +859,8 @@ private struct WorkoutExerciseDraft: Identifiable {
             warmupSets: 0,
             baseReps: 10,
             baseWeight: 0,
-            durationSeconds: 45
+            durationSeconds: 45,
+            incrementPercent: 2.5
         )
     }
 
@@ -834,11 +869,17 @@ private struct WorkoutExerciseDraft: Identifiable {
         case .endurance:
             "\(setCount) x \(durationSeconds)s, \(restSeconds)s rest"
         case .mav:
-            "\(setCount) MAV sets, +2.5%, \(restSeconds)s rest"
+            "\(setCount) sets @ +\(incrementPercent.cleanWeight)%, \(restSeconds)s rest"
         case .rm:
-            "\(setCount) RM sets, +2.5%, \(restSeconds)s rest"
+            "\(targetRM)RM @ \(baseWeight.cleanWeight)kg, est \(estimatedOneRM.cleanWeight)kg"
         case .amrap:
-            "\(setCount) AMRAP sets, \(restSeconds)s rest"
+            "AMRAP @ \(baseWeight.cleanWeight)kg, \(restSeconds)s rest"
+        case .dropset:
+            "\(setCount) drops, \(baseReps) reps, \(restSeconds)s between"
+        case .superset:
+            "\(setCount) rounds with \(linkedExerciseName), \(restSeconds)s rest"
+        case .circuit:
+            "\(setCount) rounds, \(restBetweenExercisesSeconds)s between moves"
         case .normal:
             "\(setCount) x \(baseReps), \(restSeconds)s rest"
         }
@@ -851,25 +892,46 @@ private struct WorkoutExerciseDraft: Identifiable {
         case .endurance:
             "Timed target for planks, holds, carries, intervals."
         case .mav:
-            "Start from first set. Next sets default to 2.5% more, editable."
+            "Start from first set. Weight increases by chosen percent each set."
         case .rm:
-            "Use first set as top-set target. Following sets step up by 2.5%."
+            "Plan a rep-max attempt. Actual result is logged during workout."
         case .amrap:
-            "Target load with open-ended reps. User logs final reps during workout."
+            "Plan load and optional time cap. Actual reps are logged during workout."
+        case .dropset:
+            "Reduce weight and keep going with little or no rest."
+        case .superset:
+            "Pair two exercises back-to-back, then rest after each round."
+        case .circuit:
+            "Group multiple exercises into rounds. Useful for timer-heavy work."
         }
+    }
+
+    var estimatedOneRM: Double {
+        guard baseReps > 0 else {
+            return baseWeight
+        }
+        return baseWeight * (1 + Double(baseReps) / 30)
     }
 
     mutating func setMode(_ mode: PlanExerciseExecutionMode) {
         executionMode = mode
         if mode == .rm {
-            baseReps = min(baseReps, 5)
+            setCount = 1
+            warmupSets = 0
+            baseReps = targetRM
+        } else if mode == .amrap {
+            setCount = 1
+            warmupSets = 0
+        } else if mode == .dropset {
+            warmupSets = 0
+            setCount = max(setCount, 3)
         }
         rebuildSets()
     }
 
     mutating func updateSetCount(_ value: Int) {
         setCount = min(max(value, 1), 12)
-        warmupSets = min(warmupSets, setCount - 1)
+        warmupSets = executionMode.supportsWarmups ? min(warmupSets, setCount - 1) : 0
         rebuildSets()
     }
 
@@ -897,23 +959,40 @@ private struct WorkoutExerciseDraft: Identifiable {
         restSeconds = min(max(value, 0), 600)
     }
 
+    mutating func updateIncrementPercent(_ value: Double) {
+        incrementPercent = min(max(value, 0), 10)
+        rebuildSets()
+    }
+
+    mutating func updateTargetRM(_ value: Int) {
+        targetRM = min(max(value, 1), 20)
+        baseReps = targetRM
+        rebuildSets()
+    }
+
+    mutating func updateRestBetweenExercises(_ value: Int) {
+        restBetweenExercisesSeconds = min(max(value, 0), 300)
+    }
+
     mutating func rebuildSets() {
         plannedSets = Self.makeSets(
             mode: executionMode,
             setCount: setCount,
-            warmupSets: warmupSets,
+            warmupSets: executionMode.supportsWarmups ? warmupSets : 0,
             baseReps: baseReps,
             baseWeight: baseWeight,
-            durationSeconds: durationSeconds
+            durationSeconds: durationSeconds,
+            incrementPercent: incrementPercent
         )
     }
 
     func makeDTO(dayId: UUID, orderIndex: Int) -> WorkoutExerciseDTO {
         let firstWorkingSet = plannedSets.first { !$0.isWarmup } ?? plannedSets.first
-        let targetReps = executionMode == .endurance ? nil : firstWorkingSet?.reps
+        let targetReps = executionMode == .endurance || executionMode == .amrap ? nil : firstWorkingSet?.reps
         let targetDuration = executionMode == .endurance ? firstWorkingSet?.durationSeconds : nil
         let startingLoad = executionMode == .endurance ? nil : firstWorkingSet?.weight
         let planNotes = makePlanNotes()
+        let supersetId = executionMode == .superset ? id : nil
 
         return WorkoutExerciseDTO(
             id: id,
@@ -921,7 +1000,7 @@ private struct WorkoutExerciseDraft: Identifiable {
             exerciseId: exerciseId,
             orderIndex: orderIndex,
             numberOfSets: plannedSets.count,
-            warmupSets: warmupSets,
+            warmupSets: executionMode.supportsWarmups ? warmupSets : 0,
             targetType: executionMode.targetType,
             targetReps: targetReps,
             targetRepsMin: nil,
@@ -931,14 +1010,14 @@ private struct WorkoutExerciseDraft: Identifiable {
             targetDurationMaxSeconds: nil,
             startingLoad: startingLoad,
             loadUnit: .kg,
-            suggestedIncrement: executionMode == .mav || executionMode == .rm ? 2.5 : nil,
+            suggestedIncrement: executionMode == .mav ? incrementPercent : nil,
             restSeconds: restSeconds,
-            rpeTarget: rpeTarget,
-            rirTarget: rirTarget,
+            rpeTarget: nil,
+            rirTarget: nil,
             tempo: nil,
             notes: planNotes,
-            supersetGroupId: nil,
-            autoProgressionEnabled: executionMode == .mav || executionMode == .rm
+            supersetGroupId: supersetId,
+            autoProgressionEnabled: executionMode == .mav
         )
     }
 
@@ -957,11 +1036,23 @@ private struct WorkoutExerciseDraft: Identifiable {
             "Rest: \(restSeconds)s",
             setSummary
         ]
-        if let rpeTarget {
-            parts.append("RPE \(String(format: "%.1f", rpeTarget))")
-        }
-        if let rirTarget {
-            parts.append("RIR \(rirTarget)")
+        switch executionMode {
+        case .mav:
+            parts.append("Increment: \(incrementPercent.cleanWeight)%")
+        case .rm:
+            parts.append("Target RM: \(targetRM)")
+            parts.append("Estimated 1RM: \(estimatedOneRM.cleanWeight) kg")
+        case .amrap:
+            if let timeLimitSeconds {
+                parts.append("Time cap: \(timeLimitSeconds)s")
+            }
+        case .superset:
+            parts.append("Linked exercise: \(linkedExerciseName)")
+        case .circuit:
+            parts.append("Exercises: \(circuitExercisesText)")
+            parts.append("Rest between exercises: \(restBetweenExercisesSeconds)s")
+        case .dropset, .normal, .endurance:
+            break
         }
         if !notes.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
             parts.append(notes.trimmingCharacters(in: .whitespacesAndNewlines))
@@ -975,20 +1066,24 @@ private struct WorkoutExerciseDraft: Identifiable {
         warmupSets: Int,
         baseReps: Int,
         baseWeight: Double,
-        durationSeconds: Int
+        durationSeconds: Int,
+        incrementPercent: Double
     ) -> [PlannedSetDraft] {
         (0..<setCount).map { index in
             let isWarmup = index < warmupSets
             let workingIndex = max(index - warmupSets, 0)
-            let factor = pow(1.025, Double(workingIndex))
+            let factor = pow(1 + incrementPercent / 100, Double(workingIndex))
             let reps: Int
             let weight: Double
 
             switch mode {
-            case .mav, .rm:
-                reps = max(1, Int((Double(baseReps) * factor).rounded()))
+            case .mav:
+                reps = baseReps
                 weight = (baseWeight * factor).roundedToHalf
-            case .amrap, .normal:
+            case .dropset:
+                reps = baseReps
+                weight = max(0, (baseWeight * pow(0.85, Double(index))).roundedToHalf)
+            case .rm, .amrap, .normal, .superset, .circuit:
                 reps = baseReps
                 weight = baseWeight
             case .endurance:
@@ -1227,7 +1322,11 @@ private struct WorkoutExerciseDraftCard: View {
 
             controlGrid
 
-            PlanGeneratedSetsEditor(exercise: $exercise)
+            if exercise.executionMode.usesGeneratedTargets {
+                PlanGeneratedSetsEditor(exercise: $exercise)
+            } else {
+                PlanStructurePreview(exercise: exercise)
+            }
 
             VStack(alignment: .leading, spacing: 8) {
                 Text("Notes")
@@ -1282,47 +1381,132 @@ private struct WorkoutExerciseDraftCard: View {
 
     private var controlGrid: some View {
         VStack(spacing: 10) {
-            PlanResponsivePair {
-                PlanIntegerControl(title: "Sets", value: exercise.setCount, suffix: nil, range: 1...12, step: 1) { value in
-                    exercise.updateSetCount(value)
-                }
-            } trailing: {
-                PlanIntegerControl(title: "Warm-up", value: exercise.warmupSets, suffix: nil, range: 0...max(exercise.setCount - 1, 0), step: 1) { value in
-                    exercise.updateWarmupSets(value)
-                }
-            }
+            switch exercise.executionMode {
+            case .normal:
+                basicSetControls(setTitle: "Sets")
+                repsAndRestControls(repsTitle: "Reps", restTitle: "Rest")
+                weightControl(title: "Weight")
 
-            PlanResponsivePair {
-                PlanIntegerControl(title: "Rest", value: exercise.restSeconds, suffix: "s", range: 0...600, step: 15) { value in
-                    exercise.updateRest(value)
-                }
-            } trailing: {
-                if exercise.executionMode == .endurance {
-                    PlanIntegerControl(title: "Time", value: exercise.durationSeconds, suffix: "s", range: 10...600, step: 5) { value in
+            case .endurance:
+                basicSetControls(setTitle: "Sets")
+                PlanResponsivePair {
+                    PlanIntegerControl(title: "Duration", value: exercise.durationSeconds, suffix: "s", range: 10...600, step: 5) { value in
                         exercise.updateDuration(value)
                     }
-                } else {
-                    PlanIntegerControl(title: "Reps", value: exercise.baseReps, suffix: nil, range: 1...50, step: 1) { value in
-                        exercise.updateBaseReps(value)
+                } trailing: {
+                    PlanIntegerControl(title: "Rest", value: exercise.restSeconds, suffix: "s", range: 0...600, step: 15) { value in
+                        exercise.updateRest(value)
                     }
                 }
-            }
 
-            if exercise.executionMode != .endurance {
-                PlanDoubleControl(title: "Weight", value: exercise.baseWeight, suffix: "kg", range: 0...500, step: 2.5) { value in
-                    exercise.updateBaseWeight(value)
+            case .mav:
+                basicSetControls(setTitle: "Sets")
+                repsAndRestControls(repsTitle: "Target Reps", restTitle: "Rest")
+                weightControl(title: "Starting Weight")
+                PlanDoubleControl(title: "Increment", value: exercise.incrementPercent, suffix: "%", range: 0...10, step: 0.5) { value in
+                    exercise.updateIncrementPercent(value)
                 }
-            }
 
-            PlanResponsivePair {
-                PlanOptionalDoubleControl(title: "RPE", value: exercise.rpeTarget, range: 1...10, step: 0.5) { value in
-                    exercise.rpeTarget = value
+            case .rm:
+                PlanResponsivePair {
+                    PlanIntegerControl(title: "Target RM", value: exercise.targetRM, suffix: "RM", range: 1...20, step: 1) { value in
+                        exercise.updateTargetRM(value)
+                    }
+                } trailing: {
+                    PlanIntegerControl(title: "Rest", value: exercise.restSeconds, suffix: "s", range: 0...600, step: 15) { value in
+                        exercise.updateRest(value)
+                    }
                 }
-            } trailing: {
-                PlanOptionalIntControl(title: "RIR", value: exercise.rirTarget, range: 0...10, step: 1) { value in
-                    exercise.rirTarget = value
+                weightControl(title: "Attempt Weight")
+                PlanEstimatePill(title: "Estimated 1RM", value: "\(exercise.estimatedOneRM.cleanWeight) kg")
+
+            case .amrap:
+                PlanResponsivePair {
+                    PlanIntegerControl(title: "Rest", value: exercise.restSeconds, suffix: "s", range: 0...600, step: 15) { value in
+                        exercise.updateRest(value)
+                    }
+                } trailing: {
+                    PlanOptionalIntControl(title: "Time Cap", value: exercise.timeLimitSeconds, range: 15...900, step: 15) { value in
+                        exercise.timeLimitSeconds = value
+                    }
                 }
+                weightControl(title: "Target Weight")
+
+            case .dropset:
+                PlanResponsivePair {
+                    PlanIntegerControl(title: "Drops", value: exercise.setCount, suffix: nil, range: 2...8, step: 1) { value in
+                        exercise.updateSetCount(value)
+                    }
+                } trailing: {
+                    PlanIntegerControl(title: "Rest Between", value: exercise.restSeconds, suffix: "s", range: 0...120, step: 5) { value in
+                        exercise.updateRest(value)
+                    }
+                }
+                PlanIntegerControl(title: "Target Reps", value: exercise.baseReps, suffix: nil, range: 1...50, step: 1) { value in
+                    exercise.updateBaseReps(value)
+                }
+                weightControl(title: "Initial Weight")
+
+            case .superset:
+                PlanResponsivePair {
+                    PlanIntegerControl(title: "Sets", value: exercise.setCount, suffix: nil, range: 1...12, step: 1) { value in
+                        exercise.updateSetCount(value)
+                    }
+                } trailing: {
+                    PlanIntegerControl(title: "Rest After Round", value: exercise.restSeconds, suffix: "s", range: 0...600, step: 15) { value in
+                        exercise.updateRest(value)
+                    }
+                }
+                PlanIntegerControl(title: "Reps Per Exercise", value: exercise.baseReps, suffix: nil, range: 1...50, step: 1) { value in
+                    exercise.updateBaseReps(value)
+                }
+                PlanTextControl(title: "Linked Exercise", text: $exercise.linkedExerciseName, prompt: "Second exercise")
+
+            case .circuit:
+                PlanResponsivePair {
+                    PlanIntegerControl(title: "Rounds", value: exercise.setCount, suffix: nil, range: 1...12, step: 1) { value in
+                        exercise.updateSetCount(value)
+                    }
+                } trailing: {
+                    PlanIntegerControl(title: "Rest After Round", value: exercise.restSeconds, suffix: "s", range: 0...600, step: 15) { value in
+                        exercise.updateRest(value)
+                    }
+                }
+                PlanIntegerControl(title: "Rest Between", value: exercise.restBetweenExercisesSeconds, suffix: "s", range: 0...300, step: 10) { value in
+                    exercise.updateRestBetweenExercises(value)
+                }
+                PlanTextControl(title: "Circuit Exercises", text: $exercise.circuitExercisesText, prompt: "Push Ups, Squats, Burpees")
             }
+        }
+    }
+
+    private func basicSetControls(setTitle: String) -> some View {
+        PlanResponsivePair {
+            PlanIntegerControl(title: setTitle, value: exercise.setCount, suffix: nil, range: 1...12, step: 1) { value in
+                exercise.updateSetCount(value)
+            }
+        } trailing: {
+            PlanIntegerControl(title: "Warm-up", value: exercise.warmupSets, suffix: nil, range: 0...max(exercise.setCount - 1, 0), step: 1) { value in
+                exercise.updateWarmupSets(value)
+            }
+        }
+    }
+
+    private func repsAndRestControls(repsTitle: String, restTitle: String) -> some View {
+        PlanResponsivePair {
+            PlanIntegerControl(title: repsTitle, value: exercise.baseReps, suffix: nil, range: 1...50, step: 1) { value in
+                exercise.updateBaseReps(value)
+            }
+        } trailing: {
+            PlanIntegerControl(title: restTitle, value: exercise.restSeconds, suffix: "s", range: 0...600, step: 15) { value in
+                exercise.updateRest(value)
+            }
+        }
+    }
+
+    private func weightControl(title: String) -> some View {
+        PlanDoubleControl(title: title, value: exercise.baseWeight, suffix: "kg", range: 0...500, step: 2.5) { value in
+            exercise.updateBaseWeight(value)
         }
     }
 }
@@ -1377,8 +1561,8 @@ private struct PlanGeneratedSetsEditor: View {
 
                 Spacer()
 
-                if exercise.executionMode == .mav || exercise.executionMode == .rm {
-                    Text("+2.5% default")
+                if exercise.executionMode == .mav {
+                    Text("+\(exercise.incrementPercent.cleanWeight)%")
                         .font(.caption2.weight(.semibold))
                         .foregroundStyle(SpotterPalette.accentSoft)
                         .padding(.horizontal, 8)
@@ -1409,7 +1593,7 @@ private struct PlanSetDraftRow: View {
                     .font(.footnote.weight(.semibold))
                     .foregroundStyle(SpotterPalette.textPrimary)
 
-                Text(set.isWarmup ? "Warm-up" : "Working")
+                Text(statusLabel)
                     .font(.caption2)
                     .foregroundStyle(SpotterPalette.textSecondary)
                     .padding(.horizontal, 7)
@@ -1422,6 +1606,34 @@ private struct PlanSetDraftRow: View {
             if mode == .endurance {
                 PlanInlineIntegerControl(value: set.durationSeconds, suffix: "s", range: 10...600, step: 5) { value in
                     set.durationSeconds = value
+                }
+            } else if mode == .amrap {
+                PlanInlineDoubleControl(value: set.weight, suffix: "kg", range: 0...500, step: 2.5) { value in
+                    set.weight = value
+                }
+            } else if mode == .rm {
+                ViewThatFits(in: .horizontal) {
+                    HStack(spacing: 8) {
+                        PlanInlineIntegerControl(value: set.reps, suffix: "RM", range: 1...20, step: 1) { value in
+                            set.reps = value
+                        }
+                        .frame(maxWidth: .infinity)
+
+                        PlanInlineDoubleControl(value: set.weight, suffix: "kg", range: 0...500, step: 2.5) { value in
+                            set.weight = value
+                        }
+                        .frame(maxWidth: .infinity)
+                    }
+
+                    VStack(spacing: 8) {
+                        PlanInlineIntegerControl(value: set.reps, suffix: "RM", range: 1...20, step: 1) { value in
+                            set.reps = value
+                        }
+
+                        PlanInlineDoubleControl(value: set.weight, suffix: "kg", range: 0...500, step: 2.5) { value in
+                            set.weight = value
+                        }
+                    }
                 }
             } else {
                 ViewThatFits(in: .horizontal) {
@@ -1453,6 +1665,121 @@ private struct PlanSetDraftRow: View {
         .background(.white.opacity(0.046), in: RoundedRectangle(cornerRadius: 15, style: .continuous))
         .overlay {
             RoundedRectangle(cornerRadius: 15, style: .continuous)
+                .strokeBorder(.white.opacity(0.08), lineWidth: 1)
+        }
+    }
+
+    private var statusLabel: String {
+        switch mode {
+        case .dropset:
+            "Drop"
+        case .rm:
+            "Attempt"
+        case .amrap:
+            "Open reps"
+        default:
+            set.isWarmup ? "Warm-up" : "Working"
+        }
+    }
+}
+
+private struct PlanStructurePreview: View {
+    let exercise: WorkoutExerciseDraft
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 9) {
+            Text("Structure")
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(SpotterPalette.textSecondary)
+                .textCase(.uppercase)
+
+            VStack(alignment: .leading, spacing: 7) {
+                if exercise.executionMode == .superset {
+                    PlanStructureLine(title: exercise.name, detail: "\(exercise.baseReps) reps")
+                    PlanStructureLine(title: exercise.linkedExerciseName, detail: "\(exercise.baseReps) reps")
+                    PlanStructureLine(title: "Rest", detail: "\(exercise.restSeconds)s after round")
+                } else {
+                    ForEach(circuitNames, id: \.self) { name in
+                        PlanStructureLine(title: name, detail: "\(exercise.restBetweenExercisesSeconds)s transition")
+                    }
+                    PlanStructureLine(title: "Rounds", detail: "\(exercise.setCount) rounds, \(exercise.restSeconds)s rest")
+                }
+            }
+        }
+        .padding(12)
+        .background(.white.opacity(0.038), in: RoundedRectangle(cornerRadius: 18, style: .continuous))
+    }
+
+    private var circuitNames: [String] {
+        exercise.circuitExercisesText
+            .split(separator: ",")
+            .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
+            .filter { !$0.isEmpty }
+    }
+}
+
+private struct PlanStructureLine: View {
+    let title: String
+    let detail: String
+
+    var body: some View {
+        HStack {
+            Text(title)
+                .font(.footnote.weight(.semibold))
+                .foregroundStyle(SpotterPalette.textPrimary)
+                .lineLimit(1)
+
+            Spacer(minLength: 8)
+
+            Text(detail)
+                .font(.caption)
+                .foregroundStyle(SpotterPalette.textSecondary)
+                .lineLimit(1)
+        }
+        .padding(10)
+        .background(.white.opacity(0.046), in: RoundedRectangle(cornerRadius: 15, style: .continuous))
+    }
+}
+
+private struct PlanTextControl: View {
+    let title: String
+    @Binding var text: String
+    let prompt: String
+
+    var body: some View {
+        PlanControlShell(title: title) {
+            TextField(prompt, text: $text, axis: .vertical)
+                .textInputAutocapitalization(.words)
+                .lineLimit(1...3)
+                .font(.subheadline.weight(.medium))
+                .foregroundStyle(SpotterPalette.textPrimary)
+                .frame(maxWidth: .infinity, alignment: .leading)
+        }
+    }
+}
+
+private struct PlanEstimatePill: View {
+    let title: String
+    let value: String
+
+    var body: some View {
+        HStack {
+            Text(title)
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(SpotterPalette.textSecondary)
+                .textCase(.uppercase)
+
+            Spacer()
+
+            Text(value)
+                .font(.subheadline.weight(.semibold))
+                .monospacedDigit()
+                .foregroundStyle(SpotterPalette.accentSoft)
+        }
+        .padding(12)
+        .background(.white.opacity(0.05), in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+        .overlay {
+            RoundedRectangle(cornerRadius: 16, style: .continuous)
                 .strokeBorder(.white.opacity(0.08), lineWidth: 1)
         }
     }
