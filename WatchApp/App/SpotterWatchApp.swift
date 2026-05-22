@@ -8,6 +8,7 @@ struct SpotterWatchApp: App {
         WindowGroup {
             WatchPlanListView()
                 .environmentObject(syncManager)
+                .preferredColorScheme(.dark)
         }
     }
 }

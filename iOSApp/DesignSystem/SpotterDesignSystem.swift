@@ -17,9 +17,9 @@ enum SpotterPalette {
 enum SpotterAppearance {
     static func configure() {
         let navAppearance = UINavigationBarAppearance()
-        navAppearance.configureWithOpaqueBackground()
-        navAppearance.backgroundColor = UIColor(red: 0.04, green: 0.06, blue: 0.09, alpha: 1.0)
-        navAppearance.shadowColor = UIColor.white.withAlphaComponent(0.08)
+        navAppearance.configureWithTransparentBackground()
+        navAppearance.backgroundColor = .clear
+        navAppearance.shadowColor = .clear
         navAppearance.titleTextAttributes = [
             .foregroundColor: UIColor.white.withAlphaComponent(0.96)
         ]
@@ -129,27 +129,37 @@ struct GlassButton: View {
 
     var body: some View {
         Button(action: action) {
-            HStack(spacing: 10) {
-                Image(systemName: systemImage)
-                    .font(.headline)
-                    .symbolRenderingMode(.hierarchical)
-                Text(title)
-                    .font(.headline.weight(.semibold))
-                    .lineLimit(1)
-                    .minimumScaleFactor(0.8)
-            }
-            .frame(maxWidth: .infinity)
-            .padding(.vertical, 15)
-            .frame(minHeight: 52)
-            .foregroundStyle(style == .primary ? SpotterPalette.textPrimary : SpotterPalette.textPrimary)
-            .background(buttonBackground, in: RoundedRectangle(cornerRadius: 22, style: .continuous))
-            .overlay {
-                RoundedRectangle(cornerRadius: 22, style: .continuous)
-                    .strokeBorder(.white.opacity(style == .primary ? 0.18 : 0.12), lineWidth: 1)
-            }
+            GlassButtonLabel(title: title, systemImage: systemImage, style: style)
         }
         .buttonStyle(.plain)
         .accessibilityAddTraits(.isButton)
+    }
+}
+
+struct GlassButtonLabel: View {
+    let title: String
+    let systemImage: String
+    var style: GlassButton.Style = .primary
+
+    var body: some View {
+        HStack(spacing: 10) {
+            Image(systemName: systemImage)
+                .font(.headline)
+                .symbolRenderingMode(.hierarchical)
+            Text(title)
+                .font(.headline.weight(.semibold))
+                .lineLimit(1)
+                .minimumScaleFactor(0.8)
+        }
+        .frame(maxWidth: .infinity)
+        .padding(.vertical, 15)
+        .frame(minHeight: 52)
+        .foregroundStyle(SpotterPalette.textPrimary)
+        .background(buttonBackground, in: RoundedRectangle(cornerRadius: 22, style: .continuous))
+        .overlay {
+            RoundedRectangle(cornerRadius: 22, style: .continuous)
+                .strokeBorder(.white.opacity(style == .primary ? 0.18 : 0.12), lineWidth: 1)
+        }
     }
 
     private var buttonBackground: some ShapeStyle {
@@ -160,6 +170,25 @@ struct GlassButton: View {
                 endPoint: .bottomTrailing
             ))
             : AnyShapeStyle(.thinMaterial)
+    }
+}
+
+struct GlassIconButtonLabel: View {
+    let systemImage: String
+    var diameter: CGFloat = 34
+
+    var body: some View {
+        Image(systemName: systemImage)
+            .font(.headline.weight(.semibold))
+            .symbolRenderingMode(.hierarchical)
+            .frame(width: diameter, height: diameter)
+            .foregroundStyle(SpotterPalette.textPrimary)
+            .background(.thinMaterial, in: Circle())
+            .overlay {
+                Circle()
+                    .strokeBorder(.white.opacity(0.18), lineWidth: 1)
+            }
+            .contentShape(Circle())
     }
 }
 
@@ -365,8 +394,7 @@ struct SpotterScreenChrome: ViewModifier {
             .foregroundStyle(SpotterPalette.textPrimary)
             .tint(SpotterPalette.accentSoft)
             .toolbarColorScheme(.dark, for: .navigationBar)
-            .toolbarBackground(SpotterPalette.navGlass, for: .navigationBar)
-            .toolbarBackground(.visible, for: .navigationBar)
+            .toolbarBackground(.hidden, for: .navigationBar)
             .toolbarColorScheme(.dark, for: .tabBar)
             .toolbarBackground(SpotterPalette.navGlass, for: .tabBar)
             .toolbarBackground(.visible, for: .tabBar)
@@ -378,10 +406,47 @@ extension View {
         modifier(SpotterScreenChrome())
     }
 
+    @ViewBuilder
+    func spotterZoomSource<ID: Hashable>(
+        _ id: ID,
+        in namespace: Namespace.ID,
+        reduceMotion: Bool
+    ) -> some View {
+        if reduceMotion {
+            self
+        } else {
+            matchedTransitionSource(id: id, in: namespace)
+        }
+    }
+
+    @ViewBuilder
+    func spotterZoomDestination<ID: Hashable>(
+        _ id: ID,
+        in namespace: Namespace.ID,
+        reduceMotion: Bool
+    ) -> some View {
+        if reduceMotion {
+            self
+        } else {
+            navigationTransition(.zoom(sourceID: id, in: namespace))
+        }
+    }
+
     func spotterNavigationChrome() -> some View {
-        background(SpotterPalette.navGlass.ignoresSafeArea())
+        background(SpotterPalette.backgroundBottom.ignoresSafeArea())
             .toolbarColorScheme(.dark, for: .navigationBar)
-            .toolbarBackground(SpotterPalette.navGlass, for: .navigationBar)
-            .toolbarBackground(.visible, for: .navigationBar)
+            .toolbarBackground(.hidden, for: .navigationBar)
+    }
+}
+
+struct SpotterInlineNavigationTitle: View {
+    let title: String
+    let isVisible: Bool
+
+    var body: some View {
+        Text(title)
+            .font(.headline.weight(.semibold))
+            .foregroundStyle(SpotterPalette.textPrimary.opacity(isVisible ? 1 : 0))
+            .animation(.easeInOut(duration: 0.18), value: isVisible)
     }
 }

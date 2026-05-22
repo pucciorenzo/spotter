@@ -18,6 +18,7 @@ struct SpotterApp: App {
     var body: some Scene {
         WindowGroup {
             RootTabView()
+                .preferredColorScheme(.dark)
         }
         .modelContainer(modelContainer)
     }

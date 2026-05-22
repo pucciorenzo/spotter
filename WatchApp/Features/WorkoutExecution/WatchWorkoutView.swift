@@ -24,6 +24,10 @@ struct WatchWorkoutView: View {
 
                     if let restText = viewModel.formattedRest(at: now) {
                         restCard(restText)
+                        WatchGlassButton(title: "Start Next", systemImage: "play.fill") {
+                            viewModel.finishRest()
+                            syncManager.publishActiveWorkoutState(viewModel.state)
+                        }
                     }
 
                     if viewModel.canCompleteSet {
@@ -47,13 +51,15 @@ struct WatchWorkoutView: View {
                         }
                     }
 
-                    Button(role: .destructive) {
-                        viewModel.skipCurrentSet()
-                        syncManager.publishActiveWorkoutState(viewModel.state)
-                    } label: {
-                        Label("Skip Set", systemImage: "forward.end.fill")
+                    if !viewModel.isResting {
+                        Button(role: .destructive) {
+                            viewModel.skipCurrentSet()
+                            syncManager.publishActiveWorkoutState(viewModel.state)
+                        } label: {
+                            Label("Skip Set", systemImage: "forward.end.fill")
+                        }
+                        .font(.caption)
                     }
-                    .font(.caption)
                 }
             }
             .padding(.horizontal, 7)
@@ -160,17 +166,24 @@ struct WatchWorkoutView: View {
                     viewModel.completeCurrentSet()
                     syncManager.publishActiveWorkoutState(viewModel.state)
                 }
+            } else if viewModel.isResting {
+                WatchGlassButton(title: "Start Next", systemImage: "play.fill") {
+                    viewModel.finishRest()
+                    syncManager.publishActiveWorkoutState(viewModel.state)
+                }
             }
 
             nextExerciseCard
 
-            Button(role: .destructive) {
-                viewModel.skipCurrentSet()
-                syncManager.publishActiveWorkoutState(viewModel.state)
-            } label: {
-                Label("Skip", systemImage: "forward.end.fill")
+            if !viewModel.isResting {
+                Button(role: .destructive) {
+                    viewModel.skipCurrentSet()
+                    syncManager.publishActiveWorkoutState(viewModel.state)
+                } label: {
+                    Label("Skip", systemImage: "forward.end.fill")
+                }
+                .font(.caption2)
             }
-            .font(.caption2)
         }
     }
 
@@ -330,7 +343,7 @@ struct WatchWorkoutView: View {
                 Text("Next")
                     .font(.caption2)
                     .foregroundStyle(.secondary)
-                Text(viewModel.nextExerciseName ?? "Finish")
+                Text(viewModel.nextWorkoutStepText)
                     .font(.caption.weight(.semibold))
                     .lineLimit(1)
             }
@@ -358,6 +371,9 @@ struct WatchWorkoutView: View {
         }
 
         let type = viewModel.isCurrentSetWarmup ? "Warm-up" : "Working"
+        if viewModel.isResting {
+            return "Resting after \(type.lowercased()) set \(max(viewModel.completedSetCount, 1))"
+        }
         return "\(type) set \(viewModel.nextSetNumber) of \(viewModel.totalSetCount)"
     }
 

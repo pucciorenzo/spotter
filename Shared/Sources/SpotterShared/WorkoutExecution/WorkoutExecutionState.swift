@@ -322,11 +322,9 @@ public enum WorkoutExecutionEngine {
         state.session.setLogs.append(log)
         state.session.durationSeconds = max(0, Int(date.timeIntervalSince(state.session.startedAt)))
         state.session.updatedAt = date
-        state.rest = RestTimerState(startedAt: date, plannedSeconds: exercise.restSeconds)
-
-        if let nextIndex = nextIncompleteExerciseIndex(in: day, state: state) {
-            state.currentExerciseIndex = nextIndex
-        }
+        state.rest = nextIncompleteExerciseIndex(in: day, state: state) == nil
+            ? nil
+            : RestTimerState(startedAt: date, plannedSeconds: exercise.restSeconds)
     }
 
     public static func updateSetLog(
@@ -455,6 +453,22 @@ public enum WorkoutExecutionEngine {
         state.session.durationSeconds = max(0, Int(date.timeIntervalSince(state.session.startedAt)))
         state.session.updatedAt = date
         state.rest = nil
+    }
+
+    public static func finishRest(
+        in state: inout WorkoutExecutionState,
+        day: WorkoutDayDTO,
+        at date: Date = Date()
+    ) {
+        guard state.rest != nil else {
+            return
+        }
+
+        state.rest = nil
+        if let nextIndex = nextIncompleteExerciseIndex(in: day, state: state) {
+            state.currentExerciseIndex = nextIndex
+        }
+        state.session.updatedAt = date
     }
 
     public static func nextIncompleteExerciseIndex(

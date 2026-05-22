@@ -110,8 +110,12 @@ final class WatchWorkoutViewModel: ObservableObject {
         return currentExercise.targetType == .fixedDuration || currentExercise.targetType == .durationRange
     }
 
+    var isResting: Bool {
+        state.rest != nil
+    }
+
     var canCompleteSet: Bool {
-        currentExercise != nil && !isWorkoutComplete
+        currentExercise != nil && !isWorkoutComplete && !isResting
     }
 
     var canMoveCurrentExerciseUp: Bool {
@@ -147,14 +151,16 @@ final class WatchWorkoutViewModel: ObservableObject {
         }
     }
 
-    var nextExerciseName: String? {
+    var nextWorkoutStepText: String {
         let exercises = WorkoutExecutionEngine.orderedExercises(in: day, state: state)
-        let nextIndex = state.currentExerciseIndex + 1
-        guard exercises.indices.contains(nextIndex) else {
-            return nil
+        guard let nextIndex = WorkoutExecutionEngine.nextIncompleteExerciseIndex(in: day, state: state),
+              exercises.indices.contains(nextIndex) else {
+            return "Finish"
         }
 
-        return exerciseName(for: exercises[nextIndex].exerciseId)
+        let exercise = exercises[nextIndex]
+        let setNumber = WorkoutExecutionEngine.nextSetIndex(for: exercise, in: state)
+        return "\(exerciseName(for: exercise.exerciseId)) Set \(setNumber)"
     }
 
     var currentSuggestion: WatchWorkoutLoggingSuggestion? {
@@ -237,7 +243,8 @@ final class WatchWorkoutViewModel: ObservableObject {
     }
 
     func completeCurrentSet(reps: Int?, durationSeconds: Int?, load: Double?, rpe: Double? = nil, rir: Int? = nil) {
-        guard let exercise = currentExercise else {
+        guard !isResting,
+              let exercise = currentExercise else {
             return
         }
 
@@ -253,6 +260,12 @@ final class WatchWorkoutViewModel: ObservableObject {
             rir: rir
         )
 
+        saveActiveWorkout()
+        loadCurrentTargets()
+    }
+
+    func finishRest() {
+        WorkoutExecutionEngine.finishRest(in: &state, day: day)
         saveActiveWorkout()
         loadCurrentTargets()
     }

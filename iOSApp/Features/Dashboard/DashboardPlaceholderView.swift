@@ -5,6 +5,7 @@ struct TodayView: View {
     @ObservedObject var activeWorkoutRepository: MockActiveWorkoutRepository
     let showActiveWorkout: () -> Void
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+    @State private var showsNavigationTitle = false
 
     private var snapshot: SpotterTodaySnapshot {
         dataProvider.today
@@ -18,22 +19,19 @@ struct TodayView: View {
                 VStack(alignment: .leading, spacing: 22) {
                     TodayHeader(snapshot: snapshot)
 
-                    if let session = activeWorkoutRepository.session {
-                        ActiveWorkoutBanner(session: session, action: showActiveWorkout)
-                    }
-
                     if let suggestedWorkout = snapshot.suggestedWorkout {
-                        SuggestedWorkoutCard(workout: suggestedWorkout) {
-                            activeWorkoutRepository.startMockWorkout()
-                            showActiveWorkout()
-                        }
+                        SuggestedWorkoutCard(
+                            workout: suggestedWorkout,
+                            activeSession: activeWorkoutRepository.session,
+                            action: primaryWorkoutAction
+                        )
                     } else {
                         TodayEmptyPlanCard()
                     }
 
                     LazyVGrid(columns: metricColumns, spacing: 14) {
                         ForEach(snapshot.metrics) { metric in
-                            MetricCard(
+                            TodayMetricCard(
                                 title: metric.title,
                                 value: metric.value,
                                 caption: metric.caption,
@@ -44,15 +42,11 @@ struct TodayView: View {
 
                     VStack(alignment: .leading, spacing: 12) {
                         Text("Recent Workouts")
-                            .font(.headline)
+                            .font(.headline.weight(.semibold))
+                            .foregroundStyle(SpotterPalette.textPrimary)
 
                         if snapshot.recentWorkouts.isEmpty {
-                            SpotterStateView(
-                                mode: .empty,
-                                title: "No workouts yet",
-                                message: "Completed sessions will appear here after you finish logging.",
-                                systemImage: "clock.arrow.circlepath"
-                            )
+                            TodayEmptyRecentCard()
                         } else {
                             ScrollView(.horizontal, showsIndicators: false) {
                                 HStack(spacing: 14) {
@@ -66,12 +60,22 @@ struct TodayView: View {
                     }
                 }
                 .padding(.horizontal, 20)
-                .padding(.top, 18)
+                .padding(.top, 8)
                 .padding(.bottom, 34)
             }
+            .onScrollGeometryChange(for: Bool.self) { geometry in
+                geometry.contentOffset.y > 24
+            } action: { _, isScrolled in
+                showsNavigationTitle = isScrolled
+            }
         }
-        .navigationTitle("Today")
-        .navigationBarTitleDisplayMode(.large)
+        .navigationTitle("")
+        .navigationBarTitleDisplayMode(.inline)
+        .toolbar {
+            ToolbarItem(placement: .principal) {
+                SpotterInlineNavigationTitle(title: "Today", isVisible: showsNavigationTitle)
+            }
+        }
         .spotterScreenChrome()
     }
 
@@ -80,22 +84,31 @@ struct TodayView: View {
             ? [GridItem(.flexible())]
             : [GridItem(.flexible()), GridItem(.flexible())]
     }
+
+    private func primaryWorkoutAction() {
+        if activeWorkoutRepository.session == nil {
+            activeWorkoutRepository.startMockWorkout()
+        }
+
+        showActiveWorkout()
+    }
 }
 
 private struct TodayHeader: View {
     let snapshot: SpotterTodaySnapshot
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 16) {
+        VStack(alignment: .leading, spacing: 18) {
             VStack(alignment: .leading, spacing: 8) {
                 Text(snapshot.greeting)
                     .font(.largeTitle.weight(.semibold))
+                    .foregroundStyle(SpotterPalette.textPrimary)
                 Text(snapshot.status)
                     .font(.title3.weight(.medium))
                     .foregroundStyle(SpotterPalette.textSecondary)
             }
 
-            HStack(spacing: 10) {
+            HStack(spacing: 8) {
                 TodayStatusPill(title: "\(snapshot.sessionsThisWeek) this week", systemImage: "calendar")
                 TodayStatusPill(title: snapshot.lastWorkout, systemImage: "clock")
                 TodayStatusPill(title: snapshot.recoveryStatus, systemImage: "heart")
@@ -107,10 +120,11 @@ private struct TodayHeader: View {
 
 private struct SuggestedWorkoutCard: View {
     let workout: SpotterSuggestedWorkout
-    let startWorkout: () -> Void
+    let activeSession: ActiveWorkoutSession?
+    let action: () -> Void
 
     var body: some View {
-        GlassCard {
+        TodayGlassSurface(cornerRadius: 30, padding: 18) {
             VStack(alignment: .leading, spacing: 18) {
                 HStack(alignment: .top, spacing: 16) {
                     VStack(alignment: .leading, spacing: 8) {
@@ -119,6 +133,7 @@ private struct SuggestedWorkoutCard: View {
                             .foregroundStyle(SpotterPalette.accentSoft)
                         Text(workout.dayName)
                             .font(.title2.weight(.semibold))
+                            .foregroundStyle(SpotterPalette.textPrimary)
                         Text(workout.planName)
                             .font(.subheadline)
                             .foregroundStyle(SpotterPalette.textSecondary)
@@ -148,55 +163,26 @@ private struct SuggestedWorkoutCard: View {
                 }
                 .foregroundStyle(SpotterPalette.textSecondary)
 
-                GlassButton(title: "Start", systemImage: "play.fill", action: startWorkout)
-                    .accessibilityLabel("Start \(workout.dayName)")
+                GlassButton(
+                    title: activeSession == nil ? "Start" : "Resume",
+                    systemImage: activeSession == nil ? "play.fill" : "arrow.clockwise",
+                    action: action
+                )
+                .accessibilityLabel(activeSession == nil ? "Start \(workout.dayName)" : "Resume active workout")
+                .accessibilityValue(activeSessionValue)
             }
         }
     }
-}
 
-private struct ActiveWorkoutBanner: View {
-    let session: ActiveWorkoutSession
-    let action: () -> Void
-
-    var body: some View {
-        Button(action: action) {
-            HStack(spacing: 14) {
-                Image(systemName: "figure.strengthtraining.traditional")
-                    .font(.title3)
-                    .symbolRenderingMode(.hierarchical)
-                    .foregroundStyle(SpotterPalette.accentSoft)
-
-                VStack(alignment: .leading, spacing: 3) {
-                    Text(session.currentExercise?.name ?? session.dayName)
-                        .font(.headline)
-                    Text("\(session.dayName) - \(session.completedSetCount)/\(session.totalSetCount) sets")
-                        .font(.caption)
-                        .foregroundStyle(SpotterPalette.textSecondary)
-                }
-
-                Spacer()
-
-                Text("Resume")
-                    .font(.subheadline.weight(.semibold))
-                    .foregroundStyle(SpotterPalette.accentSoft)
-            }
-            .padding(16)
-            .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 24, style: .continuous))
-            .overlay {
-                RoundedRectangle(cornerRadius: 24, style: .continuous)
-                    .strokeBorder(SpotterPalette.glassStroke, lineWidth: 1)
-            }
-        }
-        .buttonStyle(.plain)
-        .accessibilityLabel("Resume active workout")
-        .accessibilityValue("\(session.currentExercise?.name ?? session.dayName), \(session.completedSetCount) of \(session.totalSetCount) sets")
+    private var activeSessionValue: String {
+        guard let activeSession else { return workout.dayName }
+        return "\(activeSession.currentExercise?.name ?? activeSession.dayName), \(activeSession.completedSetCount) of \(activeSession.totalSetCount) sets"
     }
 }
 
 private struct TodayEmptyPlanCard: View {
     var body: some View {
-        GlassCard {
+        TodayGlassSurface(cornerRadius: 30, padding: 18) {
             VStack(alignment: .leading, spacing: 16) {
                 Image(systemName: "list.bullet.rectangle")
                     .font(.title)
@@ -205,6 +191,7 @@ private struct TodayEmptyPlanCard: View {
 
                 Text("No plan yet")
                     .font(.title2.weight(.semibold))
+                    .foregroundStyle(SpotterPalette.textPrimary)
                 Text("Create a plan and Spotter will keep the next workout one tap away.")
                     .font(.subheadline)
                     .foregroundStyle(SpotterPalette.textSecondary)
@@ -220,10 +207,11 @@ private struct RecentWorkoutCard: View {
     let workout: SpotterRecentWorkout
 
     var body: some View {
-        GlassCard(cornerRadius: 24, padding: 16) {
+        TodayGlassSurface(cornerRadius: 24, padding: 16) {
             VStack(alignment: .leading, spacing: 12) {
                 Text(workout.name)
-                    .font(.headline)
+                    .font(.headline.weight(.semibold))
+                    .foregroundStyle(SpotterPalette.textPrimary)
                 Text(workout.dateText)
                     .font(.caption)
                     .foregroundStyle(SpotterPalette.textSecondary)
@@ -240,6 +228,69 @@ private struct RecentWorkoutCard: View {
     }
 }
 
+private struct TodayMetricCard: View {
+    let title: String
+    let value: String
+    let caption: String
+    let systemImage: String
+
+    var body: some View {
+        TodayGlassSurface(cornerRadius: 24, padding: 16) {
+            VStack(alignment: .leading, spacing: 14) {
+                Image(systemName: systemImage)
+                    .font(.headline.weight(.semibold))
+                    .symbolRenderingMode(.hierarchical)
+                    .foregroundStyle(SpotterPalette.accentSoft)
+
+                Text(value)
+                    .font(.system(size: 32, weight: .semibold, design: .rounded))
+                    .monospacedDigit()
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.72)
+                    .foregroundStyle(SpotterPalette.textPrimary)
+
+                VStack(alignment: .leading, spacing: 3) {
+                    Text(title)
+                        .font(.subheadline.weight(.medium))
+                        .foregroundStyle(SpotterPalette.textPrimary)
+                    Text(caption)
+                        .font(.caption)
+                        .foregroundStyle(SpotterPalette.textSecondary)
+                }
+            }
+            .frame(maxWidth: .infinity, minHeight: 132, alignment: .leading)
+        }
+    }
+}
+
+private struct TodayEmptyRecentCard: View {
+    var body: some View {
+        TodayGlassSurface(cornerRadius: 26, padding: 20) {
+            VStack(spacing: 14) {
+                Image(systemName: "clock.arrow.circlepath")
+                    .font(.title2.weight(.semibold))
+                    .symbolRenderingMode(.hierarchical)
+                    .foregroundStyle(SpotterPalette.accentSoft)
+                    .frame(width: 54, height: 54)
+                    .background(.white.opacity(0.06), in: Circle())
+
+                VStack(spacing: 6) {
+                    Text("No workouts yet")
+                        .font(.headline.weight(.semibold))
+                        .foregroundStyle(SpotterPalette.textPrimary)
+                    Text("Completed sessions will appear here after you finish logging.")
+                        .font(.subheadline)
+                        .foregroundStyle(SpotterPalette.textSecondary)
+                        .multilineTextAlignment(.center)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+            }
+            .frame(maxWidth: .infinity)
+        }
+        .accessibilityElement(children: .combine)
+    }
+}
+
 private struct TodayStatusPill: View {
     let title: String
     let systemImage: String
@@ -253,12 +304,50 @@ private struct TodayStatusPill: View {
             .foregroundStyle(SpotterPalette.textPrimary)
             .padding(.horizontal, 10)
             .padding(.vertical, 7)
-            .background(.white.opacity(0.08), in: Capsule())
+            .background(Color.black.opacity(0.12), in: Capsule())
+            .glassEffect(.regular, in: Capsule())
             .overlay {
                 Capsule()
                     .strokeBorder(SpotterPalette.glassStroke, lineWidth: 1)
             }
             .accessibilityElement(children: .combine)
+    }
+}
+
+private struct TodayGlassSurface<Content: View>: View {
+    let cornerRadius: CGFloat
+    let padding: CGFloat
+    let content: Content
+
+    init(cornerRadius: CGFloat = 28, padding: CGFloat = 18, @ViewBuilder content: () -> Content) {
+        self.cornerRadius = cornerRadius
+        self.padding = padding
+        self.content = content()
+    }
+
+    var body: some View {
+        content
+            .padding(padding)
+            .background(Color.black.opacity(0.18), in: RoundedRectangle(cornerRadius: cornerRadius, style: .continuous))
+            .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: cornerRadius, style: .continuous))
+            .glassEffect(.regular, in: RoundedRectangle(cornerRadius: cornerRadius, style: .continuous))
+            .overlay {
+                RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
+                    .strokeBorder(.white.opacity(0.15), lineWidth: 1)
+            }
+            .overlay(alignment: .topLeading) {
+                RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
+                    .stroke(.white.opacity(0.14), lineWidth: 0.8)
+                    .blur(radius: 0.7)
+                    .padding(1)
+                    .mask(
+                        LinearGradient(
+                            colors: [.white, .clear],
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
+                        )
+                    )
+            }
     }
 }
 

@@ -12,10 +12,12 @@ protocol ActiveWorkoutProviding: ObservableObject {
     func updateRPE(_ rpe: Double?)
     func updateRIR(_ rir: Int?)
     func completeCurrentSet()
+    func finishRest()
     func skipCurrentSet()
     func pauseWorkout()
     func resumeWorkout()
     func endWorkout()
+    func discardWorkout()
     func addSet(to exerciseId: UUID)
     func removeSet(_ setId: UUID, from exerciseId: UUID)
     func tickRest()
@@ -41,6 +43,26 @@ struct ActiveWorkoutSession: Identifiable {
 
     var currentSet: ActiveWorkoutSet? {
         currentExercise?.sets.first { $0.id == currentSetId }
+    }
+
+    var isResting: Bool {
+        restStartedAt != nil
+    }
+
+    var nextPendingTarget: (exercise: ActiveWorkoutExercise, set: ActiveWorkoutSet)? {
+        guard let indexes = currentIndexes else { return nil }
+
+        for exerciseIndex in indexes.exercise..<exercises.count {
+            let startSetIndex = exerciseIndex == indexes.exercise ? indexes.set + 1 : 0
+            for setIndex in startSetIndex..<exercises[exerciseIndex].sets.count {
+                let set = exercises[exerciseIndex].sets[setIndex]
+                if !set.isCompleted && !set.isSkipped {
+                    return (exercises[exerciseIndex], set)
+                }
+            }
+        }
+
+        return nil
     }
 
     var nextExercise: ActiveWorkoutExercise? {
@@ -69,6 +91,14 @@ struct ActiveWorkoutSession: Identifiable {
             total + set.estimatedWorkSeconds + set.restSeconds
         }
         return max(1, seconds / 60)
+    }
+
+    private var currentIndexes: (exercise: Int, set: Int)? {
+        guard let exerciseIndex = exercises.firstIndex(where: { $0.id == currentExerciseId }),
+              let setIndex = exercises[exerciseIndex].sets.firstIndex(where: { $0.id == currentSetId }) else {
+            return nil
+        }
+        return (exerciseIndex, setIndex)
     }
 }
 
@@ -378,6 +408,7 @@ final class MockActiveWorkoutRepository: ActiveWorkoutProviding {
         mutateSession { session in
             session.currentExerciseId = exerciseId
             session.currentSetId = setId
+            clearRest(in: &session)
             refreshSuggestions(in: &session)
         }
     }
@@ -404,19 +435,42 @@ final class MockActiveWorkoutRepository: ActiveWorkoutProviding {
 
     func completeCurrentSet() {
         mutateSession { session in
-            guard let indexes = currentIndexes(in: session) else { return }
+            guard session.restStartedAt == nil,
+                  let indexes = currentIndexes(in: session),
+                  !session.exercises[indexes.exercise].sets[indexes.set].isCompleted else {
+                return
+            }
+
             session.exercises[indexes.exercise].sets[indexes.set].isCompleted = true
             session.exercises[indexes.exercise].sets[indexes.set].isSkipped = false
             historyRepository.recordCompletedSet(
                 exerciseName: session.exercises[indexes.exercise].name,
                 set: session.exercises[indexes.exercise].sets[indexes.set]
             )
-            let restSeconds = session.exercises[indexes.exercise].sets[indexes.set].restSeconds
-            session.restDurationSeconds = restSeconds
-            session.restRemainingSeconds = restSeconds
-            session.restStartedAt = Date()
+
+            if hasPendingSet(after: indexes, in: session) {
+                let restSeconds = session.exercises[indexes.exercise].sets[indexes.set].restSeconds
+                session.restDurationSeconds = restSeconds
+                session.restRemainingSeconds = restSeconds
+                session.restStartedAt = Date()
+            } else {
+                clearRest(in: &session)
+            }
+
             refreshSuggestions(in: &session)
+        }
+    }
+
+    func finishRest() {
+        mutateSession { session in
+            guard session.restStartedAt != nil,
+                  let indexes = currentIndexes(in: session) else {
+                return
+            }
+
+            clearRest(in: &session)
             advanceSelection(in: &session, after: indexes)
+            refreshSuggestions(in: &session)
         }
     }
 
@@ -446,6 +500,7 @@ final class MockActiveWorkoutRepository: ActiveWorkoutProviding {
             guard let indexes = currentIndexes(in: session) else { return }
             session.exercises[indexes.exercise].sets[indexes.set].isSkipped = true
             session.exercises[indexes.exercise].sets[indexes.set].isCompleted = false
+            clearRest(in: &session)
             advanceSelection(in: &session, after: indexes)
         }
     }
@@ -467,6 +522,10 @@ final class MockActiveWorkoutRepository: ActiveWorkoutProviding {
     }
 
     func endWorkout() {
+        session = nil
+    }
+
+    func discardWorkout() {
         session = nil
     }
 
@@ -546,6 +605,25 @@ final class MockActiveWorkoutRepository: ActiveWorkoutProviding {
                 }
             }
         }
+    }
+
+    private func hasPendingSet(after indexes: (exercise: Int, set: Int), in session: ActiveWorkoutSession) -> Bool {
+        for exerciseIndex in indexes.exercise..<session.exercises.count {
+            let startSetIndex = exerciseIndex == indexes.exercise ? indexes.set + 1 : 0
+            for setIndex in startSetIndex..<session.exercises[exerciseIndex].sets.count {
+                let set = session.exercises[exerciseIndex].sets[setIndex]
+                if !set.isCompleted && !set.isSkipped {
+                    return true
+                }
+            }
+        }
+        return false
+    }
+
+    private func clearRest(in session: inout ActiveWorkoutSession) {
+        session.restDurationSeconds = 0
+        session.restRemainingSeconds = 0
+        session.restStartedAt = nil
     }
 
     private func refreshSuggestions() {

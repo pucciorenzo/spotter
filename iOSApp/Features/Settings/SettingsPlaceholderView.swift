@@ -12,6 +12,7 @@ struct ProfileView: View {
     @State private var showingExporter = false
     @State private var exportErrorMessage: String?
     @State private var isExporting = false
+    @State private var showsNavigationTitle = false
 
     private var profile: SpotterProfileSnapshot {
         dataProvider.profile
@@ -120,12 +121,22 @@ struct ProfileView: View {
                     }
                 }
                 .padding(.horizontal, 20)
-                .padding(.top, 18)
+                .padding(.top, 8)
                 .padding(.bottom, 34)
             }
+            .onScrollGeometryChange(for: Bool.self) { geometry in
+                geometry.contentOffset.y > 24
+            } action: { _, isScrolled in
+                showsNavigationTitle = isScrolled
+            }
         }
-        .navigationTitle("Profile")
-        .navigationBarTitleDisplayMode(.large)
+        .navigationTitle("")
+        .navigationBarTitleDisplayMode(.inline)
+        .toolbar {
+            ToolbarItem(placement: .principal) {
+                SpotterInlineNavigationTitle(title: "Profile", isVisible: showsNavigationTitle)
+            }
+        }
         .spotterScreenChrome()
         .sheet(isPresented: $showingExporter) {
             ActivityView(activityItems: exportURLs)

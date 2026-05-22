@@ -11,82 +11,31 @@ struct RootTabView: View {
     @StateObject private var healthKitManager = HealthKitWorkoutManager()
     @StateObject private var liveActivityManager = ActiveWorkoutLiveActivityManager()
     @State private var showingActiveWorkout = false
-    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @State private var activeWorkoutFocusMode = false
     private let dataProvider: any SpotterDataProviding = MockSpotterRepository.preview
+    private let workoutTicker = Timer.publish(every: 1, on: .main, in: .common).autoconnect()
 
     var body: some View {
-        ZStack(alignment: .bottom) {
-            TabView {
-                NavigationStack {
-                    TodayView(
-                        dataProvider: dataProvider,
-                        activeWorkoutRepository: activeWorkoutRepository,
-                        showActiveWorkout: { showingActiveWorkout = true }
+        ZStack {
+            tabContent
+
+            if showingActiveWorkout {
+                ActiveWorkoutPresentation(
+                    isPresented: $showingActiveWorkout,
+                    isFocusMode: $activeWorkoutFocusMode
+                ) {
+                    ActiveWorkoutView(
+                        repository: activeWorkoutRepository,
+                        healthKitManager: healthKitManager,
+                        liveActivityManager: liveActivityManager,
+                        isFocusMode: $activeWorkoutFocusMode,
+                        close: closeActiveWorkout
                     )
                 }
-                .spotterNavigationChrome()
-                .tabItem {
-                    Label("Today", systemImage: "calendar")
-                }
-
-                NavigationStack {
-                    PlanListView(
-                        dataProvider: dataProvider,
-                        activeWorkoutRepository: activeWorkoutRepository,
-                        showActiveWorkout: { showingActiveWorkout = true }
-                    )
-                }
-                .spotterNavigationChrome()
-                .tabItem {
-                    Label("Plans", systemImage: "list.bullet.rectangle")
-                }
-
-                NavigationStack {
-                    ExerciseListView(dataProvider: dataProvider)
-                }
-                .spotterNavigationChrome()
-                .tabItem {
-                    Label("Exercises", systemImage: "figure.strengthtraining.traditional")
-                }
-
-                NavigationStack {
-                    ProgressScreenView(dataProvider: dataProvider)
-                }
-                .spotterNavigationChrome()
-                .tabItem {
-                    Label("Progress", systemImage: "chart.line.uptrend.xyaxis")
-                }
-
-                NavigationStack {
-                    ProfileView(
-                        dataProvider: dataProvider,
-                        healthKitManager: healthKitManager
-                    )
-                }
-                .spotterNavigationChrome()
-                .tabItem {
-                    Label("Profile", systemImage: "person.crop.circle")
-                }
-            }
-
-            if let session = activeWorkoutRepository.session {
-                ActiveWorkoutMiniPlayer(session: session) {
-                    SpotterHaptics.selection()
-                    showingActiveWorkout = true
-                }
-                .padding(.horizontal, 16)
-                .padding(.bottom, 58)
-                .transition(reduceMotion ? .opacity : .move(edge: .bottom).combined(with: .opacity))
+                .zIndex(1)
             }
         }
-        .animation(reduceMotion ? nil : .spring(response: 0.32, dampingFraction: 0.86), value: activeWorkoutRepository.session?.id)
-        .fullScreenCover(isPresented: $showingActiveWorkout) {
-            ActiveWorkoutView(
-                repository: activeWorkoutRepository,
-                healthKitManager: healthKitManager,
-                liveActivityManager: liveActivityManager
-            )
-        }
+        .animation(.spring(response: 0.34, dampingFraction: 0.86), value: activeWorkoutRepository.session?.id)
         .environmentObject(watchSyncManager)
         .task {
             watchSyncManager.configure(modelContext: modelContext)
@@ -96,11 +45,94 @@ struct RootTabView: View {
         .onChange(of: snapshotVersion) { _, _ in
             publishWatchSnapshot()
         }
+        .onChange(of: showingActiveWorkout) { _, isShowing in
+            if !isShowing {
+                activeWorkoutFocusMode = false
+            }
+        }
+        .onReceive(workoutTicker) { _ in
+            activeWorkoutRepository.tickRest()
+        }
         .onOpenURL { url in
             guard url.scheme == "spotter", url.host == "active-workout" else {
                 return
             }
             showingActiveWorkout = activeWorkoutRepository.session != nil
+        }
+    }
+
+    private var tabContent: some View {
+        TabView {
+            NavigationStack {
+                TodayView(
+                    dataProvider: dataProvider,
+                    activeWorkoutRepository: activeWorkoutRepository,
+                    showActiveWorkout: { showingActiveWorkout = true }
+                )
+            }
+            .spotterNavigationChrome()
+            .tabItem {
+                Label("Today", systemImage: "calendar")
+            }
+
+            NavigationStack {
+                PlanListView(
+                    dataProvider: dataProvider,
+                    activeWorkoutRepository: activeWorkoutRepository,
+                    showActiveWorkout: { showingActiveWorkout = true }
+                )
+            }
+            .spotterNavigationChrome()
+            .tabItem {
+                Label("Plans", systemImage: "list.bullet.rectangle")
+            }
+
+            NavigationStack {
+                ExerciseListView(dataProvider: dataProvider)
+            }
+            .spotterNavigationChrome()
+            .tabItem {
+                Label("Exercises", systemImage: "figure.strengthtraining.traditional")
+            }
+
+            NavigationStack {
+                ProgressScreenView(dataProvider: dataProvider)
+            }
+            .spotterNavigationChrome()
+            .tabItem {
+                Label("Progress", systemImage: "chart.line.uptrend.xyaxis")
+            }
+
+            NavigationStack {
+                ProfileView(
+                    dataProvider: dataProvider,
+                    healthKitManager: healthKitManager
+                )
+            }
+            .spotterNavigationChrome()
+            .tabItem {
+                Label("Profile", systemImage: "person.crop.circle")
+            }
+        }
+        .safeAreaInset(edge: .bottom, spacing: 0) {
+            if let session = activeWorkoutRepository.session {
+                ActiveWorkoutMiniBar(session: session) {
+                    SpotterHaptics.impact(.light)
+                    withAnimation(.spring(response: 0.34, dampingFraction: 0.88)) {
+                        showingActiveWorkout = true
+                    }
+                }
+                .padding(.horizontal, 16)
+                .padding(.bottom, 64)
+                .transition(.move(edge: .bottom).combined(with: .opacity))
+            }
+        }
+    }
+
+    private func closeActiveWorkout() {
+        withAnimation(.spring(response: 0.32, dampingFraction: 0.88)) {
+            showingActiveWorkout = false
+            activeWorkoutFocusMode = false
         }
     }
 
@@ -166,57 +198,181 @@ struct RootTabView: View {
     }
 }
 
-#Preview {
-    RootTabView()
+private struct ActiveWorkoutPresentation<Content: View>: View {
+    @Binding var isPresented: Bool
+    @Binding var isFocusMode: Bool
+    @State private var dragOffset: CGFloat = 0
+    let content: () -> Content
+
+    var body: some View {
+        ZStack(alignment: .top) {
+            SpotterPalette.backgroundBottom
+                .ignoresSafeArea()
+
+            content()
+                .padding(.top, isFocusMode ? 0 : 22)
+                .offset(y: isFocusMode ? 0 : max(0, dragOffset))
+                .transition(.move(edge: .bottom).combined(with: .opacity))
+                .simultaneousGesture(isFocusMode ? nil : closeGesture)
+
+            if !isFocusMode {
+                dragHandle
+                    .padding(.top, 4)
+                    .gesture(closeGesture)
+                    .transition(.opacity)
+            }
+        }
+        .ignoresSafeArea(.container, edges: .bottom)
+        .onChange(of: isFocusMode) { _, newValue in
+            if newValue {
+                dragOffset = 0
+            }
+        }
+    }
+
+    private var dragHandle: some View {
+        Capsule()
+            .fill(.white.opacity(0.36))
+            .frame(width: 36, height: 5)
+            .padding(.horizontal, 28)
+            .padding(.vertical, 16)
+            .contentShape(Rectangle())
+            .accessibilityLabel("Close workout")
+    }
+
+    private var closeGesture: some Gesture {
+        DragGesture(minimumDistance: 8)
+            .onChanged { value in
+                dragOffset = max(0, value.translation.height)
+            }
+            .onEnded { value in
+                let shouldClose = value.translation.height > 92 || value.predictedEndTranslation.height > 150
+                if shouldClose {
+                    withAnimation(.spring(response: 0.32, dampingFraction: 0.88)) {
+                        isPresented = false
+                        isFocusMode = false
+                    }
+                } else {
+                    withAnimation(.spring(response: 0.26, dampingFraction: 0.82)) {
+                        dragOffset = 0
+                    }
+                }
+            }
+    }
 }
 
-private struct ActiveWorkoutMiniPlayer: View {
+private struct ActiveWorkoutMiniBar: View {
     let session: ActiveWorkoutSession
     let action: () -> Void
+
+    private var isResting: Bool {
+        session.restStartedAt != nil
+    }
+
+    private var primaryText: String {
+        if isResting {
+            return "Rest \(formattedTime(max(0, session.restRemainingSeconds)))"
+        }
+
+        return session.currentExercise?.name ?? session.dayName
+    }
+
+    private var secondaryText: String {
+        if isResting {
+            if session.restRemainingSeconds <= 0 {
+                return "Rest complete"
+            }
+
+            if let target = session.nextPendingTarget {
+                return "Next: \(target.exercise.name) Set \(target.set.index)"
+            }
+
+            return session.currentExercise?.name ?? "Next set"
+        }
+
+        guard let currentSet = session.currentSet else {
+            return "\(session.completedSetCount) of \(session.totalSetCount) sets"
+        }
+
+        let totalSets = session.currentExercise?.sets.count ?? 0
+        let setText = totalSets > 0 ? "Set \(currentSet.index) of \(totalSets)" : "Set \(currentSet.index)"
+
+        switch currentSet.kind {
+        case .duration:
+            return "\(setText) · \(currentSet.durationSeconds)s"
+        case .repsWeight:
+            return "\(setText) · \(currentSet.reps) reps"
+        }
+    }
 
     var body: some View {
         Button(action: action) {
             HStack(spacing: 12) {
-                Image(systemName: "figure.strengthtraining.traditional")
-                    .font(.title3)
-                    .symbolRenderingMode(.hierarchical)
-                    .foregroundStyle(SpotterPalette.accentSoft)
+                Image(systemName: isResting ? "timer" : "figure.strengthtraining.traditional")
+                    .font(.headline.weight(.semibold))
+                    .foregroundStyle(SpotterPalette.textPrimary)
+                    .frame(width: 34, height: 34)
+                    .background(.white.opacity(0.08), in: Circle())
 
                 VStack(alignment: .leading, spacing: 2) {
-                    Text(session.currentExercise?.name ?? session.dayName)
-                        .font(.headline)
+                    Text(primaryText)
+                        .font(.subheadline.weight(.semibold))
+                        .foregroundStyle(SpotterPalette.textPrimary)
                         .lineLimit(1)
-                    Text("\(session.dayName) - \(session.completedSetCount)/\(session.totalSetCount) sets - \(restText)")
-                        .font(.caption)
+
+                    Text(secondaryText)
+                        .font(.caption.weight(.medium))
                         .foregroundStyle(SpotterPalette.textSecondary)
                         .lineLimit(1)
                 }
 
-                Spacer()
+                Spacer(minLength: 10)
 
-                Text("Resume")
-                    .font(.subheadline.weight(.semibold))
-                    .foregroundStyle(SpotterPalette.accentSoft)
+                Image(systemName: "chevron.up")
+                    .font(.caption.weight(.bold))
+                    .foregroundStyle(SpotterPalette.textSecondary)
             }
-            .padding(.horizontal, 16)
-            .padding(.vertical, 12)
-            .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 24, style: .continuous))
+            .padding(.horizontal, 14)
+            .frame(height: 58)
+            .background(Color.black.opacity(0.22), in: Capsule())
+            .background(.ultraThinMaterial, in: Capsule())
             .overlay {
-                RoundedRectangle(cornerRadius: 24, style: .continuous)
+                Capsule()
                     .strokeBorder(SpotterPalette.glassStroke, lineWidth: 1)
             }
-            .shadow(color: .black.opacity(0.28), radius: 20, y: 12)
+            .shadow(color: .black.opacity(0.30), radius: 22, y: 12)
+            .spotterInteractiveGlass(in: Capsule())
         }
         .buttonStyle(.plain)
-        .accessibilityLabel("Resume active workout")
-        .accessibilityValue("\(session.currentExercise?.name ?? session.dayName), \(session.completedSetCount) of \(session.totalSetCount) sets")
+        .accessibilityLabel(accessibilityText)
     }
 
-    private var restText: String {
-        guard session.restStartedAt != nil else { return "rest idle" }
-        if session.restRemainingSeconds >= 0 {
-            return "rest \(formatTime(session.restRemainingSeconds))"
+    private var accessibilityText: String {
+        if isResting {
+            return "Active workout, rest \(formattedTime(max(0, session.restRemainingSeconds))) remaining"
         }
-        return "+\(formatTime(abs(session.restRemainingSeconds)))"
+
+        return "Active workout, \(primaryText), \(secondaryText)"
     }
+
+    private func formattedTime(_ seconds: Int) -> String {
+        let minutes = seconds / 60
+        let remainingSeconds = seconds % 60
+        return "\(minutes):\(String(format: "%02d", remainingSeconds))"
+    }
+}
+
+private extension View {
+    @ViewBuilder
+    func spotterInteractiveGlass<S: Shape>(in shape: S) -> some View {
+        if #available(iOS 26, *) {
+            self.glassEffect(.regular.interactive(true), in: shape)
+        } else {
+            self
+        }
+    }
+}
+
+#Preview {
+    RootTabView()
 }

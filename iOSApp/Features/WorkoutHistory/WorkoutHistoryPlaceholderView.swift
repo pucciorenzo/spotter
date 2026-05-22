@@ -3,6 +3,7 @@ import SwiftUI
 struct ProgressScreenView: View {
     let dataProvider: any SpotterDataProviding
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+    @State private var showsNavigationTitle = false
 
     private var snapshot: SpotterProgressSnapshot {
         dataProvider.progress
@@ -58,12 +59,22 @@ struct ProgressScreenView: View {
                     }
                 }
                 .padding(.horizontal, 20)
-                .padding(.top, 18)
+                .padding(.top, 8)
                 .padding(.bottom, 34)
             }
+            .onScrollGeometryChange(for: Bool.self) { geometry in
+                geometry.contentOffset.y > 24
+            } action: { _, isScrolled in
+                showsNavigationTitle = isScrolled
+            }
         }
-        .navigationTitle("Progress")
-        .navigationBarTitleDisplayMode(.large)
+        .navigationTitle("")
+        .navigationBarTitleDisplayMode(.inline)
+        .toolbar {
+            ToolbarItem(placement: .principal) {
+                SpotterInlineNavigationTitle(title: "Progress", isVisible: showsNavigationTitle)
+            }
+        }
         .spotterScreenChrome()
     }
 
