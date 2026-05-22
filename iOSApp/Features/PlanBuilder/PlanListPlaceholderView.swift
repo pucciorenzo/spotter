@@ -168,8 +168,8 @@ struct PlanListView: View {
                     exercises: day.exercises.enumerated().map { index, exercise in
                         SpotterPlannedExerciseSummary(
                             id: exercise.id,
-                            name: "Exercise \(index + 1)",
-                            target: "\(exercise.numberOfSets) sets",
+                            name: Self.exerciseDisplayName(for: exercise, index: index),
+                            target: Self.exerciseTargetSummary(for: exercise),
                             load: exercise.startingLoad.map { "\($0.formatted()) kg" } ?? "No load",
                             rest: "\(exercise.restSeconds)s"
                         )
@@ -180,6 +180,37 @@ struct PlanListView: View {
             suggestedDay: dto.days.first?.name ?? "Add days",
             isActive: dto.isActive
         )
+    }
+
+    private static func exerciseDisplayName(for exercise: WorkoutExerciseDTO, index: Int) -> String {
+        let trimmedNotes = exercise.notes.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmedNotes.isEmpty else {
+            return "Exercise \(index + 1)"
+        }
+
+        if let firstLine = trimmedNotes.components(separatedBy: .newlines).first,
+           firstLine.hasPrefix("Name:") {
+            let name = firstLine.replacingOccurrences(of: "Name:", with: "")
+                .trimmingCharacters(in: .whitespacesAndNewlines)
+            return name.isEmpty ? "Exercise \(index + 1)" : name
+        }
+
+        return trimmedNotes.components(separatedBy: .newlines).first ?? "Exercise \(index + 1)"
+    }
+
+    private static func exerciseTargetSummary(for exercise: WorkoutExerciseDTO) -> String {
+        switch exercise.targetType {
+        case .fixedDuration:
+            "\(exercise.numberOfSets) x \(exercise.targetDurationSeconds ?? 0)s"
+        case .amrap:
+            "\(exercise.numberOfSets) AMRAP"
+        case .repRange:
+            "\(exercise.numberOfSets) x \(exercise.targetRepsMin ?? 0)-\(exercise.targetRepsMax ?? 0)"
+        case .durationRange:
+            "\(exercise.numberOfSets) x \(exercise.targetDurationMinSeconds ?? 0)-\(exercise.targetDurationMaxSeconds ?? 0)s"
+        case .fixedReps:
+            "\(exercise.numberOfSets) x \(exercise.targetReps ?? 0)"
+        }
     }
 }
 
@@ -706,37 +737,273 @@ private struct WorkoutDayDraft: Identifiable {
     }
 }
 
+private enum PlanExerciseExecutionMode: String, CaseIterable, Identifiable {
+    case normal
+    case endurance
+    case mav
+    case rm
+    case amrap
+
+    var id: String { rawValue }
+
+    var title: String {
+        switch self {
+        case .normal: "Normal"
+        case .endurance: "Endurance"
+        case .mav: "MAV"
+        case .rm: "RM"
+        case .amrap: "AMRAP"
+        }
+    }
+
+    var caption: String {
+        switch self {
+        case .normal: "Fixed reps"
+        case .endurance: "Timed sets"
+        case .mav: "+2.5% steps"
+        case .rm: "Top-set work"
+        case .amrap: "As many reps"
+        }
+    }
+
+    var systemImage: String {
+        switch self {
+        case .normal: "number"
+        case .endurance: "timer"
+        case .mav: "chart.line.uptrend.xyaxis"
+        case .rm: "target"
+        case .amrap: "infinity"
+        }
+    }
+
+    var targetType: SetTargetType {
+        switch self {
+        case .endurance:
+            .fixedDuration
+        case .amrap:
+            .amrap
+        case .normal, .mav, .rm:
+            .fixedReps
+        }
+    }
+}
+
+private struct PlannedSetDraft: Identifiable {
+    let id = UUID()
+    var index: Int
+    var isWarmup: Bool
+    var reps: Int
+    var weight: Double
+    var durationSeconds: Int
+
+    var title: String {
+        isWarmup ? "Warm-up \(index + 1)" : "Set \(index + 1)"
+    }
+}
+
 private struct WorkoutExerciseDraft: Identifiable {
     let id = UUID()
     let exerciseId = UUID()
     var name: String
+    var executionMode: PlanExerciseExecutionMode = .normal
+    var setCount = 3
+    var warmupSets = 0
+    var restSeconds = 90
+    var baseReps = 10
+    var baseWeight = 0.0
+    var durationSeconds = 45
+    var rpeTarget: Double?
+    var rirTarget: Int?
+    var notes = ""
+    var plannedSets: [PlannedSetDraft]
+
+    init(name: String) {
+        self.name = name
+        self.plannedSets = Self.makeSets(
+            mode: .normal,
+            setCount: 3,
+            warmupSets: 0,
+            baseReps: 10,
+            baseWeight: 0,
+            durationSeconds: 45
+        )
+    }
+
+    var summary: String {
+        switch executionMode {
+        case .endurance:
+            "\(setCount) x \(durationSeconds)s, \(restSeconds)s rest"
+        case .mav:
+            "\(setCount) MAV sets, +2.5%, \(restSeconds)s rest"
+        case .rm:
+            "\(setCount) RM sets, +2.5%, \(restSeconds)s rest"
+        case .amrap:
+            "\(setCount) AMRAP sets, \(restSeconds)s rest"
+        case .normal:
+            "\(setCount) x \(baseReps), \(restSeconds)s rest"
+        }
+    }
+
+    var helperText: String {
+        switch executionMode {
+        case .normal:
+            "Same target across sets. Edit any set below."
+        case .endurance:
+            "Timed target for planks, holds, carries, intervals."
+        case .mav:
+            "Start from first set. Next sets default to 2.5% more, editable."
+        case .rm:
+            "Use first set as top-set target. Following sets step up by 2.5%."
+        case .amrap:
+            "Target load with open-ended reps. User logs final reps during workout."
+        }
+    }
+
+    mutating func setMode(_ mode: PlanExerciseExecutionMode) {
+        executionMode = mode
+        if mode == .rm {
+            baseReps = min(baseReps, 5)
+        }
+        rebuildSets()
+    }
+
+    mutating func updateSetCount(_ value: Int) {
+        setCount = min(max(value, 1), 12)
+        warmupSets = min(warmupSets, setCount - 1)
+        rebuildSets()
+    }
+
+    mutating func updateWarmupSets(_ value: Int) {
+        warmupSets = min(max(value, 0), max(setCount - 1, 0))
+        rebuildSets()
+    }
+
+    mutating func updateBaseReps(_ value: Int) {
+        baseReps = min(max(value, 1), 50)
+        rebuildSets()
+    }
+
+    mutating func updateBaseWeight(_ value: Double) {
+        baseWeight = max(value, 0)
+        rebuildSets()
+    }
+
+    mutating func updateDuration(_ value: Int) {
+        durationSeconds = min(max(value, 10), 600)
+        rebuildSets()
+    }
+
+    mutating func updateRest(_ value: Int) {
+        restSeconds = min(max(value, 0), 600)
+    }
+
+    mutating func rebuildSets() {
+        plannedSets = Self.makeSets(
+            mode: executionMode,
+            setCount: setCount,
+            warmupSets: warmupSets,
+            baseReps: baseReps,
+            baseWeight: baseWeight,
+            durationSeconds: durationSeconds
+        )
+    }
 
     func makeDTO(dayId: UUID, orderIndex: Int) -> WorkoutExerciseDTO {
-        WorkoutExerciseDTO(
+        let firstWorkingSet = plannedSets.first { !$0.isWarmup } ?? plannedSets.first
+        let targetReps = executionMode == .endurance ? nil : firstWorkingSet?.reps
+        let targetDuration = executionMode == .endurance ? firstWorkingSet?.durationSeconds : nil
+        let startingLoad = executionMode == .endurance ? nil : firstWorkingSet?.weight
+        let planNotes = makePlanNotes()
+
+        return WorkoutExerciseDTO(
             id: id,
             workoutDayId: dayId,
             exerciseId: exerciseId,
             orderIndex: orderIndex,
-            numberOfSets: 3,
-            warmupSets: 0,
-            targetType: .fixedReps,
-            targetReps: 10,
+            numberOfSets: plannedSets.count,
+            warmupSets: warmupSets,
+            targetType: executionMode.targetType,
+            targetReps: targetReps,
             targetRepsMin: nil,
             targetRepsMax: nil,
-            targetDurationSeconds: nil,
+            targetDurationSeconds: targetDuration,
             targetDurationMinSeconds: nil,
             targetDurationMaxSeconds: nil,
-            startingLoad: nil,
+            startingLoad: startingLoad,
             loadUnit: .kg,
-            suggestedIncrement: nil,
-            restSeconds: 90,
-            rpeTarget: nil,
-            rirTarget: nil,
+            suggestedIncrement: executionMode == .mav || executionMode == .rm ? 2.5 : nil,
+            restSeconds: restSeconds,
+            rpeTarget: rpeTarget,
+            rirTarget: rirTarget,
             tempo: nil,
-            notes: name,
+            notes: planNotes,
             supersetGroupId: nil,
-            autoProgressionEnabled: false
+            autoProgressionEnabled: executionMode == .mav || executionMode == .rm
         )
+    }
+
+    private func makePlanNotes() -> String {
+        let setSummary = plannedSets.map { set in
+            if executionMode == .endurance {
+                "\(set.title): \(set.durationSeconds)s"
+            } else {
+                "\(set.title): \(set.reps) reps @ \(set.weight.cleanWeight) kg"
+            }
+        }
+        .joined(separator: "; ")
+        var parts = [
+            "Name: \(name.trimmingCharacters(in: .whitespacesAndNewlines))",
+            "Mode: \(executionMode.title)",
+            "Rest: \(restSeconds)s",
+            setSummary
+        ]
+        if let rpeTarget {
+            parts.append("RPE \(String(format: "%.1f", rpeTarget))")
+        }
+        if let rirTarget {
+            parts.append("RIR \(rirTarget)")
+        }
+        if !notes.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            parts.append(notes.trimmingCharacters(in: .whitespacesAndNewlines))
+        }
+        return parts.joined(separator: "\n")
+    }
+
+    private static func makeSets(
+        mode: PlanExerciseExecutionMode,
+        setCount: Int,
+        warmupSets: Int,
+        baseReps: Int,
+        baseWeight: Double,
+        durationSeconds: Int
+    ) -> [PlannedSetDraft] {
+        (0..<setCount).map { index in
+            let isWarmup = index < warmupSets
+            let workingIndex = max(index - warmupSets, 0)
+            let factor = pow(1.025, Double(workingIndex))
+            let reps: Int
+            let weight: Double
+
+            switch mode {
+            case .mav, .rm:
+                reps = max(1, Int((Double(baseReps) * factor).rounded()))
+                weight = (baseWeight * factor).roundedToHalf
+            case .amrap, .normal:
+                reps = baseReps
+                weight = baseWeight
+            case .endurance:
+                reps = 0
+                weight = 0
+            }
+
+            return PlannedSetDraft(
+                index: index,
+                isWarmup: isWarmup,
+                reps: reps,
+                weight: weight,
+                durationSeconds: durationSeconds
+            )
+        }
     }
 }
 
@@ -907,33 +1174,14 @@ private struct WorkoutDayDraftCard: View {
                 }
 
             if day.exercises.isEmpty {
-                Text("No exercises yet.")
-                    .font(.subheadline)
-                    .foregroundStyle(SpotterPalette.textSecondary)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .padding(.vertical, 4)
+                PlanEmptyInlineMessage(
+                    title: "No exercises yet",
+                    detail: "Add one, choose the set style, rest time, and targets."
+                )
             } else {
-                VStack(spacing: 8) {
-                    ForEach(day.exercises) { exercise in
-                        HStack(spacing: 12) {
-                            Image(systemName: "figure.strengthtraining.traditional")
-                                .font(.subheadline.weight(.semibold))
-                                .foregroundStyle(SpotterPalette.accentSoft)
-                                .frame(width: 30, height: 30)
-                                .background(.white.opacity(0.07), in: Circle())
-
-                            VStack(alignment: .leading, spacing: 2) {
-                                Text(exercise.name)
-                                    .font(.subheadline.weight(.semibold))
-                                Text("Placeholder - 3 x 10, 90s rest")
-                                    .font(.caption)
-                                    .foregroundStyle(SpotterPalette.textSecondary)
-                            }
-
-                            Spacer()
-                        }
-                        .padding(10)
-                        .background(.white.opacity(0.05), in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+                VStack(spacing: 12) {
+                    ForEach($day.exercises) { $exercise in
+                        WorkoutExerciseDraftCard(exercise: $exercise)
                     }
                 }
             }
@@ -955,6 +1203,507 @@ private struct WorkoutDayDraftCard: View {
             RoundedRectangle(cornerRadius: 24, style: .continuous)
                 .strokeBorder(.white.opacity(0.12), lineWidth: 1)
         }
+    }
+}
+
+private struct WorkoutExerciseDraftCard: View {
+    @Binding var exercise: WorkoutExerciseDraft
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            header
+
+            PlanModePicker(selectedMode: exercise.executionMode) { mode in
+                SpotterHaptics.selection()
+                withAnimation(reduceMotion ? nil : .spring(response: 0.28, dampingFraction: 0.86)) {
+                    exercise.setMode(mode)
+                }
+            }
+
+            Text(exercise.helperText)
+                .font(.caption)
+                .foregroundStyle(SpotterPalette.textSecondary)
+
+            controlGrid
+
+            PlanGeneratedSetsEditor(exercise: $exercise)
+
+            VStack(alignment: .leading, spacing: 8) {
+                Text("Notes")
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(SpotterPalette.textSecondary)
+                    .textCase(.uppercase)
+
+                TextField("Tempo, cue, setup note", text: $exercise.notes, axis: .vertical)
+                    .lineLimit(2...4)
+                    .font(.footnote)
+                    .foregroundStyle(SpotterPalette.textPrimary)
+                    .padding(12)
+                    .background(.white.opacity(0.055), in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+                    .overlay {
+                        RoundedRectangle(cornerRadius: 16, style: .continuous)
+                            .strokeBorder(.white.opacity(0.10), lineWidth: 1)
+                    }
+            }
+        }
+        .padding(14)
+        .background(Color.white.opacity(0.045), in: RoundedRectangle(cornerRadius: 22, style: .continuous))
+        .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 22, style: .continuous))
+        .overlay {
+            RoundedRectangle(cornerRadius: 22, style: .continuous)
+                .strokeBorder(.white.opacity(0.12), lineWidth: 1)
+        }
+    }
+
+    private var header: some View {
+        HStack(spacing: 12) {
+            Image(systemName: exercise.executionMode.systemImage)
+                .font(.subheadline.weight(.semibold))
+                .foregroundStyle(SpotterPalette.accentSoft)
+                .frame(width: 34, height: 34)
+                .background(.white.opacity(0.08), in: Circle())
+
+            VStack(alignment: .leading, spacing: 7) {
+                TextField("Exercise name", text: $exercise.name)
+                    .textInputAutocapitalization(.words)
+                    .font(.headline.weight(.semibold))
+                    .foregroundStyle(SpotterPalette.textPrimary)
+
+                Text(exercise.summary)
+                    .font(.caption)
+                    .foregroundStyle(SpotterPalette.textSecondary)
+                    .lineLimit(1)
+            }
+        }
+        .padding(12)
+        .background(.white.opacity(0.052), in: RoundedRectangle(cornerRadius: 18, style: .continuous))
+    }
+
+    private var controlGrid: some View {
+        VStack(spacing: 10) {
+            HStack(spacing: 10) {
+                PlanIntegerControl(title: "Sets", value: exercise.setCount, suffix: nil, range: 1...12, step: 1) { value in
+                    exercise.updateSetCount(value)
+                }
+
+                PlanIntegerControl(title: "Warm-up", value: exercise.warmupSets, suffix: nil, range: 0...max(exercise.setCount - 1, 0), step: 1) { value in
+                    exercise.updateWarmupSets(value)
+                }
+            }
+
+            HStack(spacing: 10) {
+                PlanIntegerControl(title: "Rest", value: exercise.restSeconds, suffix: "s", range: 0...600, step: 15) { value in
+                    exercise.updateRest(value)
+                }
+
+                if exercise.executionMode == .endurance {
+                    PlanIntegerControl(title: "Time", value: exercise.durationSeconds, suffix: "s", range: 10...600, step: 5) { value in
+                        exercise.updateDuration(value)
+                    }
+                } else {
+                    PlanIntegerControl(title: "Reps", value: exercise.baseReps, suffix: nil, range: 1...50, step: 1) { value in
+                        exercise.updateBaseReps(value)
+                    }
+                }
+            }
+
+            if exercise.executionMode != .endurance {
+                PlanDoubleControl(title: "Weight", value: exercise.baseWeight, suffix: "kg", range: 0...500, step: 2.5) { value in
+                    exercise.updateBaseWeight(value)
+                }
+            }
+
+            HStack(spacing: 10) {
+                PlanOptionalDoubleControl(title: "RPE", value: exercise.rpeTarget, range: 1...10, step: 0.5) { value in
+                    exercise.rpeTarget = value
+                }
+
+                PlanOptionalIntControl(title: "RIR", value: exercise.rirTarget, range: 0...10, step: 1) { value in
+                    exercise.rirTarget = value
+                }
+            }
+        }
+    }
+}
+
+private struct PlanModePicker: View {
+    let selectedMode: PlanExerciseExecutionMode
+    let onSelect: (PlanExerciseExecutionMode) -> Void
+
+    var body: some View {
+        ScrollView(.horizontal, showsIndicators: false) {
+            HStack(spacing: 8) {
+                ForEach(PlanExerciseExecutionMode.allCases) { mode in
+                    Button {
+                        onSelect(mode)
+                    } label: {
+                        VStack(alignment: .leading, spacing: 4) {
+                            Label(mode.title, systemImage: mode.systemImage)
+                                .font(.caption.weight(.semibold))
+                                .lineLimit(1)
+                            Text(mode.caption)
+                                .font(.caption2)
+                                .foregroundStyle(selectedMode == mode ? SpotterPalette.textPrimary.opacity(0.8) : SpotterPalette.textSecondary)
+                                .lineLimit(1)
+                        }
+                        .padding(.horizontal, 12)
+                        .padding(.vertical, 10)
+                        .foregroundStyle(selectedMode == mode ? SpotterPalette.textPrimary : SpotterPalette.textSecondary)
+                        .background(selectedMode == mode ? SpotterPalette.accent.opacity(0.22) : .white.opacity(0.055), in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+                        .overlay {
+                            RoundedRectangle(cornerRadius: 16, style: .continuous)
+                                .strokeBorder(selectedMode == mode ? SpotterPalette.accentSoft.opacity(0.65) : .white.opacity(0.10), lineWidth: 1)
+                        }
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityLabel("Set exercise mode to \(mode.title)")
+                }
+            }
+        }
+    }
+}
+
+private struct PlanGeneratedSetsEditor: View {
+    @Binding var exercise: WorkoutExerciseDraft
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 9) {
+            HStack {
+                Text("Set Targets")
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(SpotterPalette.textSecondary)
+                    .textCase(.uppercase)
+
+                Spacer()
+
+                if exercise.executionMode == .mav || exercise.executionMode == .rm {
+                    Text("+2.5% default")
+                        .font(.caption2.weight(.semibold))
+                        .foregroundStyle(SpotterPalette.accentSoft)
+                        .padding(.horizontal, 8)
+                        .padding(.vertical, 5)
+                        .background(.white.opacity(0.07), in: Capsule())
+                }
+            }
+
+            VStack(spacing: 7) {
+                ForEach($exercise.plannedSets) { $set in
+                    PlanSetDraftRow(set: $set, mode: exercise.executionMode)
+                }
+            }
+        }
+        .padding(12)
+        .background(.white.opacity(0.038), in: RoundedRectangle(cornerRadius: 18, style: .continuous))
+    }
+}
+
+private struct PlanSetDraftRow: View {
+    @Binding var set: PlannedSetDraft
+    let mode: PlanExerciseExecutionMode
+
+    var body: some View {
+        HStack(spacing: 10) {
+            VStack(alignment: .leading, spacing: 2) {
+                Text(set.title)
+                    .font(.footnote.weight(.semibold))
+                    .foregroundStyle(SpotterPalette.textPrimary)
+                Text(set.isWarmup ? "Warm-up" : "Working")
+                    .font(.caption2)
+                    .foregroundStyle(SpotterPalette.textSecondary)
+            }
+            .frame(width: 82, alignment: .leading)
+
+            Spacer(minLength: 4)
+
+            if mode == .endurance {
+                PlanInlineIntegerControl(value: set.durationSeconds, suffix: "s", range: 10...600, step: 5) { value in
+                    set.durationSeconds = value
+                }
+            } else {
+                PlanInlineIntegerControl(value: set.reps, suffix: "reps", range: 1...80, step: 1) { value in
+                    set.reps = value
+                }
+
+                PlanInlineDoubleControl(value: set.weight, suffix: "kg", range: 0...500, step: 2.5) { value in
+                    set.weight = value
+                }
+            }
+        }
+        .padding(10)
+        .background(.white.opacity(0.046), in: RoundedRectangle(cornerRadius: 15, style: .continuous))
+        .overlay {
+            RoundedRectangle(cornerRadius: 15, style: .continuous)
+                .strokeBorder(.white.opacity(0.08), lineWidth: 1)
+        }
+    }
+}
+
+private struct PlanIntegerControl: View {
+    let title: String
+    let value: Int
+    let suffix: String?
+    let range: ClosedRange<Int>
+    let step: Int
+    let onChange: (Int) -> Void
+
+    var body: some View {
+        PlanControlShell(title: title) {
+            HStack(spacing: 8) {
+                PlanControlButton(systemImage: "minus") {
+                    onChange(max(range.lowerBound, value - step))
+                }
+                .disabled(value <= range.lowerBound)
+
+                Text("\(value)\(suffix.map { " \($0)" } ?? "")")
+                    .font(.subheadline.weight(.semibold))
+                    .monospacedDigit()
+                    .foregroundStyle(SpotterPalette.textPrimary)
+                    .frame(minWidth: 52)
+
+                PlanControlButton(systemImage: "plus") {
+                    onChange(min(range.upperBound, value + step))
+                }
+                .disabled(value >= range.upperBound)
+            }
+        }
+    }
+}
+
+private struct PlanDoubleControl: View {
+    let title: String
+    let value: Double
+    let suffix: String?
+    let range: ClosedRange<Double>
+    let step: Double
+    let onChange: (Double) -> Void
+
+    var body: some View {
+        PlanControlShell(title: title) {
+            HStack(spacing: 8) {
+                PlanControlButton(systemImage: "minus") {
+                    onChange(max(range.lowerBound, value - step))
+                }
+                .disabled(value <= range.lowerBound)
+
+                Text("\(value.cleanWeight)\(suffix.map { " \($0)" } ?? "")")
+                    .font(.subheadline.weight(.semibold))
+                    .monospacedDigit()
+                    .foregroundStyle(SpotterPalette.textPrimary)
+                    .frame(minWidth: 70)
+
+                PlanControlButton(systemImage: "plus") {
+                    onChange(min(range.upperBound, value + step))
+                }
+                .disabled(value >= range.upperBound)
+            }
+        }
+    }
+}
+
+private struct PlanOptionalDoubleControl: View {
+    let title: String
+    let value: Double?
+    let range: ClosedRange<Double>
+    let step: Double
+    let onChange: (Double?) -> Void
+
+    var body: some View {
+        PlanControlShell(title: title) {
+            HStack(spacing: 8) {
+                PlanControlButton(systemImage: "minus") {
+                    guard let value else {
+                        return
+                    }
+                    let nextValue = value - step
+                    onChange(nextValue < range.lowerBound ? nil : nextValue)
+                }
+                .disabled(value == nil)
+
+                Text(value.map { String(format: "%.1f", $0) } ?? "-")
+                    .font(.subheadline.weight(.semibold))
+                    .monospacedDigit()
+                    .foregroundStyle(SpotterPalette.textPrimary)
+                    .frame(minWidth: 42)
+
+                PlanControlButton(systemImage: "plus") {
+                    onChange(min(range.upperBound, (value ?? range.lowerBound - step) + step))
+                }
+            }
+        }
+    }
+}
+
+private struct PlanOptionalIntControl: View {
+    let title: String
+    let value: Int?
+    let range: ClosedRange<Int>
+    let step: Int
+    let onChange: (Int?) -> Void
+
+    var body: some View {
+        PlanControlShell(title: title) {
+            HStack(spacing: 8) {
+                PlanControlButton(systemImage: "minus") {
+                    guard let value else {
+                        return
+                    }
+                    let nextValue = value - step
+                    onChange(nextValue < range.lowerBound ? nil : nextValue)
+                }
+                .disabled(value == nil)
+
+                Text(value.map(String.init) ?? "-")
+                    .font(.subheadline.weight(.semibold))
+                    .monospacedDigit()
+                    .foregroundStyle(SpotterPalette.textPrimary)
+                    .frame(minWidth: 42)
+
+                PlanControlButton(systemImage: "plus") {
+                    onChange(min(range.upperBound, (value ?? range.lowerBound - step) + step))
+                }
+            }
+        }
+    }
+}
+
+private struct PlanInlineIntegerControl: View {
+    let value: Int
+    let suffix: String
+    let range: ClosedRange<Int>
+    let step: Int
+    let onChange: (Int) -> Void
+
+    var body: some View {
+        HStack(spacing: 6) {
+            PlanControlButton(systemImage: "minus") {
+                onChange(max(range.lowerBound, value - step))
+            }
+            .disabled(value <= range.lowerBound)
+
+            Text("\(value) \(suffix)")
+                .font(.caption.weight(.semibold))
+                .monospacedDigit()
+                .foregroundStyle(SpotterPalette.textPrimary)
+                .frame(minWidth: 58)
+
+            PlanControlButton(systemImage: "plus") {
+                onChange(min(range.upperBound, value + step))
+            }
+            .disabled(value >= range.upperBound)
+        }
+    }
+}
+
+private struct PlanInlineDoubleControl: View {
+    let value: Double
+    let suffix: String
+    let range: ClosedRange<Double>
+    let step: Double
+    let onChange: (Double) -> Void
+
+    var body: some View {
+        HStack(spacing: 6) {
+            PlanControlButton(systemImage: "minus") {
+                onChange(max(range.lowerBound, value - step))
+            }
+            .disabled(value <= range.lowerBound)
+
+            Text("\(value.cleanWeight) \(suffix)")
+                .font(.caption.weight(.semibold))
+                .monospacedDigit()
+                .foregroundStyle(SpotterPalette.textPrimary)
+                .frame(minWidth: 62)
+
+            PlanControlButton(systemImage: "plus") {
+                onChange(min(range.upperBound, value + step))
+            }
+            .disabled(value >= range.upperBound)
+        }
+    }
+}
+
+private struct PlanControlShell<Content: View>: View {
+    let title: String
+    private let content: Content
+
+    init(title: String, @ViewBuilder content: () -> Content) {
+        self.title = title
+        self.content = content()
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text(title)
+                .font(.caption2.weight(.semibold))
+                .foregroundStyle(SpotterPalette.textSecondary)
+                .textCase(.uppercase)
+
+            content
+        }
+        .padding(10)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(.white.opacity(0.05), in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+        .overlay {
+            RoundedRectangle(cornerRadius: 16, style: .continuous)
+                .strokeBorder(.white.opacity(0.08), lineWidth: 1)
+        }
+    }
+}
+
+private struct PlanControlButton: View {
+    let systemImage: String
+    let action: () -> Void
+
+    var body: some View {
+        Button {
+            SpotterHaptics.selection()
+            action()
+        } label: {
+            Image(systemName: systemImage)
+                .font(.caption.weight(.bold))
+                .foregroundStyle(SpotterPalette.textPrimary)
+                .frame(width: 30, height: 30)
+                .background(Color.black.opacity(0.12), in: Circle())
+                .glassEffect(.regular.interactive(true), in: Circle())
+                .overlay {
+                    Circle()
+                        .strokeBorder(.white.opacity(0.14), lineWidth: 1)
+                }
+        }
+        .buttonStyle(.plain)
+    }
+}
+
+private struct PlanEmptyInlineMessage: View {
+    let title: String
+    let detail: String
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 4) {
+            Text(title)
+                .font(.subheadline.weight(.semibold))
+                .foregroundStyle(SpotterPalette.textPrimary)
+            Text(detail)
+                .font(.caption)
+                .foregroundStyle(SpotterPalette.textSecondary)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(12)
+        .background(.white.opacity(0.045), in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+    }
+}
+
+private extension Double {
+    var roundedToHalf: Double {
+        (self * 2).rounded() / 2
+    }
+
+    var cleanWeight: String {
+        if rounded(.towardZero) == self {
+            return String(Int(self))
+        }
+        return String(format: "%.1f", self)
     }
 }
 
