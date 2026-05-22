@@ -5,6 +5,7 @@ import SwiftUI
 struct PlanListView: View {
     @Environment(\.modelContext) private var modelContext
     @Query(sort: \WorkoutPlanModel.updatedAt, order: .reverse) private var persistedPlans: [WorkoutPlanModel]
+    @Query(sort: \ExerciseModel.name) private var persistedExercises: [ExerciseModel]
     let dataProvider: any SpotterDataProviding
     @ObservedObject var activeWorkoutRepository: MockActiveWorkoutRepository
     let showActiveWorkout: () -> Void
@@ -24,6 +25,16 @@ struct PlanListView: View {
             $0.name.localizedCaseInsensitiveContains(query)
                 || $0.suggestedDay.localizedCaseInsensitiveContains(query)
         }
+    }
+
+    private var exerciseLibrary: [SpotterExerciseSummary] {
+        if persistedExercises.isEmpty {
+            return dataProvider.exercises
+        }
+
+        return persistedExercises
+            .filter { !$0.isArchived }
+            .map(Self.makeExerciseSummary)
     }
 
     var body: some View {
@@ -100,6 +111,7 @@ struct PlanListView: View {
 
             if showingCreatePlanEditor {
                 NewWorkoutPlanEditor(
+                    exerciseLibrary: exerciseLibrary,
                     reduceMotion: reduceMotion,
                     onCancel: closeCreatePlanEditor,
                     onSave: savePlan
@@ -211,6 +223,19 @@ struct PlanListView: View {
         case .fixedReps:
             "\(exercise.numberOfSets) x \(exercise.targetReps ?? 0)"
         }
+    }
+
+    private static func makeExerciseSummary(from model: ExerciseModel) -> SpotterExerciseSummary {
+        SpotterExerciseSummary(
+            id: model.id,
+            name: model.name,
+            primaryCategory: model.primaryMuscleGroup.isEmpty ? model.category.rawValue.capitalized : model.primaryMuscleGroup,
+            secondaryCategories: model.secondaryMuscleGroups,
+            equipment: model.equipment.rawValue.capitalized,
+            movementPattern: model.category.rawValue.capitalized,
+            trackingType: model.defaultMeasurementType == .duration ? "Time" : "Reps + Weight",
+            notes: model.notes
+        )
     }
 }
 
@@ -719,8 +744,11 @@ private struct WorkoutDayDraft: Identifiable {
         WorkoutDayDraft(id: UUID(), name: "Day \(index + 1)", exercises: [])
     }
 
-    mutating func addExercise() {
-        exercises.append(WorkoutExerciseDraft(name: "Exercise \(exercises.count + 1)"))
+    mutating func addExercise(from library: [SpotterExerciseSummary]) {
+        guard let exercise = library.first else {
+            return
+        }
+        exercises.append(WorkoutExerciseDraft(exercise: exercise))
     }
 
     func makeDTO(planId: UUID, orderIndex: Int) -> WorkoutDayDTO {
@@ -842,7 +870,7 @@ private struct PlannedSetDraft: Identifiable {
 
 private struct WorkoutExerciseDraft: Identifiable {
     let id = UUID()
-    let exerciseId = UUID()
+    var exerciseId: UUID
     var name: String
     var executionMode: PlanExerciseExecutionMode = .normal
     var setCount = 3
@@ -855,13 +883,15 @@ private struct WorkoutExerciseDraft: Identifiable {
     var targetRM = 1
     var timeLimitSeconds: Int?
     var restBetweenExercisesSeconds = 0
+    var linkedExerciseId: UUID?
     var linkedExerciseName = "Second exercise"
-    var circuitExercisesText = "Push Ups, Squats, Burpees"
+    var circuitExercises: [SpotterExerciseSummary] = []
     var notes = ""
     var plannedSets: [PlannedSetDraft]
 
-    init(name: String) {
-        self.name = name
+    init(exercise: SpotterExerciseSummary) {
+        self.exerciseId = exercise.id
+        self.name = exercise.name
         self.plannedSets = Self.makeSets(
             mode: .normal,
             setCount: 3,
@@ -892,6 +922,10 @@ private struct WorkoutExerciseDraft: Identifiable {
         case .normal:
             "\(setCount) x \(baseReps), \(restSeconds)s rest"
         }
+    }
+
+    var circuitExercisesText: String {
+        circuitExercises.map(\.name).joined(separator: ", ")
     }
 
     var helperText: String {
@@ -983,6 +1017,27 @@ private struct WorkoutExerciseDraft: Identifiable {
         restBetweenExercisesSeconds = min(max(value, 0), 300)
     }
 
+    mutating func selectExercise(_ exercise: SpotterExerciseSummary) {
+        exerciseId = exercise.id
+        name = exercise.name
+    }
+
+    mutating func selectLinkedExercise(_ exercise: SpotterExerciseSummary) {
+        linkedExerciseId = exercise.id
+        linkedExerciseName = exercise.name
+    }
+
+    mutating func addCircuitExercise(_ exercise: SpotterExerciseSummary) {
+        guard !circuitExercises.contains(where: { $0.id == exercise.id }) else {
+            return
+        }
+        circuitExercises.append(exercise)
+    }
+
+    mutating func removeCircuitExercise(id: UUID) {
+        circuitExercises.removeAll { $0.id == id }
+    }
+
     mutating func rebuildSets() {
         plannedSets = Self.makeSets(
             mode: executionMode,
@@ -1058,7 +1113,7 @@ private struct WorkoutExerciseDraft: Identifiable {
         case .superset:
             parts.append("Linked exercise: \(linkedExerciseName)")
         case .circuit:
-            parts.append("Exercises: \(circuitExercisesText)")
+            parts.append("Exercises: \(circuitExercisesText.isEmpty ? name : circuitExercisesText)")
             parts.append("Rest between exercises: \(restBetweenExercisesSeconds)s")
         case .dropset, .normal, .endurance:
             break
@@ -1112,6 +1167,7 @@ private struct WorkoutExerciseDraft: Identifiable {
 }
 
 private struct NewWorkoutPlanEditor: View {
+    let exerciseLibrary: [SpotterExerciseSummary]
     let reduceMotion: Bool
     let onCancel: () -> Void
     let onSave: (WorkoutPlanDraft) throws -> Void
@@ -1207,7 +1263,7 @@ private struct NewWorkoutPlanEditor: View {
                             }
 
                             ForEach($draft.days) { $day in
-                                WorkoutDayDraftCard(day: $day)
+                                WorkoutDayDraftCard(day: $day, exerciseLibrary: exerciseLibrary)
                             }
 
                             Button {
@@ -1262,6 +1318,7 @@ private struct NewWorkoutPlanEditor: View {
 
 private struct WorkoutDayDraftCard: View {
     @Binding var day: WorkoutDayDraft
+    let exerciseLibrary: [SpotterExerciseSummary]
 
     var body: some View {
         VStack(alignment: .leading, spacing: 14) {
@@ -1280,12 +1337,12 @@ private struct WorkoutDayDraftCard: View {
             if day.exercises.isEmpty {
                 PlanEmptyInlineMessage(
                     title: "No exercises yet",
-                    detail: "Add one, choose the set style, rest time, and targets."
+                    detail: exerciseLibrary.isEmpty ? "Create exercises in the Exercises tab first." : "Add one, choose the set style, rest time, and targets."
                 )
             } else {
                 VStack(spacing: 12) {
                     ForEach($day.exercises) { $exercise in
-                        WorkoutExerciseDraftCard(exercise: $exercise)
+                        WorkoutExerciseDraftCard(exercise: $exercise, exerciseLibrary: exerciseLibrary)
                     }
                 }
             }
@@ -1293,12 +1350,13 @@ private struct WorkoutDayDraftCard: View {
             Button {
                 SpotterHaptics.selection()
                 withAnimation(.spring(response: 0.30, dampingFraction: 0.86)) {
-                    day.addExercise()
+                    day.addExercise(from: exerciseLibrary)
                 }
             } label: {
                 PlanGlassActionLabel(title: "Add Exercise", systemImage: "plus")
             }
             .buttonStyle(.plain)
+            .disabled(exerciseLibrary.isEmpty)
         }
         .padding(16)
         .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 24, style: .continuous))
@@ -1312,6 +1370,7 @@ private struct WorkoutDayDraftCard: View {
 
 private struct WorkoutExerciseDraftCard: View {
     @Binding var exercise: WorkoutExerciseDraft
+    let exerciseLibrary: [SpotterExerciseSummary]
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     var body: some View {
@@ -1373,10 +1432,12 @@ private struct WorkoutExerciseDraftCard: View {
                 .background(.white.opacity(0.08), in: Circle())
 
             VStack(alignment: .leading, spacing: 7) {
-                TextField("Exercise name", text: $exercise.name)
-                    .textInputAutocapitalization(.words)
-                    .font(.headline.weight(.semibold))
-                    .foregroundStyle(SpotterPalette.textPrimary)
+                PlanExerciseMenu(
+                    selectedName: exercise.name,
+                    exerciseLibrary: exerciseLibrary
+                ) { selected in
+                    exercise.selectExercise(selected)
+                }
 
                 Text(exercise.summary)
                     .font(.caption)
@@ -1469,7 +1530,13 @@ private struct WorkoutExerciseDraftCard: View {
                 PlanIntegerControl(title: "Reps Per Exercise", value: exercise.baseReps, suffix: nil, range: 1...50, step: 1) { value in
                     exercise.updateBaseReps(value)
                 }
-                PlanTextControl(title: "Linked Exercise", text: $exercise.linkedExerciseName, prompt: "Second exercise")
+                PlanExercisePickerControl(
+                    title: "Linked Exercise",
+                    selectedName: exercise.linkedExerciseName,
+                    exerciseLibrary: exerciseLibrary.filter { $0.id != exercise.exerciseId }
+                ) { selected in
+                    exercise.selectLinkedExercise(selected)
+                }
 
             case .circuit:
                 PlanResponsivePair {
@@ -1484,7 +1551,14 @@ private struct WorkoutExerciseDraftCard: View {
                 PlanIntegerControl(title: "Rest Between", value: exercise.restBetweenExercisesSeconds, suffix: "s", range: 0...300, step: 10) { value in
                     exercise.updateRestBetweenExercises(value)
                 }
-                PlanTextControl(title: "Circuit Exercises", text: $exercise.circuitExercisesText, prompt: "Push Ups, Squats, Burpees")
+                PlanCircuitExerciseSelector(
+                    selectedExercises: exercise.circuitExercises,
+                    exerciseLibrary: exerciseLibrary.filter { $0.id != exercise.exerciseId }
+                ) { selected in
+                    exercise.addCircuitExercise(selected)
+                } onRemove: { id in
+                    exercise.removeCircuitExercise(id: id)
+                }
             }
         }
     }
@@ -1750,19 +1824,137 @@ private struct PlanStructureLine: View {
     }
 }
 
-private struct PlanTextControl: View {
+private struct PlanExerciseMenu: View {
+    let selectedName: String
+    let exerciseLibrary: [SpotterExerciseSummary]
+    let onSelect: (SpotterExerciseSummary) -> Void
+
+    var body: some View {
+        Menu {
+            ForEach(exerciseLibrary) { exercise in
+                Button(exercise.name) {
+                    SpotterHaptics.selection()
+                    onSelect(exercise)
+                }
+            }
+        } label: {
+            HStack(spacing: 6) {
+                Text(selectedName)
+                    .font(.headline.weight(.semibold))
+                    .foregroundStyle(SpotterPalette.textPrimary)
+                    .lineLimit(1)
+
+                Image(systemName: "chevron.down")
+                    .font(.caption.weight(.bold))
+                    .foregroundStyle(SpotterPalette.textSecondary)
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+        }
+        .disabled(exerciseLibrary.isEmpty)
+        .accessibilityLabel("Choose exercise")
+        .accessibilityValue(selectedName)
+    }
+}
+
+private struct PlanExercisePickerControl: View {
     let title: String
-    @Binding var text: String
-    let prompt: String
+    let selectedName: String
+    let exerciseLibrary: [SpotterExerciseSummary]
+    let onSelect: (SpotterExerciseSummary) -> Void
 
     var body: some View {
         PlanControlShell(title: title) {
-            TextField(prompt, text: $text, axis: .vertical)
-                .textInputAutocapitalization(.words)
-                .lineLimit(1...3)
-                .font(.subheadline.weight(.medium))
-                .foregroundStyle(SpotterPalette.textPrimary)
-                .frame(maxWidth: .infinity, alignment: .leading)
+            Menu {
+                ForEach(exerciseLibrary) { exercise in
+                    Button(exercise.name) {
+                        SpotterHaptics.selection()
+                        onSelect(exercise)
+                    }
+                }
+            } label: {
+                HStack {
+                    Text(selectedName)
+                        .font(.subheadline.weight(.medium))
+                        .foregroundStyle(SpotterPalette.textPrimary)
+                        .lineLimit(1)
+
+                    Spacer()
+
+                    Image(systemName: "chevron.down")
+                        .font(.caption.weight(.bold))
+                        .foregroundStyle(SpotterPalette.textSecondary)
+                }
+            }
+            .disabled(exerciseLibrary.isEmpty)
+        }
+    }
+}
+
+private struct PlanCircuitExerciseSelector: View {
+    let selectedExercises: [SpotterExerciseSummary]
+    let exerciseLibrary: [SpotterExerciseSummary]
+    let onAdd: (SpotterExerciseSummary) -> Void
+    let onRemove: (UUID) -> Void
+
+    var body: some View {
+        PlanControlShell(title: "Circuit Exercises") {
+            VStack(alignment: .leading, spacing: 10) {
+                if selectedExercises.isEmpty {
+                    Text("Add saved exercises to this circuit.")
+                        .font(.caption)
+                        .foregroundStyle(SpotterPalette.textSecondary)
+                } else {
+                    VStack(spacing: 7) {
+                        ForEach(selectedExercises) { exercise in
+                            HStack {
+                                Text(exercise.name)
+                                    .font(.subheadline.weight(.medium))
+                                    .foregroundStyle(SpotterPalette.textPrimary)
+                                    .lineLimit(1)
+
+                                Spacer()
+
+                                Button {
+                                    SpotterHaptics.selection()
+                                    onRemove(exercise.id)
+                                } label: {
+                                    Image(systemName: "xmark")
+                                        .font(.caption.weight(.bold))
+                                        .foregroundStyle(SpotterPalette.textSecondary)
+                                        .frame(width: 28, height: 28)
+                                        .background(.white.opacity(0.06), in: Circle())
+                                }
+                                .buttonStyle(.plain)
+                            }
+                            .padding(10)
+                            .background(.white.opacity(0.045), in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+                        }
+                    }
+                }
+
+                Menu {
+                    ForEach(availableExercises) { exercise in
+                        Button(exercise.name) {
+                            SpotterHaptics.selection()
+                            onAdd(exercise)
+                        }
+                    }
+                } label: {
+                    Label("Add Saved Exercise", systemImage: "plus")
+                        .font(.subheadline.weight(.semibold))
+                        .frame(maxWidth: .infinity)
+                        .frame(height: 42)
+                        .foregroundStyle(SpotterPalette.textPrimary)
+                        .background(.white.opacity(0.055), in: RoundedRectangle(cornerRadius: 15, style: .continuous))
+                }
+                .disabled(availableExercises.isEmpty)
+            }
+        }
+    }
+
+    private var availableExercises: [SpotterExerciseSummary] {
+        exerciseLibrary.filter { candidate in
+            !selectedExercises.contains { $0.id == candidate.id }
         }
     }
 }
