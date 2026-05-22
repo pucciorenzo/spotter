@@ -11,10 +11,57 @@ struct RootTabView: View {
     @StateObject private var healthKitManager = HealthKitWorkoutManager()
     @StateObject private var liveActivityManager = ActiveWorkoutLiveActivityManager()
     @State private var showingActiveWorkout = false
+    @State private var activeWorkoutFocusMode = false
     private let dataProvider: any SpotterDataProviding = MockSpotterRepository.preview
     private let workoutTicker = Timer.publish(every: 1, on: .main, in: .common).autoconnect()
 
     var body: some View {
+        ZStack {
+            tabContent
+
+            if showingActiveWorkout {
+                ActiveWorkoutPresentation(
+                    isPresented: $showingActiveWorkout,
+                    isFocusMode: $activeWorkoutFocusMode
+                ) {
+                    ActiveWorkoutView(
+                        repository: activeWorkoutRepository,
+                        healthKitManager: healthKitManager,
+                        liveActivityManager: liveActivityManager,
+                        isFocusMode: $activeWorkoutFocusMode,
+                        close: closeActiveWorkout
+                    )
+                }
+                .zIndex(1)
+            }
+        }
+        .animation(.spring(response: 0.34, dampingFraction: 0.86), value: activeWorkoutRepository.session?.id)
+        .environmentObject(watchSyncManager)
+        .task {
+            watchSyncManager.configure(modelContext: modelContext)
+            SeedData.insertDemoDataIfNeeded(in: modelContext)
+            publishWatchSnapshot()
+        }
+        .onChange(of: snapshotVersion) { _, _ in
+            publishWatchSnapshot()
+        }
+        .onChange(of: showingActiveWorkout) { _, isShowing in
+            if !isShowing {
+                activeWorkoutFocusMode = false
+            }
+        }
+        .onReceive(workoutTicker) { _ in
+            activeWorkoutRepository.tickRest()
+        }
+        .onOpenURL { url in
+            guard url.scheme == "spotter", url.host == "active-workout" else {
+                return
+            }
+            showingActiveWorkout = activeWorkoutRepository.session != nil
+        }
+    }
+
+    private var tabContent: some View {
         TabView {
             NavigationStack {
                 TodayView(
@@ -71,40 +118,21 @@ struct RootTabView: View {
             if let session = activeWorkoutRepository.session {
                 ActiveWorkoutMiniBar(session: session) {
                     SpotterHaptics.impact(.light)
-                    showingActiveWorkout = true
+                    withAnimation(.spring(response: 0.34, dampingFraction: 0.88)) {
+                        showingActiveWorkout = true
+                    }
                 }
                 .padding(.horizontal, 16)
                 .padding(.bottom, 64)
                 .transition(.move(edge: .bottom).combined(with: .opacity))
             }
         }
-        .animation(.spring(response: 0.34, dampingFraction: 0.86), value: activeWorkoutRepository.session?.id)
-        .sheet(isPresented: $showingActiveWorkout) {
-            ActiveWorkoutView(
-                repository: activeWorkoutRepository,
-                healthKitManager: healthKitManager,
-                liveActivityManager: liveActivityManager
-            )
-            .presentationDetents([.large])
-            .presentationDragIndicator(.visible)
-        }
-        .environmentObject(watchSyncManager)
-        .task {
-            watchSyncManager.configure(modelContext: modelContext)
-            SeedData.insertDemoDataIfNeeded(in: modelContext)
-            publishWatchSnapshot()
-        }
-        .onChange(of: snapshotVersion) { _, _ in
-            publishWatchSnapshot()
-        }
-        .onReceive(workoutTicker) { _ in
-            activeWorkoutRepository.tickRest()
-        }
-        .onOpenURL { url in
-            guard url.scheme == "spotter", url.host == "active-workout" else {
-                return
-            }
-            showingActiveWorkout = activeWorkoutRepository.session != nil
+    }
+
+    private func closeActiveWorkout() {
+        withAnimation(.spring(response: 0.32, dampingFraction: 0.88)) {
+            showingActiveWorkout = false
+            activeWorkoutFocusMode = false
         }
     }
 
@@ -167,6 +195,69 @@ struct RootTabView: View {
     private func publishWatchSnapshot() {
         let snapshot = SnapshotBuilder.makeSnapshot(exercises: exercises, plans: plans, sessions: workoutSessions)
         watchSyncManager.publishSnapshot(snapshot)
+    }
+}
+
+private struct ActiveWorkoutPresentation<Content: View>: View {
+    @Binding var isPresented: Bool
+    @Binding var isFocusMode: Bool
+    @State private var dragOffset: CGFloat = 0
+    let content: () -> Content
+
+    var body: some View {
+        ZStack(alignment: .top) {
+            SpotterPalette.backgroundBottom
+                .ignoresSafeArea()
+
+            content()
+                .padding(.top, isFocusMode ? 0 : 22)
+                .offset(y: isFocusMode ? 0 : max(0, dragOffset))
+                .transition(.move(edge: .bottom).combined(with: .opacity))
+                .simultaneousGesture(isFocusMode ? nil : closeGesture)
+
+            if !isFocusMode {
+                dragHandle
+                    .padding(.top, 4)
+                    .gesture(closeGesture)
+                    .transition(.opacity)
+            }
+        }
+        .ignoresSafeArea(.container, edges: .bottom)
+        .onChange(of: isFocusMode) { _, newValue in
+            if newValue {
+                dragOffset = 0
+            }
+        }
+    }
+
+    private var dragHandle: some View {
+        Capsule()
+            .fill(.white.opacity(0.36))
+            .frame(width: 36, height: 5)
+            .padding(.horizontal, 28)
+            .padding(.vertical, 16)
+            .contentShape(Rectangle())
+            .accessibilityLabel("Close workout")
+    }
+
+    private var closeGesture: some Gesture {
+        DragGesture(minimumDistance: 8)
+            .onChanged { value in
+                dragOffset = max(0, value.translation.height)
+            }
+            .onEnded { value in
+                let shouldClose = value.translation.height > 92 || value.predictedEndTranslation.height > 150
+                if shouldClose {
+                    withAnimation(.spring(response: 0.32, dampingFraction: 0.88)) {
+                        isPresented = false
+                        isFocusMode = false
+                    }
+                } else {
+                    withAnimation(.spring(response: 0.26, dampingFraction: 0.82)) {
+                        dragOffset = 0
+                    }
+                }
+            }
     }
 }
 
