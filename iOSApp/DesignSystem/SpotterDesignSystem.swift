@@ -14,6 +14,11 @@ enum SpotterPalette {
     static let navGlass = Color(red: 0.04, green: 0.06, blue: 0.09)
 }
 
+enum SpotterLayout {
+    static let bottomScrollClearance: CGFloat = 180
+    static let bottomPinnedActionClearance: CGFloat = 96
+}
+
 enum SpotterAppearance {
     static func configure() {
         let navAppearance = UINavigationBarAppearance()

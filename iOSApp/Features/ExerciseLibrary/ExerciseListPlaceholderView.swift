@@ -1,3 +1,5 @@
+import SpotterShared
+import SwiftData
 import SwiftUI
 
 private let exerciseCategoryTags = [
@@ -21,6 +23,8 @@ private let exerciseCategoryTags = [
 ]
 
 struct ExerciseListView: View {
+    @Environment(\.modelContext) private var modelContext
+    @Query(sort: \ExerciseModel.name) private var persistedExercises: [ExerciseModel]
     let dataProvider: any SpotterDataProviding
     @State private var searchText = ""
     @State private var selectedCategories: Set<String> = []
@@ -35,7 +39,7 @@ struct ExerciseListView: View {
     }
 
     private var categoryOptions: [String] {
-        let tags = dataProvider.exercises.reduce(into: Set<String>()) { result, exercise in
+        let tags = exerciseSource.reduce(into: Set<String>()) { result, exercise in
             result.insert(exercise.primaryCategory)
             result.formUnion(exercise.secondaryCategories)
         }
@@ -43,9 +47,19 @@ struct ExerciseListView: View {
         return Array(tags.union(exerciseCategoryTags)).sorted()
     }
 
+    private var exerciseSource: [SpotterExerciseSummary] {
+        if persistedExercises.isEmpty {
+            return dataProvider.exercises
+        }
+
+        return persistedExercises
+            .filter { !$0.isArchived }
+            .map(Self.makeExerciseSummary)
+    }
+
     private var exercises: [SpotterExerciseSummary] {
         let query = searchText.trimmingCharacters(in: .whitespacesAndNewlines)
-        return dataProvider.exercises.filter { exercise in
+        return exerciseSource.filter { exercise in
             let exerciseTags = Set([exercise.primaryCategory] + exercise.secondaryCategories)
             let matchesCategory = selectedCategories.isEmpty || !selectedCategories.isDisjoint(with: exerciseTags)
             let matchesQuery = query.isEmpty
@@ -115,7 +129,7 @@ struct ExerciseListView: View {
                     }
                 }
                 .padding(.top, 8)
-                .padding(.bottom, 34)
+                .padding(.bottom, SpotterLayout.bottomScrollClearance)
             }
             .onScrollGeometryChange(for: Bool.self) { geometry in
                 geometry.contentOffset.y > 24
@@ -140,10 +154,28 @@ struct ExerciseListView: View {
             }
         }
         .navigationDestination(isPresented: $showingCreateExercise) {
-            CreateExerciseView(categoryOptions: categoryOptions)
+            CreateExerciseView(categoryOptions: categoryOptions, onSave: saveExercise)
                 .spotterZoomDestination(createExerciseSourceID, in: createTransitionNamespace, reduceMotion: reduceMotion)
         }
         .spotterScreenChrome()
+    }
+
+    private func saveExercise(_ exercise: ExerciseDTO) throws {
+        try SwiftDataExerciseRepository(context: modelContext).saveExercise(exercise)
+        SpotterHaptics.notification(.success)
+    }
+
+    private static func makeExerciseSummary(from model: ExerciseModel) -> SpotterExerciseSummary {
+        SpotterExerciseSummary(
+            id: model.id,
+            name: model.name,
+            primaryCategory: model.primaryMuscleGroup.isEmpty ? model.category.rawValue.capitalized : model.primaryMuscleGroup,
+            secondaryCategories: model.secondaryMuscleGroups,
+            equipment: model.equipment.rawValue.capitalized,
+            movementPattern: model.category.rawValue.capitalized,
+            trackingType: model.defaultMeasurementType == .duration ? "Time" : "Reps + Weight",
+            notes: model.notes
+        )
     }
 
     private func createExerciseButton<Label: View>(
@@ -215,7 +247,7 @@ private struct ExerciseDetailView: View {
                 }
                 .padding(.horizontal, 20)
                 .padding(.top, 18)
-                .padding(.bottom, 34)
+                .padding(.bottom, SpotterLayout.bottomScrollClearance)
             }
         }
         .navigationTitle(exercise.name)
@@ -236,6 +268,7 @@ private struct ExerciseDetailView: View {
 private struct CreateExerciseView: View {
     @Environment(\.dismiss) private var dismiss
     let categoryOptions: [String]
+    let onSave: (ExerciseDTO) throws -> Void
     @State private var name = ""
     @State private var primaryCategory = ""
     @State private var secondaryCategories: Set<String> = []
@@ -296,8 +329,7 @@ private struct CreateExerciseView: View {
                     }
 
                     GlassButton(title: "Create Exercise", systemImage: "plus") {
-                        SpotterHaptics.notification(.success)
-                        dismiss()
+                        save()
                     }
                     .disabled(!canCreate)
                 }
@@ -322,6 +354,42 @@ private struct CreateExerciseView: View {
 
     private var canCreate: Bool {
         !name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty && !primaryCategory.isEmpty
+    }
+
+    private func save() {
+        guard canCreate else {
+            return
+        }
+
+        let now = Date()
+        let exercise = ExerciseDTO(
+            id: UUID(),
+            name: name.trimmingCharacters(in: .whitespacesAndNewlines),
+            primaryMuscleGroup: primaryCategory,
+            secondaryMuscleGroups: Array(secondaryCategories).sorted(),
+            category: .strength,
+            equipment: .other,
+            description: notes,
+            formCues: [],
+            commonMistakes: [],
+            videoURL: nil,
+            notes: notes,
+            defaultMeasurementType: .repetitions,
+            defaultRestSeconds: 120,
+            defaultLoadUnit: .kg,
+            isUnilateral: false,
+            isWarmup: false,
+            isArchived: false,
+            createdAt: now,
+            updatedAt: now
+        )
+
+        do {
+            try onSave(exercise)
+            dismiss()
+        } catch {
+            SpotterHaptics.notification(.error)
+        }
     }
 }
 
