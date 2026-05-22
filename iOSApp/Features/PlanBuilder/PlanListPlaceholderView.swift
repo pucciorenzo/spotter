@@ -1282,21 +1282,21 @@ private struct WorkoutExerciseDraftCard: View {
 
     private var controlGrid: some View {
         VStack(spacing: 10) {
-            HStack(spacing: 10) {
+            PlanResponsivePair {
                 PlanIntegerControl(title: "Sets", value: exercise.setCount, suffix: nil, range: 1...12, step: 1) { value in
                     exercise.updateSetCount(value)
                 }
-
+            } trailing: {
                 PlanIntegerControl(title: "Warm-up", value: exercise.warmupSets, suffix: nil, range: 0...max(exercise.setCount - 1, 0), step: 1) { value in
                     exercise.updateWarmupSets(value)
                 }
             }
 
-            HStack(spacing: 10) {
+            PlanResponsivePair {
                 PlanIntegerControl(title: "Rest", value: exercise.restSeconds, suffix: "s", range: 0...600, step: 15) { value in
                     exercise.updateRest(value)
                 }
-
+            } trailing: {
                 if exercise.executionMode == .endurance {
                     PlanIntegerControl(title: "Time", value: exercise.durationSeconds, suffix: "s", range: 10...600, step: 5) { value in
                         exercise.updateDuration(value)
@@ -1314,11 +1314,11 @@ private struct WorkoutExerciseDraftCard: View {
                 }
             }
 
-            HStack(spacing: 10) {
+            PlanResponsivePair {
                 PlanOptionalDoubleControl(title: "RPE", value: exercise.rpeTarget, range: 1...10, step: 0.5) { value in
                     exercise.rpeTarget = value
                 }
-
+            } trailing: {
                 PlanOptionalIntControl(title: "RIR", value: exercise.rirTarget, range: 0...10, step: 1) { value in
                     exercise.rirTarget = value
                 }
@@ -1403,30 +1403,49 @@ private struct PlanSetDraftRow: View {
     let mode: PlanExerciseExecutionMode
 
     var body: some View {
-        HStack(spacing: 10) {
-            VStack(alignment: .leading, spacing: 2) {
+        VStack(alignment: .leading, spacing: 10) {
+            HStack(spacing: 8) {
                 Text(set.title)
                     .font(.footnote.weight(.semibold))
                     .foregroundStyle(SpotterPalette.textPrimary)
+
                 Text(set.isWarmup ? "Warm-up" : "Working")
                     .font(.caption2)
                     .foregroundStyle(SpotterPalette.textSecondary)
-            }
-            .frame(width: 82, alignment: .leading)
+                    .padding(.horizontal, 7)
+                    .padding(.vertical, 4)
+                    .background(.white.opacity(0.06), in: Capsule())
 
-            Spacer(minLength: 4)
+                Spacer(minLength: 0)
+            }
 
             if mode == .endurance {
                 PlanInlineIntegerControl(value: set.durationSeconds, suffix: "s", range: 10...600, step: 5) { value in
                     set.durationSeconds = value
                 }
             } else {
-                PlanInlineIntegerControl(value: set.reps, suffix: "reps", range: 1...80, step: 1) { value in
-                    set.reps = value
-                }
+                ViewThatFits(in: .horizontal) {
+                    HStack(spacing: 8) {
+                        PlanInlineIntegerControl(value: set.reps, suffix: "reps", range: 1...80, step: 1) { value in
+                            set.reps = value
+                        }
+                        .frame(maxWidth: .infinity)
 
-                PlanInlineDoubleControl(value: set.weight, suffix: "kg", range: 0...500, step: 2.5) { value in
-                    set.weight = value
+                        PlanInlineDoubleControl(value: set.weight, suffix: "kg", range: 0...500, step: 2.5) { value in
+                            set.weight = value
+                        }
+                        .frame(maxWidth: .infinity)
+                    }
+
+                    VStack(spacing: 8) {
+                        PlanInlineIntegerControl(value: set.reps, suffix: "reps", range: 1...80, step: 1) { value in
+                            set.reps = value
+                        }
+
+                        PlanInlineDoubleControl(value: set.weight, suffix: "kg", range: 0...500, step: 2.5) { value in
+                            set.weight = value
+                        }
+                    }
                 }
             }
         }
@@ -1435,6 +1454,27 @@ private struct PlanSetDraftRow: View {
         .overlay {
             RoundedRectangle(cornerRadius: 15, style: .continuous)
                 .strokeBorder(.white.opacity(0.08), lineWidth: 1)
+        }
+    }
+}
+
+private struct PlanResponsivePair<Leading: View, Trailing: View>: View {
+    @ViewBuilder var leading: Leading
+    @ViewBuilder var trailing: Trailing
+
+    var body: some View {
+        ViewThatFits(in: .horizontal) {
+            HStack(spacing: 10) {
+                leading
+                    .frame(maxWidth: .infinity)
+                trailing
+                    .frame(maxWidth: .infinity)
+            }
+
+            VStack(spacing: 10) {
+                leading
+                trailing
+            }
         }
     }
 }
