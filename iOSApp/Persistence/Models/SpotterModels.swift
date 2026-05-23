@@ -4,25 +4,25 @@ import SwiftData
 
 @Model
 final class ExerciseModel {
-    @Attribute(.unique) var id: UUID
-    var name: String
-    var primaryMuscleGroup: String
-    var secondaryMuscleGroups: [String]
-    var categoryRawValue: String
-    var equipmentRawValue: String
-    var exerciseDescription: String
-    var formCues: [String]
-    var commonMistakes: [String]
+    @Attribute(.unique) var id: UUID = UUID()
+    var name: String = ""
+    var primaryMuscleGroup: String = ""
+    var secondaryMuscleGroups: [String] = []
+    var categoryRawValue: String = ExerciseCategory.strength.rawValue
+    var equipmentRawValue: String = EquipmentType.other.rawValue
+    var exerciseDescription: String = ""
+    var formCues: [String] = []
+    var commonMistakes: [String] = []
     var videoURLString: String?
-    var notes: String
-    var defaultMeasurementTypeRawValue: String
-    var defaultRestSeconds: Int
-    var defaultLoadUnitRawValue: String
-    var isUnilateral: Bool
-    var isWarmup: Bool
-    var isArchived: Bool
-    var createdAt: Date
-    var updatedAt: Date
+    var notes: String = ""
+    var defaultMeasurementTypeRawValue: String = MeasurementType.repetitions.rawValue
+    var defaultRestSeconds: Int = 120
+    var defaultLoadUnitRawValue: String = LoadUnit.kg.rawValue
+    var isUnilateral: Bool = false
+    var isWarmup: Bool = false
+    var isArchived: Bool = false
+    var createdAt: Date = Date()
+    var updatedAt: Date = Date()
 
     init(dto: ExerciseDTO) {
         id = dto.id
@@ -124,16 +124,16 @@ final class ExerciseModel {
 
 @Model
 final class WorkoutPlanModel {
-    @Attribute(.unique) var id: UUID
-    var name: String
-    var planDescription: String
-    var goal: String
-    @Relationship(deleteRule: .cascade) var days: [WorkoutDayModel]
-    var isActive: Bool
-    var isArchived: Bool
+    @Attribute(.unique) var id: UUID = UUID()
+    var name: String = ""
+    var planDescription: String = ""
+    var goal: String = ""
+    @Relationship(deleteRule: .cascade) var days: [WorkoutDayModel] = []
+    var isActive: Bool = true
+    var isArchived: Bool = false
     var version: Int = 1
-    var createdAt: Date
-    var updatedAt: Date
+    var createdAt: Date = Date()
+    var updatedAt: Date = Date()
 
     init(dto: WorkoutPlanDTO) {
         id = dto.id
@@ -179,12 +179,12 @@ final class WorkoutPlanModel {
 
 @Model
 final class WorkoutDayModel {
-    @Attribute(.unique) var id: UUID
-    var planId: UUID
-    var name: String
-    var orderIndex: Int
-    var notes: String
-    @Relationship(deleteRule: .cascade) var exercises: [WorkoutExerciseModel]
+    @Attribute(.unique) var id: UUID = UUID()
+    var planId: UUID = UUID()
+    var name: String = ""
+    var orderIndex: Int = 0
+    var notes: String = ""
+    @Relationship(deleteRule: .cascade) var exercises: [WorkoutExerciseModel] = []
 
     init(dto: WorkoutDayDTO) {
         id = dto.id
@@ -218,13 +218,13 @@ final class WorkoutDayModel {
 
 @Model
 final class WorkoutExerciseModel {
-    @Attribute(.unique) var id: UUID
-    var workoutDayId: UUID
-    var exerciseId: UUID
-    var orderIndex: Int
-    var numberOfSets: Int
-    var warmupSets: Int
-    var targetTypeRawValue: String
+    @Attribute(.unique) var id: UUID = UUID()
+    var workoutDayId: UUID = UUID()
+    var exerciseId: UUID = UUID()
+    var orderIndex: Int = 0
+    var numberOfSets: Int = 3
+    var warmupSets: Int = 0
+    var targetTypeRawValue: String = SetTargetType.repRange.rawValue
     var targetReps: Int?
     var targetRepsMin: Int?
     var targetRepsMax: Int?
@@ -232,17 +232,17 @@ final class WorkoutExerciseModel {
     var targetDurationMinSeconds: Int?
     var targetDurationMaxSeconds: Int?
     var startingLoad: Double?
-    var loadUnitRawValue: String
+    var loadUnitRawValue: String = LoadUnit.kg.rawValue
     var suggestedIncrement: Double?
-    var restSeconds: Int
+    var restSeconds: Int = 120
     var rpeTarget: Double?
     var rirTarget: Int?
     var tempo: String?
-    var notes: String
+    var notes: String = ""
     var supersetGroupId: UUID?
     var blockKindRawValue: String = WorkoutBlockKind.normal.rawValue
     var mavTargetSets: Int?
-    var autoProgressionEnabled: Bool
+    var autoProgressionEnabled: Bool = true
 
     init(dto: WorkoutExerciseDTO) {
         id = dto.id
@@ -346,22 +346,22 @@ final class WorkoutExerciseModel {
 
 @Model
 final class WorkoutSessionModel {
-    @Attribute(.unique) var id: UUID
+    @Attribute(.unique) var id: UUID = UUID()
     var planId: UUID?
     var dayId: UUID?
     var planSnapshotId: UUID?
     var planSnapshotData: Data?
-    var planNameSnapshot: String
-    var dayNameSnapshot: String
-    var startedAt: Date
+    var planNameSnapshot: String = ""
+    var dayNameSnapshot: String = ""
+    var startedAt: Date = Date()
     var endedAt: Date?
-    var durationSeconds: Int
-    var sourceRawValue: String
-    var statusRawValue: String
-    @Relationship(deleteRule: .cascade) var setLogs: [WorkoutSetLogModel]
-    var notes: String
-    var createdAt: Date
-    var updatedAt: Date
+    var durationSeconds: Int = 0
+    var sourceRawValue: String = WorkoutSource.iphone.rawValue
+    var statusRawValue: String = WorkoutStatus.completed.rawValue
+    @Relationship(deleteRule: .cascade) var setLogs: [WorkoutSetLogModel] = []
+    var notes: String = ""
+    var createdAt: Date = Date()
+    var updatedAt: Date = Date()
 
     init(dto: WorkoutSessionDTO) {
         id = dto.id
@@ -438,11 +438,11 @@ enum WorkoutBlockKind: String, Codable, CaseIterable {
 
 @Model
 final class WorkoutPlanSnapshotModel {
-    @Attribute(.unique) var id: UUID
-    var planId: UUID
-    var version: Int
-    var snapshotData: Data
-    var createdAt: Date
+    @Attribute(.unique) var id: UUID = UUID()
+    var planId: UUID = UUID()
+    var version: Int = 1
+    var snapshotData: Data = Data()
+    var createdAt: Date = Date()
 
     init(plan: WorkoutPlanDTO, version: Int, encoder: JSONEncoder = JSONEncoder(), createdAt: Date = Date()) throws {
         id = UUID()
@@ -459,14 +459,14 @@ final class WorkoutPlanSnapshotModel {
 
 @Model
 final class ActiveWorkoutStateModel {
-    @Attribute(.unique) var id: UUID
-    var sessionId: UUID
-    var stateData: Data
+    @Attribute(.unique) var id: UUID = UUID()
+    var sessionId: UUID = UUID()
+    var stateData: Data = Data()
     var planSnapshotData: Data?
     var daySnapshotData: Data?
-    var createdAt: Date
-    var updatedAt: Date
-    var lastAutosavedAt: Date
+    var createdAt: Date = Date()
+    var updatedAt: Date = Date()
+    var lastAutosavedAt: Date = Date()
 
     init(
         state: WorkoutExecutionState,
@@ -517,29 +517,29 @@ final class ActiveWorkoutStateModel {
 
 @Model
 final class WorkoutSetLogModel {
-    @Attribute(.unique) var id: UUID
-    var sessionId: UUID
-    var exerciseId: UUID
+    @Attribute(.unique) var id: UUID = UUID()
+    var sessionId: UUID = UUID()
+    var exerciseId: UUID = UUID()
     var originalExerciseId: UUID?
     var workoutExerciseId: UUID?
-    var exerciseNameSnapshot: String
-    var setIndex: Int
-    var isWarmup: Bool
+    var exerciseNameSnapshot: String = ""
+    var setIndex: Int = 0
+    var isWarmup: Bool = false
     var completionTypeRawValue: String?
     var targetReps: Int?
     var targetDurationSeconds: Int?
     var targetLoad: Double?
-    var targetLoadUnitRawValue: String
+    var targetLoadUnitRawValue: String = LoadUnit.kg.rawValue
     var completedReps: Int?
     var completedDurationSeconds: Int?
     var completedLoad: Double?
-    var completedLoadUnitRawValue: String
-    var restPlannedSeconds: Int
+    var completedLoadUnitRawValue: String = LoadUnit.kg.rawValue
+    var restPlannedSeconds: Int = 0
     var restActualSeconds: Int?
     var rpe: Double?
     var rir: Int?
-    var notes: String
-    var completedAt: Date
+    var notes: String = ""
+    var completedAt: Date = Date()
 
     init(dto: WorkoutSetLogDTO) {
         id = dto.id
