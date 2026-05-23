@@ -252,15 +252,6 @@ private struct ExerciseDetailView: View {
         }
         .navigationTitle(exercise.name)
         .navigationBarTitleDisplayMode(.large)
-        .toolbar {
-            ToolbarItem(placement: .topBarTrailing) {
-                Button {
-                } label: {
-                    Image(systemName: "pencil")
-                }
-                .accessibilityLabel("Edit Exercise")
-            }
-        }
         .spotterScreenChrome()
     }
 }
@@ -273,6 +264,7 @@ private struct CreateExerciseView: View {
     @State private var primaryCategory = ""
     @State private var secondaryCategories: Set<String> = []
     @State private var notes = ""
+    @State private var errorMessage: String?
 
     var body: some View {
         ZStack {
@@ -311,6 +303,13 @@ private struct CreateExerciseView: View {
                         } else {
                             secondaryCategories.insert(tag)
                         }
+                    }
+
+                    if let errorMessage {
+                        Text(errorMessage)
+                            .font(.footnote.weight(.medium))
+                            .foregroundStyle(.orange)
+                            .accessibilityLabel("Exercise save error")
                     }
 
                     VStack(alignment: .leading, spacing: 8) {
@@ -389,6 +388,7 @@ private struct CreateExerciseView: View {
             dismiss()
         } catch {
             SpotterHaptics.notification(.error)
+            errorMessage = "Could not save exercise. Try again."
         }
     }
 }

@@ -84,17 +84,6 @@ struct PlanListView: View {
                                     PlanCard(plan: plan)
                                 }
                                 .buttonStyle(.plain)
-                                .contextMenu {
-                                    Button {
-                                    } label: {
-                                        Label("Make Active", systemImage: "checkmark.circle")
-                                    }
-
-                                    Button {
-                                    } label: {
-                                        Label("Edit Plan", systemImage: "pencil")
-                                    }
-                                }
                             }
                         }
                     }
@@ -467,15 +456,6 @@ private struct PlanDetailView: View {
         }
         .navigationTitle(plan.name)
         .navigationBarTitleDisplayMode(.large)
-        .toolbar {
-            ToolbarItem(placement: .topBarTrailing) {
-                Button {
-                } label: {
-                    Image(systemName: "pencil")
-                }
-                .accessibilityLabel("Edit Plan")
-            }
-        }
         .spotterScreenChrome()
     }
 }
