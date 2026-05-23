@@ -67,6 +67,12 @@ cd Shared
 swift build
 ```
 
+Run the local lint checks:
+
+```sh
+scripts/lint.sh
+```
+
 If `xcodebuild` reports that Command Line Tools are selected instead of Xcode, select Xcode first:
 
 ```sh
