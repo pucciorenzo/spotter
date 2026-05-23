@@ -67,9 +67,10 @@ cd Shared
 swift build
 ```
 
-Run the local lint checks:
+Install SwiftLint, then run lint:
 
 ```sh
+brew install swiftlint
 scripts/lint.sh
 ```
 

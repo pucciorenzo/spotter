@@ -1,0 +1,44 @@
+included:
+  - iOSApp
+  - WatchApp
+  - Shared/Sources
+  - Shared/Tests
+  - SpotterLiveActivities
+
+excluded:
+  - Shared/.build
+  - Shared/.swiftpm
+
+only_rules:
+  - colon
+  - comma
+  - duplicate_imports
+  - force_cast
+  - force_try
+  - leading_whitespace
+  - opening_brace
+  - function_name_whitespace
+  - return_arrow_whitespace
+  - statement_position
+  - trailing_newline
+  - trailing_semicolon
+  - trailing_whitespace
+  - unused_closure_parameter
+  - unused_control_flow_label
+  - unused_enumerated
+  - unused_optional_binding
+  - vertical_whitespace
+  - void_return
+  - custom_rules
+
+custom_rules:
+  no_print:
+    name: "No print statements"
+    regex: '(^|[^[:alnum:]_])print[[:space:]]*\('
+    message: "Use logging or app-visible error handling instead of print."
+    severity: error
+
+trailing_whitespace:
+  ignores_empty_lines: true
+
+reporter: "xcode"
