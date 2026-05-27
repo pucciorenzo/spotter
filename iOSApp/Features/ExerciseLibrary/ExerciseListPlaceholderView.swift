@@ -29,10 +29,8 @@ struct ExerciseListView: View {
     @State private var searchText = ""
     @State private var selectedCategories: Set<String> = []
     @State private var showingCreateExercise = false
-    @State private var createExerciseSourceID = "create-exercise-toolbar"
     @State private var showsNavigationTitle = false
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
-    @Namespace private var createTransitionNamespace
 
     private var categories: [String] {
         ["All"] + categoryOptions
@@ -100,7 +98,7 @@ struct ExerciseListView: View {
                             systemImage: "magnifyingglass"
                         )
 
-                        createExerciseButton(sourceID: "create-exercise-empty") {
+                        createExerciseButton {
                             GlassButtonLabel(title: "Create Exercise", systemImage: "plus")
                         }
                         .padding(.horizontal, 20)
@@ -136,7 +134,17 @@ struct ExerciseListView: View {
             } action: { _, isScrolled in
                 showsNavigationTitle = isScrolled
             }
+
+            if showingCreateExercise {
+                CreateExerciseView(
+                    categoryOptions: categoryOptions,
+                    onCancel: closeCreateExercise,
+                    onSave: saveExercise
+                )
+                .zIndex(2)
+            }
         }
+        .animation(reduceMotion ? nil : .spring(response: 0.46, dampingFraction: 0.86), value: showingCreateExercise)
         .animation(reduceMotion ? nil : .easeInOut(duration: 0.2), value: exercises.count)
         .navigationTitle("")
         .navigationBarTitleDisplayMode(.inline)
@@ -147,22 +155,34 @@ struct ExerciseListView: View {
             }
 
             ToolbarItem(placement: .topBarTrailing) {
-                createExerciseButton(sourceID: "create-exercise-toolbar") {
-                    GlassIconButtonLabel(systemImage: "plus")
+                if !showingCreateExercise {
+                    createExerciseButton {
+                        GlassIconButtonLabel(systemImage: "plus")
+                    }
+                    .accessibilityLabel("Create Exercise")
                 }
-                .accessibilityLabel("Create Exercise")
             }
         }
-        .navigationDestination(isPresented: $showingCreateExercise) {
-            CreateExerciseView(categoryOptions: categoryOptions, onSave: saveExercise)
-                .spotterZoomDestination(createExerciseSourceID, in: createTransitionNamespace, reduceMotion: reduceMotion)
-        }
+        .toolbar(showingCreateExercise ? .hidden : .visible, for: .navigationBar)
         .spotterScreenChrome()
     }
 
     private func saveExercise(_ exercise: ExerciseDTO) throws {
         try SwiftDataExerciseRepository(context: modelContext).saveExercise(exercise)
         SpotterHaptics.notification(.success)
+    }
+
+    private func openCreateExercise() {
+        SpotterHaptics.impact(.light)
+        withAnimation(reduceMotion ? nil : .spring(response: 0.46, dampingFraction: 0.86)) {
+            showingCreateExercise = true
+        }
+    }
+
+    private func closeCreateExercise() {
+        withAnimation(reduceMotion ? nil : .spring(response: 0.42, dampingFraction: 0.9)) {
+            showingCreateExercise = false
+        }
     }
 
     private static func makeExerciseSummary(from model: ExerciseModel) -> SpotterExerciseSummary {
@@ -179,17 +199,14 @@ struct ExerciseListView: View {
     }
 
     private func createExerciseButton<Label: View>(
-        sourceID: String,
         @ViewBuilder label: () -> Label
     ) -> some View {
         Button {
-            createExerciseSourceID = sourceID
-            showingCreateExercise = true
+            openCreateExercise()
         } label: {
             label()
         }
         .buttonStyle(.plain)
-        .spotterZoomSource(sourceID, in: createTransitionNamespace, reduceMotion: reduceMotion)
     }
 
     private func isCategorySelected(_ category: String) -> Bool {
@@ -257,8 +274,8 @@ private struct ExerciseDetailView: View {
 }
 
 private struct CreateExerciseView: View {
-    @Environment(\.dismiss) private var dismiss
     let categoryOptions: [String]
+    let onCancel: () -> Void
     let onSave: (ExerciseDTO) throws -> Void
     @State private var name = ""
     @State private var primaryCategory = ""
@@ -267,84 +284,139 @@ private struct CreateExerciseView: View {
     @State private var errorMessage: String?
 
     var body: some View {
-        ZStack {
-            SpotterBackground()
+        ZStack(alignment: .bottom) {
+            Color.black.opacity(0.36)
+                .ignoresSafeArea()
+                .onTapGesture {
+                    SpotterHaptics.impact(.light)
+                    onCancel()
+                }
 
-            ScrollView {
-                VStack(alignment: .leading, spacing: 18) {
-                    TextField("Exercise Name", text: $name)
-                        .textInputAutocapitalization(.words)
-                        .spotterTextFieldStyle()
-
-                    ExerciseTagSection(
-                        title: "Primary",
-                        subtitle: primaryCategory.isEmpty ? "Choose one tag" : primaryCategory,
-                        tags: categoryOptions,
-                        selectedTags: primarySelection
-                    ) { tag in
-                        SpotterHaptics.selection()
-                        if primaryCategory == tag {
-                            primaryCategory = ""
-                        } else {
-                            primaryCategory = tag
-                            secondaryCategories.remove(tag)
-                        }
+            VStack(spacing: 0) {
+                HStack {
+                    Button {
+                        SpotterHaptics.impact(.light)
+                        onCancel()
+                    } label: {
+                        Image(systemName: "xmark")
                     }
-
-                    ExerciseTagSection(
-                        title: "Secondary",
-                        subtitle: secondaryCategories.isEmpty ? "Optional" : "\(secondaryCategories.count) selected",
-                        tags: categoryOptions.filter { $0 != primaryCategory },
-                        selectedTags: secondaryCategories
-                    ) { tag in
-                        SpotterHaptics.selection()
-                        if secondaryCategories.contains(tag) {
-                            secondaryCategories.remove(tag)
-                        } else {
-                            secondaryCategories.insert(tag)
-                        }
+                    .font(.headline.weight(.semibold))
+                    .symbolRenderingMode(.hierarchical)
+                    .foregroundStyle(SpotterPalette.textSecondary)
+                    .frame(width: 40, height: 40)
+                    .background(.white.opacity(0.07), in: Circle())
+                    .overlay {
+                        Circle().strokeBorder(.white.opacity(0.12), lineWidth: 1)
                     }
+                    .accessibilityLabel("Cancel")
 
-                    if let errorMessage {
-                        Text(errorMessage)
-                            .font(.footnote.weight(.medium))
-                            .foregroundStyle(.orange)
-                            .accessibilityLabel("Exercise save error")
-                    }
+                    Spacer()
 
-                    VStack(alignment: .leading, spacing: 8) {
-                        Text("Notes")
-                            .font(.headline)
-                        TextEditor(text: $notes)
-                            .frame(minHeight: 132)
-                            .scrollContentBackground(.hidden)
-                            .padding(12)
-                            .foregroundStyle(SpotterPalette.textPrimary)
-                            .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 18, style: .continuous))
-                            .overlay {
-                                RoundedRectangle(cornerRadius: 18, style: .continuous)
-                                    .strokeBorder(SpotterPalette.glassStroke, lineWidth: 1)
-                            }
-                    }
+                    Text("New Exercise")
+                        .font(.headline.weight(.semibold))
+                        .foregroundStyle(SpotterPalette.textPrimary)
 
-                    GlassButton(title: "Create Exercise", systemImage: "plus") {
+                    Spacer()
+
+                    Button {
                         save()
+                    } label: {
+                        Image(systemName: "checkmark")
+                    }
+                    .font(.headline.weight(.semibold))
+                    .symbolRenderingMode(.hierarchical)
+                    .foregroundStyle(canCreate ? SpotterPalette.textPrimary : SpotterPalette.textTertiary)
+                    .frame(width: 40, height: 40)
+                    .background(canCreate ? .white.opacity(0.12) : .white.opacity(0.04), in: Circle())
+                    .overlay {
+                        Circle().strokeBorder(canCreate ? .white.opacity(0.18) : .white.opacity(0.08), lineWidth: 1)
                     }
                     .disabled(!canCreate)
+                    .accessibilityLabel("Create Exercise")
                 }
-                .padding(22)
-            }
-        }
-        .navigationTitle("New Exercise")
-        .navigationBarTitleDisplayMode(.inline)
-        .toolbar {
-            ToolbarItem(placement: .cancellationAction) {
-                Button("Cancel") {
-                    dismiss()
+                .padding(.horizontal, 12)
+                .frame(height: 64)
+
+                ScrollView {
+                    VStack(alignment: .leading, spacing: 18) {
+                        TextField("Exercise Name", text: $name)
+                            .textInputAutocapitalization(.words)
+                            .spotterTextFieldStyle()
+
+                        ExerciseTagSection(
+                            title: "Primary",
+                            subtitle: primaryCategory.isEmpty ? "Choose one tag" : primaryCategory,
+                            tags: categoryOptions,
+                            selectedTags: primarySelection
+                        ) { tag in
+                            SpotterHaptics.selection()
+                            if primaryCategory == tag {
+                                primaryCategory = ""
+                            } else {
+                                primaryCategory = tag
+                                secondaryCategories.remove(tag)
+                            }
+                        }
+
+                        ExerciseTagSection(
+                            title: "Secondary",
+                            subtitle: secondaryCategories.isEmpty ? "Optional" : "\(secondaryCategories.count) selected",
+                            tags: categoryOptions.filter { $0 != primaryCategory },
+                            selectedTags: secondaryCategories
+                        ) { tag in
+                            SpotterHaptics.selection()
+                            if secondaryCategories.contains(tag) {
+                                secondaryCategories.remove(tag)
+                            } else {
+                                secondaryCategories.insert(tag)
+                            }
+                        }
+
+                        if let errorMessage {
+                            Text(errorMessage)
+                                .font(.footnote.weight(.medium))
+                                .foregroundStyle(.orange)
+                                .accessibilityLabel("Exercise save error")
+                        }
+
+                        VStack(alignment: .leading, spacing: 8) {
+                            Text("Notes")
+                                .font(.headline)
+                            TextEditor(text: $notes)
+                                .frame(minHeight: 132)
+                                .scrollContentBackground(.hidden)
+                                .padding(12)
+                                .foregroundStyle(SpotterPalette.textPrimary)
+                                .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 18, style: .continuous))
+                                .overlay {
+                                    RoundedRectangle(cornerRadius: 18, style: .continuous)
+                                        .strokeBorder(SpotterPalette.glassStroke, lineWidth: 1)
+                                }
+                        }
+                    }
+                    .padding(.horizontal, 20)
+                    .padding(.top, 12)
+                    .padding(.bottom, SpotterLayout.bottomScrollClearance)
                 }
             }
+            .frame(maxWidth: .infinity)
+            .frame(maxHeight: .infinity)
+            .background(
+                RoundedRectangle(cornerRadius: 30, style: .continuous)
+                    .fill(Color.black.opacity(0.28))
+                    .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 30, style: .continuous))
+                    .glassEffect(.regular, in: RoundedRectangle(cornerRadius: 30, style: .continuous))
+            )
+            .overlay {
+                RoundedRectangle(cornerRadius: 30, style: .continuous)
+                    .strokeBorder(.white.opacity(0.16), lineWidth: 1)
+            }
+            .clipShape(RoundedRectangle(cornerRadius: 30, style: .continuous))
+            .padding(.top, 54)
+            .ignoresSafeArea(edges: .bottom)
         }
-        .spotterScreenChrome()
+        .preferredColorScheme(.dark)
+        .transition(.move(edge: .bottom).combined(with: .opacity))
     }
 
     private var primarySelection: Set<String> {
@@ -385,7 +457,7 @@ private struct CreateExerciseView: View {
 
         do {
             try onSave(exercise)
-            dismiss()
+            onCancel()
         } catch {
             SpotterHaptics.notification(.error)
             errorMessage = "Could not save exercise. Try again."
