@@ -15,8 +15,77 @@ enum SpotterPalette {
 }
 
 enum SpotterLayout {
+    static let activeWorkoutMiniBarHeight: CGFloat = 58
+    static let activeWorkoutMiniBarBottomPadding: CGFloat = 64
     static let bottomScrollClearance: CGFloat = 180
     static let bottomPinnedActionClearance: CGFloat = 96
+
+    static var activeWorkoutMiniBarReservedHeight: CGFloat {
+        activeWorkoutMiniBarHeight + activeWorkoutMiniBarBottomPadding
+    }
+
+    static func bottomScrollClearance(activeWorkoutBarVisible: Bool) -> CGFloat {
+        bottomScrollClearance
+    }
+
+    static func bottomPinnedActionClearance(activeWorkoutBarVisible: Bool) -> CGFloat {
+        bottomPinnedActionClearance + activeWorkoutBarViewportPadding(activeWorkoutBarVisible: activeWorkoutBarVisible)
+    }
+
+    static func activeWorkoutBarViewportPadding(activeWorkoutBarVisible: Bool) -> CGFloat {
+        guard activeWorkoutBarVisible else {
+            return 0
+        }
+
+        return activeWorkoutMiniBarReservedHeight
+    }
+}
+
+private struct SpotterActiveWorkoutBarVisibleKey: EnvironmentKey {
+    static let defaultValue = false
+}
+
+extension EnvironmentValues {
+    var spotterActiveWorkoutBarVisible: Bool {
+        get { self[SpotterActiveWorkoutBarVisibleKey.self] }
+        set { self[SpotterActiveWorkoutBarVisibleKey.self] = newValue }
+    }
+}
+
+private struct SpotterScrollableBottomPadding: ViewModifier {
+    @Environment(\.spotterActiveWorkoutBarVisible) private var activeWorkoutBarVisible
+
+    func body(content: Content) -> some View {
+        content
+            .padding(
+                .bottom,
+                SpotterLayout.bottomScrollClearance(activeWorkoutBarVisible: activeWorkoutBarVisible)
+            )
+    }
+}
+
+private struct SpotterPinnedActionBottomPadding: ViewModifier {
+    @Environment(\.spotterActiveWorkoutBarVisible) private var activeWorkoutBarVisible
+
+    func body(content: Content) -> some View {
+        content
+            .padding(
+                .bottom,
+                SpotterLayout.bottomPinnedActionClearance(activeWorkoutBarVisible: activeWorkoutBarVisible)
+            )
+    }
+}
+
+private struct SpotterActiveWorkoutBarViewportPadding: ViewModifier {
+    @Environment(\.spotterActiveWorkoutBarVisible) private var activeWorkoutBarVisible
+
+    func body(content: Content) -> some View {
+        content
+            .padding(
+                .bottom,
+                SpotterLayout.activeWorkoutBarViewportPadding(activeWorkoutBarVisible: activeWorkoutBarVisible)
+            )
+    }
 }
 
 enum SpotterAppearance {
@@ -407,6 +476,18 @@ struct SpotterScreenChrome: ViewModifier {
 }
 
 extension View {
+    func spotterScrollableBottomPadding() -> some View {
+        modifier(SpotterScrollableBottomPadding())
+    }
+
+    func spotterPinnedActionBottomPadding() -> some View {
+        modifier(SpotterPinnedActionBottomPadding())
+    }
+
+    func spotterActiveWorkoutBarViewportPadding() -> some View {
+        modifier(SpotterActiveWorkoutBarViewportPadding())
+    }
+
     func spotterScreenChrome() -> some View {
         modifier(SpotterScreenChrome())
     }

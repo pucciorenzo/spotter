@@ -90,8 +90,9 @@ struct PlanListView: View {
                 }
                 .padding(.horizontal, 20)
                 .padding(.top, 8)
-                .padding(.bottom, SpotterLayout.bottomScrollClearance)
+                .spotterScrollableBottomPadding()
             }
+            .spotterActiveWorkoutBarViewportPadding()
             .onScrollGeometryChange(for: Bool.self) { geometry in
                 geometry.contentOffset.y > 24
             } action: { _, isScrolled in
@@ -440,8 +441,9 @@ private struct PlanDetailView: View {
                 }
                 .padding(.horizontal, 20)
                 .padding(.top, 18)
-                .padding(.bottom, SpotterLayout.bottomScrollClearance)
+                .spotterScrollableBottomPadding()
             }
+            .spotterActiveWorkoutBarViewportPadding()
 
             Button {
                 SpotterHaptics.impact(.medium)
@@ -452,7 +454,7 @@ private struct PlanDetailView: View {
             }
             .buttonStyle(.plain)
             .padding(.horizontal, 20)
-            .padding(.bottom, SpotterLayout.bottomPinnedActionClearance)
+            .spotterPinnedActionBottomPadding()
         }
         .navigationTitle(plan.name)
         .navigationBarTitleDisplayMode(.large)
@@ -572,8 +574,9 @@ private struct PlanDayDetailView: View {
                 }
                 .padding(.horizontal, 20)
                 .padding(.top, 18)
-                .padding(.bottom, SpotterLayout.bottomScrollClearance)
+                .spotterScrollableBottomPadding()
             }
+            .spotterActiveWorkoutBarViewportPadding()
 
             Button {
                 SpotterHaptics.impact(.medium)
@@ -584,7 +587,7 @@ private struct PlanDayDetailView: View {
             }
             .buttonStyle(.plain)
             .padding(.horizontal, 20)
-            .padding(.bottom, SpotterLayout.bottomPinnedActionClearance)
+            .spotterPinnedActionBottomPadding()
         }
         .navigationTitle(day.name)
         .navigationBarTitleDisplayMode(.large)
@@ -1271,8 +1274,9 @@ private struct NewWorkoutPlanEditor: View {
                     }
                     .padding(.horizontal, 20)
                     .padding(.top, 12)
-                    .padding(.bottom, SpotterLayout.bottomScrollClearance)
+                    .spotterScrollableBottomPadding()
                 }
+                .spotterActiveWorkoutBarViewportPadding()
             }
             .frame(maxWidth: .infinity)
             .frame(maxHeight: .infinity)

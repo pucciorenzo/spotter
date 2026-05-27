@@ -60,8 +60,9 @@ struct ProgressScreenView: View {
                 }
                 .padding(.horizontal, 20)
                 .padding(.top, 8)
-                .padding(.bottom, SpotterLayout.bottomScrollClearance)
+                .spotterScrollableBottomPadding()
             }
+            .spotterActiveWorkoutBarViewportPadding()
             .onScrollGeometryChange(for: Bool.self) { geometry in
                 geometry.contentOffset.y > 24
             } action: { _, isScrolled in
