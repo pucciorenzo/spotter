@@ -12,7 +12,7 @@ public enum DemoSeedData {
         exercise("Triceps Pushdown", primary: "Triceps", secondary: [], equipment: .cable),
         exercise("Push-Up", primary: "Chest", secondary: ["Triceps", "Core"], equipment: .bodyweight, loadUnit: .bodyweight),
         exercise("Plank", primary: "Core", secondary: ["Shoulders"], equipment: .bodyweight, measurement: .duration, loadUnit: .bodyweight),
-        exercise("Treadmill Run", primary: "Cardio", secondary: ["Legs"], category: .cardio, equipment: .cardioMachine, measurement: .duration, restSeconds: 60, loadUnit: .bodyweight)
+        exercise("Treadmill Run", primary: "Cardio", secondary: ["Legs"], category: .cardio, equipment: .cardioMachine, measurement: .duration, restSeconds: 60, loadUnit: .bodyweight),
     ]
 
     public static let plans: [WorkoutPlanDTO] = {
@@ -30,18 +30,18 @@ public enum DemoSeedData {
                     day(fullBodyPlanId, "Day A", 0, [
                         prescription("Bench Press", sets: 3, repsMin: 6, repsMax: 8, load: 60, rest: 150),
                         prescription("Squat", sets: 3, repsMin: 6, repsMax: 8, load: 80, rest: 180),
-                        prescription("Barbell Row", sets: 3, repsMin: 8, repsMax: 10, load: 50, rest: 120)
+                        prescription("Barbell Row", sets: 3, repsMin: 8, repsMax: 10, load: 50, rest: 120),
                     ]),
                     day(fullBodyPlanId, "Day B", 1, [
                         prescription("Deadlift", sets: 3, repsMin: 5, repsMax: 6, load: 100, rest: 180),
                         prescription("Overhead Press", sets: 3, repsMin: 6, repsMax: 8, load: 40, rest: 150),
-                        prescription("Lat Pulldown", sets: 3, repsMin: 10, repsMax: 12, load: 55, rest: 90)
+                        prescription("Lat Pulldown", sets: 3, repsMin: 10, repsMax: 12, load: 55, rest: 90),
                     ]),
                     day(fullBodyPlanId, "Day C", 2, [
                         prescription("Squat", sets: 3, repsMin: 8, repsMax: 10, load: 70, rest: 150),
                         prescription("Bench Press", sets: 3, repsMin: 8, repsMax: 10, load: 55, rest: 120),
-                        prescription("Plank", sets: 3, duration: 45, load: nil, rest: 60)
-                    ])
+                        prescription("Plank", sets: 3, duration: 45, load: nil, rest: 60),
+                    ]),
                 ],
                 isActive: true,
                 isArchived: false,
@@ -57,23 +57,23 @@ public enum DemoSeedData {
                     day(upperLowerPlanId, "Upper A", 0, [
                         prescription("Bench Press", sets: 4, repsMin: 6, repsMax: 8, load: 62.5, rest: 150),
                         prescription("Barbell Row", sets: 4, repsMin: 8, repsMax: 10, load: 52.5, rest: 120),
-                        prescription("Triceps Pushdown", sets: 3, repsMin: 10, repsMax: 12, load: 25, rest: 75)
+                        prescription("Triceps Pushdown", sets: 3, repsMin: 10, repsMax: 12, load: 25, rest: 75),
                     ]),
                     day(upperLowerPlanId, "Lower A", 1, [
                         prescription("Squat", sets: 4, repsMin: 5, repsMax: 7, load: 85, rest: 180),
                         prescription("Deadlift", sets: 2, repsMin: 5, repsMax: 6, load: 105, rest: 180),
-                        prescription("Plank", sets: 3, duration: 60, load: nil, rest: 60)
+                        prescription("Plank", sets: 3, duration: 60, load: nil, rest: 60),
                     ]),
                     day(upperLowerPlanId, "Upper B", 2, [
                         prescription("Overhead Press", sets: 4, repsMin: 6, repsMax: 8, load: 42.5, rest: 150),
                         prescription("Lat Pulldown", sets: 4, repsMin: 8, repsMax: 12, load: 57.5, rest: 90),
-                        prescription("Dumbbell Curl", sets: 3, repsMin: 10, repsMax: 12, load: 12.5, rest: 75)
+                        prescription("Dumbbell Curl", sets: 3, repsMin: 10, repsMax: 12, load: 12.5, rest: 75),
                     ]),
                     day(upperLowerPlanId, "Lower B", 3, [
                         prescription("Deadlift", sets: 3, repsMin: 4, repsMax: 6, load: 110, rest: 180),
                         prescription("Squat", sets: 3, repsMin: 8, repsMax: 10, load: 72.5, rest: 150),
-                        prescription("Treadmill Run", sets: 1, duration: 900, load: nil, rest: 60)
-                    ])
+                        prescription("Treadmill Run", sets: 1, duration: 900, load: nil, rest: 60),
+                    ]),
                 ],
                 isActive: true,
                 isArchived: false,
@@ -90,14 +90,14 @@ public enum DemoSeedData {
                         prescription("Bench Press", sets: 2, repsMin: 5, repsMax: 8, load: 40, rest: 5),
                         prescription("Push-Up", sets: 2, repsMin: 8, repsMax: 12, load: nil, rest: 5),
                         prescription("Plank", sets: 2, duration: 10, load: nil, rest: 5),
-                        prescription("Treadmill Run", sets: 1, duration: 15, load: nil, rest: 5)
-                    ])
+                        prescription("Treadmill Run", sets: 1, duration: 15, load: nil, rest: 5),
+                    ]),
                 ],
                 isActive: true,
                 isArchived: false,
                 createdAt: referenceDate,
                 updatedAt: referenceDate
-            )
+            ),
         ]
     }()
 
@@ -118,19 +118,19 @@ public enum DemoSeedData {
                 return [
                     setLog(sessionId: sessionId, exercise: exercise, name: name, setIndex: 1, reps: 8, duration: nil, load: 60, rpe: 7.5, rir: 2, completedAt: startedAt.addingTimeInterval(480)),
                     setLog(sessionId: sessionId, exercise: exercise, name: name, setIndex: 2, reps: 7, duration: nil, load: 60, rpe: 8, rir: 2, completedAt: startedAt.addingTimeInterval(660)),
-                    setLog(sessionId: sessionId, exercise: exercise, name: name, setIndex: 3, reps: 6, duration: nil, load: 60, rpe: 8.5, rir: 1, completedAt: startedAt.addingTimeInterval(840))
+                    setLog(sessionId: sessionId, exercise: exercise, name: name, setIndex: 3, reps: 6, duration: nil, load: 60, rpe: 8.5, rir: 1, completedAt: startedAt.addingTimeInterval(840)),
                 ]
             case "Squat":
                 return [
                     setLog(sessionId: sessionId, exercise: exercise, name: name, setIndex: 1, reps: 8, duration: nil, load: 80, rpe: 7, rir: 3, completedAt: startedAt.addingTimeInterval(1_200)),
                     setLog(sessionId: sessionId, exercise: exercise, name: name, setIndex: 2, reps: 7, duration: nil, load: 80, rpe: 8, rir: 2, completedAt: startedAt.addingTimeInterval(1_440)),
-                    setLog(sessionId: sessionId, exercise: exercise, name: name, setIndex: 3, reps: 6, duration: nil, load: 80, rpe: 8.5, rir: 1, completedAt: startedAt.addingTimeInterval(1_680))
+                    setLog(sessionId: sessionId, exercise: exercise, name: name, setIndex: 3, reps: 6, duration: nil, load: 80, rpe: 8.5, rir: 1, completedAt: startedAt.addingTimeInterval(1_680)),
                 ]
             case "Barbell Row":
                 return [
                     setLog(sessionId: sessionId, exercise: exercise, name: name, setIndex: 1, reps: 10, duration: nil, load: 50, rpe: 7.5, rir: 2, completedAt: startedAt.addingTimeInterval(2_100)),
                     setLog(sessionId: sessionId, exercise: exercise, name: name, setIndex: 2, reps: 9, duration: nil, load: 50, rpe: 8, rir: 2, completedAt: startedAt.addingTimeInterval(2_280)),
-                    setLog(sessionId: sessionId, exercise: exercise, name: name, setIndex: 3, reps: 9, duration: nil, load: 50, rpe: 8.5, rir: 1, completedAt: startedAt.addingTimeInterval(2_460))
+                    setLog(sessionId: sessionId, exercise: exercise, name: name, setIndex: 3, reps: 9, duration: nil, load: 50, rpe: 8.5, rir: 1, completedAt: startedAt.addingTimeInterval(2_460)),
                 ]
             default:
                 return []
@@ -153,7 +153,7 @@ public enum DemoSeedData {
                 notes: "",
                 createdAt: startedAt,
                 updatedAt: endedAt
-            )
+            ),
         ]
     }()
 

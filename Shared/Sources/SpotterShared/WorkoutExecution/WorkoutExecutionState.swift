@@ -72,7 +72,7 @@ public struct WorkoutExecutionState: Codable, Identifiable, Hashable {
             "\(revision)",
             lastMutationId.uuidString,
             "\(session.updatedAt.timeIntervalSince1970)",
-            "\(session.setLogs.count)"
+            "\(session.setLogs.count)",
         ].joined(separator: ":")
     }
 

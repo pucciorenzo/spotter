@@ -269,6 +269,6 @@ private struct ActivityView: UIViewControllerRepresentable {
             dataProvider: MockSpotterRepository.preview,
             healthKitManager: HealthKitWorkoutManager()
         )
-            .preferredColorScheme(.dark)
+        .preferredColorScheme(.dark)
     }
 }

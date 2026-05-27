@@ -159,7 +159,7 @@ struct RootTabView: View {
                                     "\(exercise.targetRepsMax ?? -1)",
                                     "\(exercise.targetDurationSeconds ?? -1)",
                                     "\(exercise.startingLoad ?? -1)",
-                                    "\(exercise.restSeconds)"
+                                    "\(exercise.restSeconds)",
                                 ].joined(separator: ":")
                             }
                             .joined(separator: ",")
@@ -173,7 +173,7 @@ struct RootTabView: View {
                     "\(plan.updatedAt.timeIntervalSince1970)",
                     "\(plan.isActive)",
                     "\(plan.isArchived)",
-                    dayVersion
+                    dayVersion,
                 ].joined(separator: ":")
             }
             .joined(separator: "|")
@@ -184,7 +184,7 @@ struct RootTabView: View {
                 [
                     session.id.uuidString,
                     "\(session.updatedAt.timeIntervalSince1970)",
-                    "\(session.setLogs.count)"
+                    "\(session.setLogs.count)",
                 ].joined(separator: ":")
             }
             .joined(separator: "|")

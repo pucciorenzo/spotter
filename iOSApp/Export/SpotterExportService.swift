@@ -35,7 +35,7 @@ enum SpotterExportService {
             ("spotter-exercises.csv", exercisesCSV(snapshot.exercises)),
             ("spotter-workout-plans.csv", workoutPlansCSV(snapshot.workoutPlans)),
             ("spotter-workout-sessions.csv", workoutSessionsCSV(snapshot.workoutSessions)),
-            ("spotter-progress-history.csv", progressHistoryCSV(snapshot.workoutSessions))
+            ("spotter-progress-history.csv", progressHistoryCSV(snapshot.workoutSessions)),
         ]
 
         return try files.map { fileName, contents in
@@ -95,7 +95,7 @@ enum SpotterExportService {
             "is_archived",
             "notes",
             "created_at",
-            "updated_at"
+            "updated_at",
         ]]
 
         rows += exercises.map { exercise in
@@ -114,7 +114,7 @@ enum SpotterExportService {
                 "\(exercise.isArchived)",
                 exercise.notes,
                 formatDate(exercise.createdAt),
-                formatDate(exercise.updatedAt)
+                formatDate(exercise.updatedAt),
             ]
         }
 
@@ -147,7 +147,7 @@ enum SpotterExportService {
             "rir_target",
             "superset_group_id",
             "auto_progression_enabled",
-            "notes"
+            "notes",
         ]]
 
         for plan in plans {
@@ -203,7 +203,7 @@ enum SpotterExportService {
             string(exercise?.rirTarget),
             exercise?.supersetGroupId?.uuidString ?? "",
             exercise.map { "\($0.autoProgressionEnabled)" } ?? "",
-            exercise?.notes ?? ""
+            exercise?.notes ?? "",
         ]
     }
 
@@ -223,7 +223,7 @@ enum SpotterExportService {
             "total_volume",
             "notes",
             "created_at",
-            "updated_at"
+            "updated_at",
         ]]
 
         rows += sessions.map { session in
@@ -242,7 +242,7 @@ enum SpotterExportService {
                 format(totalVolume(session.setLogs)),
                 session.notes,
                 formatDate(session.createdAt),
-                formatDate(session.updatedAt)
+                formatDate(session.updatedAt),
             ]
         }
 
@@ -284,7 +284,7 @@ enum SpotterExportService {
             "rpe",
             "rir",
             "notes",
-            "completed_at"
+            "completed_at",
         ]]
 
         let logs = sessions
@@ -317,7 +317,7 @@ enum SpotterExportService {
                 string(log.rpe),
                 string(log.rir),
                 log.notes,
-                formatDate(log.completedAt)
+                formatDate(log.completedAt),
             ]
         }
 

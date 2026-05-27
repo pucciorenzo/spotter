@@ -69,7 +69,7 @@ struct WatchWorkoutView: View {
             LinearGradient(
                 colors: [
                     Color(red: 0.04, green: 0.07, blue: 0.11),
-                    Color.black
+                    Color.black,
                 ],
                 startPoint: .topLeading,
                 endPoint: .bottomTrailing
@@ -222,7 +222,7 @@ struct WatchWorkoutView: View {
                         title: "Duration",
                         suffix: "s",
                         value: $viewModel.durationValue,
-                        range: 0...3600,
+                        range: 0 ... 3600,
                         step: 5
                     )
                 } else {
@@ -230,7 +230,7 @@ struct WatchWorkoutView: View {
                         title: "Reps",
                         suffix: "",
                         value: $viewModel.repsValue,
-                        range: 0...200,
+                        range: 0 ... 200,
                         step: 1
                     )
                 }
@@ -240,7 +240,7 @@ struct WatchWorkoutView: View {
                         title: "Weight",
                         suffix: viewModel.currentExercise?.loadUnit.rawValue ?? "",
                         value: $viewModel.loadValue,
-                        range: 0...500,
+                        range: 0 ... 500,
                         step: 2.5
                     )
                 }
@@ -250,7 +250,7 @@ struct WatchWorkoutView: View {
                         title: "RPE",
                         suffix: "",
                         value: $viewModel.rpeValue,
-                        range: 0...10,
+                        range: 0 ... 10,
                         step: 0.5,
                         nilValue: 0,
                         nilLabel: "-"
@@ -259,7 +259,7 @@ struct WatchWorkoutView: View {
                         title: "RIR",
                         suffix: "",
                         value: $viewModel.rirValue,
-                        range: -1...10,
+                        range: -1 ... 10,
                         step: 1,
                         nilValue: -1,
                         nilLabel: "-"
@@ -277,7 +277,7 @@ struct WatchWorkoutView: View {
                         title: "Duration",
                         suffix: "s",
                         value: $viewModel.durationValue,
-                        range: 0...3600,
+                        range: 0 ... 3600,
                         step: 5,
                         prominence: .focus
                     )
@@ -286,7 +286,7 @@ struct WatchWorkoutView: View {
                         title: "Reps",
                         suffix: "",
                         value: $viewModel.repsValue,
-                        range: 0...200,
+                        range: 0 ... 200,
                         step: 1,
                         prominence: .focus
                     )
@@ -297,7 +297,7 @@ struct WatchWorkoutView: View {
                         title: "Weight",
                         suffix: viewModel.currentExercise?.loadUnit.rawValue ?? "",
                         value: $viewModel.loadValue,
-                        range: 0...500,
+                        range: 0 ... 500,
                         step: 2.5,
                         prominence: .focus
                     )

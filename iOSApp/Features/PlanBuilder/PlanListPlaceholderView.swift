@@ -254,7 +254,7 @@ private struct PlanCard: View {
                                 .overlay {
                                     Capsule().strokeBorder(SpotterPalette.accentSoft.opacity(0.36), lineWidth: 1)
                                 }
-                    }
+                        }
                     }
 
                     Text("\(plan.days.count) days - \(plan.suggestedDay)")
@@ -451,8 +451,8 @@ private struct PlanDetailView: View {
                 PlanPrimaryActionLabel(title: "Start Workout", systemImage: "play.fill")
             }
             .buttonStyle(.plain)
-                .padding(.horizontal, 20)
-                .padding(.bottom, SpotterLayout.bottomPinnedActionClearance)
+            .padding(.horizontal, 20)
+            .padding(.bottom, SpotterLayout.bottomPinnedActionClearance)
         }
         .navigationTitle(plan.name)
         .navigationBarTitleDisplayMode(.large)
@@ -583,8 +583,8 @@ private struct PlanDayDetailView: View {
                 PlanPrimaryActionLabel(title: "Start Workout", systemImage: "play.fill")
             }
             .buttonStyle(.plain)
-                .padding(.horizontal, 20)
-                .padding(.bottom, SpotterLayout.bottomPinnedActionClearance)
+            .padding(.horizontal, 20)
+            .padding(.bottom, SpotterLayout.bottomPinnedActionClearance)
         }
         .navigationTitle(day.name)
         .navigationBarTitleDisplayMode(.large)
@@ -1078,7 +1078,7 @@ private struct WorkoutExerciseDraft: Identifiable {
             "Name: \(name.trimmingCharacters(in: .whitespacesAndNewlines))",
             "Mode: \(executionMode.title)",
             "Rest: \(restSeconds)s",
-            setSummary
+            setSummary,
         ]
         switch executionMode {
         case .mav:
@@ -1113,7 +1113,7 @@ private struct WorkoutExerciseDraft: Identifiable {
         durationSeconds: Int,
         incrementPercent: Double
     ) -> [PlannedSetDraft] {
-        (0..<setCount).map { index in
+        (0 ..< setCount).map { index in
             let isWarmup = index < warmupSets
             let workingIndex = max(index - warmupSets, 0)
             let factor = pow(1 + incrementPercent / 100, Double(workingIndex))
@@ -1383,7 +1383,7 @@ private struct WorkoutExerciseDraftCard: View {
                     .textCase(.uppercase)
 
                 TextField("Tempo, cue, setup note", text: $exercise.notes, axis: .vertical)
-                    .lineLimit(2...4)
+                    .lineLimit(2 ... 4)
                     .font(.footnote)
                     .foregroundStyle(SpotterPalette.textPrimary)
                     .padding(12)
@@ -1440,11 +1440,11 @@ private struct WorkoutExerciseDraftCard: View {
             case .endurance:
                 basicSetControls(setTitle: "Sets")
                 PlanResponsivePair {
-                    PlanIntegerControl(title: "Duration", value: exercise.durationSeconds, suffix: "s", range: 10...600, step: 5) { value in
+                    PlanIntegerControl(title: "Duration", value: exercise.durationSeconds, suffix: "s", range: 10 ... 600, step: 5) { value in
                         exercise.updateDuration(value)
                     }
                 } trailing: {
-                    PlanIntegerControl(title: "Rest", value: exercise.restSeconds, suffix: "s", range: 0...600, step: 15) { value in
+                    PlanIntegerControl(title: "Rest", value: exercise.restSeconds, suffix: "s", range: 0 ... 600, step: 15) { value in
                         exercise.updateRest(value)
                     }
                 }
@@ -1453,17 +1453,17 @@ private struct WorkoutExerciseDraftCard: View {
                 basicSetControls(setTitle: "Sets")
                 repsAndRestControls(repsTitle: "Target Reps", restTitle: "Rest")
                 weightControl(title: "Starting Weight")
-                PlanDoubleControl(title: "Increment", value: exercise.incrementPercent, suffix: "%", range: 0...10, step: 0.5) { value in
+                PlanDoubleControl(title: "Increment", value: exercise.incrementPercent, suffix: "%", range: 0 ... 10, step: 0.5) { value in
                     exercise.updateIncrementPercent(value)
                 }
 
             case .rm:
                 PlanResponsivePair {
-                    PlanIntegerControl(title: "Target RM", value: exercise.targetRM, suffix: "RM", range: 1...20, step: 1) { value in
+                    PlanIntegerControl(title: "Target RM", value: exercise.targetRM, suffix: "RM", range: 1 ... 20, step: 1) { value in
                         exercise.updateTargetRM(value)
                     }
                 } trailing: {
-                    PlanIntegerControl(title: "Rest", value: exercise.restSeconds, suffix: "s", range: 0...600, step: 15) { value in
+                    PlanIntegerControl(title: "Rest", value: exercise.restSeconds, suffix: "s", range: 0 ... 600, step: 15) { value in
                         exercise.updateRest(value)
                     }
                 }
@@ -1472,11 +1472,11 @@ private struct WorkoutExerciseDraftCard: View {
 
             case .amrap:
                 PlanResponsivePair {
-                    PlanIntegerControl(title: "Rest", value: exercise.restSeconds, suffix: "s", range: 0...600, step: 15) { value in
+                    PlanIntegerControl(title: "Rest", value: exercise.restSeconds, suffix: "s", range: 0 ... 600, step: 15) { value in
                         exercise.updateRest(value)
                     }
                 } trailing: {
-                    PlanOptionalIntControl(title: "Time Cap", value: exercise.timeLimitSeconds, range: 15...900, step: 15) { value in
+                    PlanOptionalIntControl(title: "Time Cap", value: exercise.timeLimitSeconds, range: 15 ... 900, step: 15) { value in
                         exercise.timeLimitSeconds = value
                     }
                 }
@@ -1484,30 +1484,30 @@ private struct WorkoutExerciseDraftCard: View {
 
             case .dropset:
                 PlanResponsivePair {
-                    PlanIntegerControl(title: "Drops", value: exercise.setCount, suffix: nil, range: 2...8, step: 1) { value in
+                    PlanIntegerControl(title: "Drops", value: exercise.setCount, suffix: nil, range: 2 ... 8, step: 1) { value in
                         exercise.updateSetCount(value)
                     }
                 } trailing: {
-                    PlanIntegerControl(title: "Rest Between", value: exercise.restSeconds, suffix: "s", range: 0...120, step: 5) { value in
+                    PlanIntegerControl(title: "Rest Between", value: exercise.restSeconds, suffix: "s", range: 0 ... 120, step: 5) { value in
                         exercise.updateRest(value)
                     }
                 }
-                PlanIntegerControl(title: "Target Reps", value: exercise.baseReps, suffix: nil, range: 1...50, step: 1) { value in
+                PlanIntegerControl(title: "Target Reps", value: exercise.baseReps, suffix: nil, range: 1 ... 50, step: 1) { value in
                     exercise.updateBaseReps(value)
                 }
                 weightControl(title: "Initial Weight")
 
             case .superset:
                 PlanResponsivePair {
-                    PlanIntegerControl(title: "Sets", value: exercise.setCount, suffix: nil, range: 1...12, step: 1) { value in
+                    PlanIntegerControl(title: "Sets", value: exercise.setCount, suffix: nil, range: 1 ... 12, step: 1) { value in
                         exercise.updateSetCount(value)
                     }
                 } trailing: {
-                    PlanIntegerControl(title: "Rest After Round", value: exercise.restSeconds, suffix: "s", range: 0...600, step: 15) { value in
+                    PlanIntegerControl(title: "Rest After Round", value: exercise.restSeconds, suffix: "s", range: 0 ... 600, step: 15) { value in
                         exercise.updateRest(value)
                     }
                 }
-                PlanIntegerControl(title: "Reps Per Exercise", value: exercise.baseReps, suffix: nil, range: 1...50, step: 1) { value in
+                PlanIntegerControl(title: "Reps Per Exercise", value: exercise.baseReps, suffix: nil, range: 1 ... 50, step: 1) { value in
                     exercise.updateBaseReps(value)
                 }
                 PlanExercisePickerControl(
@@ -1520,15 +1520,15 @@ private struct WorkoutExerciseDraftCard: View {
 
             case .circuit:
                 PlanResponsivePair {
-                    PlanIntegerControl(title: "Rounds", value: exercise.setCount, suffix: nil, range: 1...12, step: 1) { value in
+                    PlanIntegerControl(title: "Rounds", value: exercise.setCount, suffix: nil, range: 1 ... 12, step: 1) { value in
                         exercise.updateSetCount(value)
                     }
                 } trailing: {
-                    PlanIntegerControl(title: "Rest After Round", value: exercise.restSeconds, suffix: "s", range: 0...600, step: 15) { value in
+                    PlanIntegerControl(title: "Rest After Round", value: exercise.restSeconds, suffix: "s", range: 0 ... 600, step: 15) { value in
                         exercise.updateRest(value)
                     }
                 }
-                PlanIntegerControl(title: "Rest Between", value: exercise.restBetweenExercisesSeconds, suffix: "s", range: 0...300, step: 10) { value in
+                PlanIntegerControl(title: "Rest Between", value: exercise.restBetweenExercisesSeconds, suffix: "s", range: 0 ... 300, step: 10) { value in
                     exercise.updateRestBetweenExercises(value)
                 }
                 PlanCircuitExerciseSelector(
@@ -1545,11 +1545,11 @@ private struct WorkoutExerciseDraftCard: View {
 
     private func basicSetControls(setTitle: String) -> some View {
         PlanResponsivePair {
-            PlanIntegerControl(title: setTitle, value: exercise.setCount, suffix: nil, range: 1...12, step: 1) { value in
+            PlanIntegerControl(title: setTitle, value: exercise.setCount, suffix: nil, range: 1 ... 12, step: 1) { value in
                 exercise.updateSetCount(value)
             }
         } trailing: {
-            PlanIntegerControl(title: "Warm-up", value: exercise.warmupSets, suffix: nil, range: 0...max(exercise.setCount - 1, 0), step: 1) { value in
+            PlanIntegerControl(title: "Warm-up", value: exercise.warmupSets, suffix: nil, range: 0 ... max(exercise.setCount - 1, 0), step: 1) { value in
                 exercise.updateWarmupSets(value)
             }
         }
@@ -1557,18 +1557,18 @@ private struct WorkoutExerciseDraftCard: View {
 
     private func repsAndRestControls(repsTitle: String, restTitle: String) -> some View {
         PlanResponsivePair {
-            PlanIntegerControl(title: repsTitle, value: exercise.baseReps, suffix: nil, range: 1...50, step: 1) { value in
+            PlanIntegerControl(title: repsTitle, value: exercise.baseReps, suffix: nil, range: 1 ... 50, step: 1) { value in
                 exercise.updateBaseReps(value)
             }
         } trailing: {
-            PlanIntegerControl(title: restTitle, value: exercise.restSeconds, suffix: "s", range: 0...600, step: 15) { value in
+            PlanIntegerControl(title: restTitle, value: exercise.restSeconds, suffix: "s", range: 0 ... 600, step: 15) { value in
                 exercise.updateRest(value)
             }
         }
     }
 
     private func weightControl(title: String) -> some View {
-        PlanDoubleControl(title: title, value: exercise.baseWeight, suffix: "kg", range: 0...500, step: 2.5) { value in
+        PlanDoubleControl(title: title, value: exercise.baseWeight, suffix: "kg", range: 0 ... 500, step: 2.5) { value in
             exercise.updateBaseWeight(value)
         }
     }
@@ -1667,33 +1667,33 @@ private struct PlanSetDraftRow: View {
             }
 
             if mode == .endurance {
-                PlanInlineIntegerControl(value: set.durationSeconds, suffix: "s", range: 10...600, step: 5) { value in
+                PlanInlineIntegerControl(value: set.durationSeconds, suffix: "s", range: 10 ... 600, step: 5) { value in
                     set.durationSeconds = value
                 }
             } else if mode == .amrap {
-                PlanInlineDoubleControl(value: set.weight, suffix: "kg", range: 0...500, step: 2.5) { value in
+                PlanInlineDoubleControl(value: set.weight, suffix: "kg", range: 0 ... 500, step: 2.5) { value in
                     set.weight = value
                 }
             } else if mode == .rm {
                 ViewThatFits(in: .horizontal) {
                     HStack(spacing: 8) {
-                        PlanInlineIntegerControl(value: set.reps, suffix: "RM", range: 1...20, step: 1) { value in
+                        PlanInlineIntegerControl(value: set.reps, suffix: "RM", range: 1 ... 20, step: 1) { value in
                             set.reps = value
                         }
                         .frame(maxWidth: .infinity)
 
-                        PlanInlineDoubleControl(value: set.weight, suffix: "kg", range: 0...500, step: 2.5) { value in
+                        PlanInlineDoubleControl(value: set.weight, suffix: "kg", range: 0 ... 500, step: 2.5) { value in
                             set.weight = value
                         }
                         .frame(maxWidth: .infinity)
                     }
 
                     VStack(spacing: 8) {
-                        PlanInlineIntegerControl(value: set.reps, suffix: "RM", range: 1...20, step: 1) { value in
+                        PlanInlineIntegerControl(value: set.reps, suffix: "RM", range: 1 ... 20, step: 1) { value in
                             set.reps = value
                         }
 
-                        PlanInlineDoubleControl(value: set.weight, suffix: "kg", range: 0...500, step: 2.5) { value in
+                        PlanInlineDoubleControl(value: set.weight, suffix: "kg", range: 0 ... 500, step: 2.5) { value in
                             set.weight = value
                         }
                     }
@@ -1701,23 +1701,23 @@ private struct PlanSetDraftRow: View {
             } else {
                 ViewThatFits(in: .horizontal) {
                     HStack(spacing: 8) {
-                        PlanInlineIntegerControl(value: set.reps, suffix: "reps", range: 1...80, step: 1) { value in
+                        PlanInlineIntegerControl(value: set.reps, suffix: "reps", range: 1 ... 80, step: 1) { value in
                             set.reps = value
                         }
                         .frame(maxWidth: .infinity)
 
-                        PlanInlineDoubleControl(value: set.weight, suffix: "kg", range: 0...500, step: 2.5) { value in
+                        PlanInlineDoubleControl(value: set.weight, suffix: "kg", range: 0 ... 500, step: 2.5) { value in
                             set.weight = value
                         }
                         .frame(maxWidth: .infinity)
                     }
 
                     VStack(spacing: 8) {
-                        PlanInlineIntegerControl(value: set.reps, suffix: "reps", range: 1...80, step: 1) { value in
+                        PlanInlineIntegerControl(value: set.reps, suffix: "reps", range: 1 ... 80, step: 1) { value in
                             set.reps = value
                         }
 
-                        PlanInlineDoubleControl(value: set.weight, suffix: "kg", range: 0...500, step: 2.5) { value in
+                        PlanInlineDoubleControl(value: set.weight, suffix: "kg", range: 0 ... 500, step: 2.5) { value in
                             set.weight = value
                         }
                     }
@@ -2297,6 +2297,6 @@ private struct PlanInfoPill: View {
             activeWorkoutRepository: MockActiveWorkoutRepository(),
             showActiveWorkout: {}
         )
-            .preferredColorScheme(.dark)
+        .preferredColorScheme(.dark)
     }
 }

@@ -110,7 +110,7 @@ final class HealthKitWorkoutManager: ObservableObject, HealthWorkoutManaging {
             try await addMetadata(
                 [
                     HKMetadataKeyWorkoutBrandName: "Spotter",
-                    "SpotterWorkoutName": workoutName
+                    "SpotterWorkoutName": workoutName,
                 ],
                 to: builder
             )
@@ -180,12 +180,12 @@ final class HealthKitWorkoutManager: ObservableObject, HealthWorkoutManaging {
         let readTypes = Set([
             HKObjectType.workoutType(),
             quantityType(.activeEnergyBurned),
-            quantityType(.heartRate)
+            quantityType(.heartRate),
         ].compactMap { $0 })
 
         let shareTypes = Set([
             HKObjectType.workoutType(),
-            quantityType(.activeEnergyBurned)
+            quantityType(.activeEnergyBurned),
         ].compactMap { $0 })
 
         try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, Error>) in

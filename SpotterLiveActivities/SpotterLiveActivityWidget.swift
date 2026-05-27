@@ -142,7 +142,6 @@ private struct WorkoutLiveActivityLockScreenView: View {
         }
         return context.attributes.workoutName
     }
-
 }
 
 private struct LockScreenMetric<Content: View>: View {
@@ -223,7 +222,7 @@ private struct RestTimerView: View {
         } else if state.isPaused {
             Text(formatTime(state.restRemainingSeconds))
         } else if let restStartedAt = state.restStartedAt {
-            Text(timerInterval: restStartedAt...restStartedAt.addingTimeInterval(TimeInterval(state.restDurationSeconds)), countsDown: true)
+            Text(timerInterval: restStartedAt ... restStartedAt.addingTimeInterval(TimeInterval(state.restDurationSeconds)), countsDown: true)
         } else {
             Text("--")
         }
