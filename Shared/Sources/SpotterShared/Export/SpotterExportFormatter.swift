@@ -44,7 +44,7 @@ public enum SpotterExportFormatter {
             "category",
             "tracking_type",
             "default_rest_seconds",
-            "default_load_unit"
+            "default_load_unit",
         ]]
 
         rows += exercises.map { exercise in
@@ -55,7 +55,7 @@ public enum SpotterExportFormatter {
                 exercise.category.rawValue,
                 exercise.defaultMeasurementType.rawValue,
                 "\(exercise.defaultRestSeconds)",
-                exercise.defaultLoadUnit.rawValue
+                exercise.defaultLoadUnit.rawValue,
             ]
         }
 
@@ -71,7 +71,7 @@ public enum SpotterExportFormatter {
             "duration_seconds",
             "status",
             "set_count",
-            "total_volume"
+            "total_volume",
         ]]
 
         rows += sessions.map { session in
@@ -83,7 +83,7 @@ public enum SpotterExportFormatter {
                 "\(session.durationSeconds)",
                 session.status.rawValue,
                 "\(session.setLogs.count)",
-                format(totalVolume(session.setLogs))
+                format(totalVolume(session.setLogs)),
             ]
         }
 
@@ -103,7 +103,7 @@ public enum SpotterExportFormatter {
             "completed_load_unit",
             "rpe",
             "rir",
-            "completed_at"
+            "completed_at",
         ]]
 
         rows += logs.map { log in
@@ -119,7 +119,7 @@ public enum SpotterExportFormatter {
                 log.completedLoadUnit.rawValue,
                 string(log.rpe),
                 string(log.rir),
-                formatDate(log.completedAt)
+                formatDate(log.completedAt),
             ]
         }
 

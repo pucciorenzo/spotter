@@ -74,6 +74,13 @@ brew install swiftlint
 scripts/lint.sh
 ```
 
+Install SwiftFormat, then format Swift files:
+
+```sh
+brew install swiftformat
+scripts/format.sh
+```
+
 If `xcodebuild` reports that Command Line Tools are selected instead of Xcode, select Xcode first:
 
 ```sh

@@ -26,10 +26,10 @@ enum SpotterAppearance {
         navAppearance.backgroundColor = .clear
         navAppearance.shadowColor = .clear
         navAppearance.titleTextAttributes = [
-            .foregroundColor: UIColor.white.withAlphaComponent(0.96)
+            .foregroundColor: UIColor.white.withAlphaComponent(0.96),
         ]
         navAppearance.largeTitleTextAttributes = [
-            .foregroundColor: UIColor.white.withAlphaComponent(0.96)
+            .foregroundColor: UIColor.white.withAlphaComponent(0.96),
         ]
 
         let navigationBar = UINavigationBar.appearance()
@@ -76,7 +76,7 @@ struct SpotterBackground: View {
                 colors: [
                     SpotterPalette.backgroundTop,
                     Color(red: 0.03, green: 0.05, blue: 0.08),
-                    SpotterPalette.backgroundBottom
+                    SpotterPalette.backgroundBottom,
                 ],
                 startPoint: .topLeading,
                 endPoint: .bottomTrailing
@@ -86,7 +86,7 @@ struct SpotterBackground: View {
                 RadialGradient(
                     colors: [
                         SpotterPalette.accent.opacity(0.20),
-                        .clear
+                        .clear,
                     ],
                     center: .topTrailing,
                     startRadius: 20,
@@ -280,7 +280,7 @@ struct WorkoutProgressRing: View {
                         colors: [
                             SpotterPalette.accentSoft,
                             SpotterPalette.accent.opacity(0.82),
-                            SpotterPalette.accentSoft
+                            SpotterPalette.accentSoft,
                         ],
                         center: .center
                     ),
@@ -379,7 +379,7 @@ struct ScreenHeader: View {
             LinearGradient(
                 colors: [
                     Color.black.opacity(0.34),
-                    Color(red: 0.06, green: 0.08, blue: 0.12).opacity(0.22)
+                    Color(red: 0.06, green: 0.08, blue: 0.12).opacity(0.22),
                 ],
                 startPoint: .topLeading,
                 endPoint: .bottomTrailing

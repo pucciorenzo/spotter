@@ -358,6 +358,6 @@ private struct TodayGlassSurface<Content: View>: View {
             activeWorkoutRepository: MockActiveWorkoutRepository(),
             showActiveWorkout: {}
         )
-            .preferredColorScheme(.dark)
+        .preferredColorScheme(.dark)
     }
 }

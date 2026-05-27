@@ -19,7 +19,7 @@ private let exerciseCategoryTags = [
     "Quads",
     "Rear Delts",
     "Shoulders",
-    "Triceps"
+    "Triceps",
 ]
 
 struct ExerciseListView: View {
@@ -401,7 +401,7 @@ private struct ExerciseTagSection: View {
     let toggle: (String) -> Void
 
     private let columns = [
-        GridItem(.adaptive(minimum: 96), spacing: 10)
+        GridItem(.adaptive(minimum: 96), spacing: 10),
     ]
 
     var body: some View {

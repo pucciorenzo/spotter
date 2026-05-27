@@ -520,7 +520,7 @@ struct WatchWorkoutLoggingSuggestion: Equatable {
     private static func effort(_ log: WorkoutSetLogDTO) -> String {
         let values = [
             log.rpe.map { "RPE \(format($0))" },
-            log.rir.map { "RIR \($0)" }
+            log.rir.map { "RIR \($0)" },
         ].compactMap { $0 }
 
         return values.isEmpty ? "" : " · \(values.joined(separator: " / "))"

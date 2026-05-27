@@ -1,0 +1,6 @@
+--swiftversion 5.9
+--indent 4
+--linebreaks lf
+--semicolons never
+--trimwhitespace always
+--rules blankLineAfterImports,blankLinesAtEndOfScope,blankLinesAtStartOfScope,consecutiveBlankLines,consecutiveSpaces,duplicateImports,indent,linebreakAtEndOfFile,linebreaks,semicolons,spaceAroundBraces,spaceAroundBrackets,spaceAroundComments,spaceAroundGenerics,spaceAroundOperators,spaceInsideBraces,spaceInsideBrackets,spaceInsideComments,spaceInsideGenerics,trailingCommas,trailingSpace,void

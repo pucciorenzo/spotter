@@ -52,9 +52,9 @@ struct ActiveWorkoutSession: Identifiable {
     var nextPendingTarget: (exercise: ActiveWorkoutExercise, set: ActiveWorkoutSet)? {
         guard let indexes = currentIndexes else { return nil }
 
-        for exerciseIndex in indexes.exercise..<exercises.count {
+        for exerciseIndex in indexes.exercise ..< exercises.count {
             let startSetIndex = exerciseIndex == indexes.exercise ? indexes.set + 1 : 0
-            for setIndex in startSetIndex..<exercises[exerciseIndex].sets.count {
+            for setIndex in startSetIndex ..< exercises[exerciseIndex].sets.count {
                 let set = exercises[exerciseIndex].sets[setIndex]
                 if !set.isCompleted && !set.isSkipped {
                     return (exercises[exerciseIndex], set)
@@ -124,7 +124,7 @@ struct WorkoutLoggingSuggestion: Identifiable {
     var reuseLabel: String {
         let effort = [
             previousRPE.map { "RPE \(format($0))" },
-            previousRIR.map { "RIR \($0)" }
+            previousRIR.map { "RIR \($0)" },
         ]
         .compactMap { $0 }
         .joined(separator: " / ")
@@ -244,7 +244,7 @@ final class MockWorkoutHistorySuggestionRepository: WorkoutHistorySuggestionProv
             HistorySet(exerciseName: "Chest-Supported Row", completedAt: now.addingTimeInterval(-7 * 86_400), setIndex: 2, reps: 10, weight: 34, durationSeconds: nil, rpe: 8, rir: 2),
             HistorySet(exerciseName: "Chest-Supported Row", completedAt: now.addingTimeInterval(-7 * 86_400), setIndex: 3, reps: 9, weight: 34, durationSeconds: nil, rpe: 8.5, rir: 1),
             HistorySet(exerciseName: "RKC Plank", completedAt: now.addingTimeInterval(-6 * 86_400), setIndex: 1, reps: nil, weight: nil, durationSeconds: 45, rpe: 7, rir: nil),
-            HistorySet(exerciseName: "RKC Plank", completedAt: now.addingTimeInterval(-6 * 86_400), setIndex: 2, reps: nil, weight: nil, durationSeconds: 40, rpe: 8, rir: nil)
+            HistorySet(exerciseName: "RKC Plank", completedAt: now.addingTimeInterval(-6 * 86_400), setIndex: 2, reps: nil, weight: nil, durationSeconds: 40, rpe: 8, rir: nil),
         ]
     }
 
@@ -301,7 +301,7 @@ final class MockWorkoutHistorySuggestionRepository: WorkoutHistorySuggestionProv
     private func effortText(_ set: HistorySet) -> String {
         let values = [
             set.rpe.map { "RPE \(format($0))" },
-            set.rir.map { "RIR \($0)" }
+            set.rir.map { "RIR \($0)" },
         ].compactMap { $0 }
 
         return values.isEmpty ? "" : " · \(values.joined(separator: " / "))"
@@ -359,9 +359,9 @@ final class MockActiveWorkoutRepository: ActiveWorkoutProviding {
             nextNote: "Next: Chest-Supported Row",
             previousPerformance: nil,
             sets: [
-                ActiveWorkoutSet(id: UUID(), index: 1, kind: .repsWeight, isWarmup: true, targetReps: 5...6, targetWeight: 0, targetDurationSeconds: nil, reps: 6, weight: 0, durationSeconds: 0, rpe: nil, rir: nil, restSeconds: 60, isCompleted: false, isSkipped: false),
-                ActiveWorkoutSet(id: UUID(), index: 2, kind: .repsWeight, isWarmup: false, targetReps: 6...10, targetWeight: 0, targetDurationSeconds: nil, reps: 8, weight: 0, durationSeconds: 0, rpe: 8, rir: 2, restSeconds: 120, isCompleted: false, isSkipped: false),
-                ActiveWorkoutSet(id: UUID(), index: 3, kind: .repsWeight, isWarmup: false, targetReps: 6...10, targetWeight: 0, targetDurationSeconds: nil, reps: 8, weight: 0, durationSeconds: 0, rpe: 8, rir: 2, restSeconds: 120, isCompleted: false, isSkipped: false)
+                ActiveWorkoutSet(id: UUID(), index: 1, kind: .repsWeight, isWarmup: true, targetReps: 5 ... 6, targetWeight: 0, targetDurationSeconds: nil, reps: 6, weight: 0, durationSeconds: 0, rpe: nil, rir: nil, restSeconds: 60, isCompleted: false, isSkipped: false),
+                ActiveWorkoutSet(id: UUID(), index: 2, kind: .repsWeight, isWarmup: false, targetReps: 6 ... 10, targetWeight: 0, targetDurationSeconds: nil, reps: 8, weight: 0, durationSeconds: 0, rpe: 8, rir: 2, restSeconds: 120, isCompleted: false, isSkipped: false),
+                ActiveWorkoutSet(id: UUID(), index: 3, kind: .repsWeight, isWarmup: false, targetReps: 6 ... 10, targetWeight: 0, targetDurationSeconds: nil, reps: 8, weight: 0, durationSeconds: 0, rpe: 8, rir: 2, restSeconds: 120, isCompleted: false, isSkipped: false),
             ]
         )
 
@@ -371,9 +371,9 @@ final class MockActiveWorkoutRepository: ActiveWorkoutProviding {
             nextNote: "Next: Lat Pulldown",
             previousPerformance: nil,
             sets: [
-                ActiveWorkoutSet(id: UUID(), index: 1, kind: .repsWeight, isWarmup: true, targetReps: 10...12, targetWeight: 22, targetDurationSeconds: nil, reps: 10, weight: 22, durationSeconds: 0, rpe: nil, rir: nil, restSeconds: 60, isCompleted: false, isSkipped: false),
-                ActiveWorkoutSet(id: UUID(), index: 2, kind: .repsWeight, isWarmup: false, targetReps: 8...10, targetWeight: 34, targetDurationSeconds: nil, reps: 10, weight: 34, durationSeconds: 0, rpe: 8, rir: 2, restSeconds: 120, isCompleted: false, isSkipped: false),
-                ActiveWorkoutSet(id: UUID(), index: 3, kind: .repsWeight, isWarmup: false, targetReps: 8...10, targetWeight: 34, targetDurationSeconds: nil, reps: 9, weight: 34, durationSeconds: 0, rpe: 8.5, rir: 1, restSeconds: 120, isCompleted: false, isSkipped: false)
+                ActiveWorkoutSet(id: UUID(), index: 1, kind: .repsWeight, isWarmup: true, targetReps: 10 ... 12, targetWeight: 22, targetDurationSeconds: nil, reps: 10, weight: 22, durationSeconds: 0, rpe: nil, rir: nil, restSeconds: 60, isCompleted: false, isSkipped: false),
+                ActiveWorkoutSet(id: UUID(), index: 2, kind: .repsWeight, isWarmup: false, targetReps: 8 ... 10, targetWeight: 34, targetDurationSeconds: nil, reps: 10, weight: 34, durationSeconds: 0, rpe: 8, rir: 2, restSeconds: 120, isCompleted: false, isSkipped: false),
+                ActiveWorkoutSet(id: UUID(), index: 3, kind: .repsWeight, isWarmup: false, targetReps: 8 ... 10, targetWeight: 34, targetDurationSeconds: nil, reps: 9, weight: 34, durationSeconds: 0, rpe: 8.5, rir: 1, restSeconds: 120, isCompleted: false, isSkipped: false),
             ]
         )
 
@@ -384,7 +384,7 @@ final class MockActiveWorkoutRepository: ActiveWorkoutProviding {
             previousPerformance: nil,
             sets: [
                 ActiveWorkoutSet(id: UUID(), index: 1, kind: .duration, isWarmup: false, targetReps: nil, targetWeight: nil, targetDurationSeconds: 45, reps: 0, weight: 0, durationSeconds: 45, rpe: 7, rir: nil, restSeconds: 75, isCompleted: false, isSkipped: false),
-                ActiveWorkoutSet(id: UUID(), index: 2, kind: .duration, isWarmup: false, targetReps: nil, targetWeight: nil, targetDurationSeconds: 45, reps: 0, weight: 0, durationSeconds: 45, rpe: 8, rir: nil, restSeconds: 75, isCompleted: false, isSkipped: false)
+                ActiveWorkoutSet(id: UUID(), index: 2, kind: .duration, isWarmup: false, targetReps: nil, targetWeight: nil, targetDurationSeconds: 45, reps: 0, weight: 0, durationSeconds: 45, rpe: 8, rir: nil, restSeconds: 75, isCompleted: false, isSkipped: false),
             ]
         )
 
@@ -594,9 +594,9 @@ final class MockActiveWorkoutRepository: ActiveWorkoutProviding {
     }
 
     private func advanceSelection(in session: inout ActiveWorkoutSession, after indexes: (exercise: Int, set: Int)) {
-        for exerciseIndex in indexes.exercise..<session.exercises.count {
+        for exerciseIndex in indexes.exercise ..< session.exercises.count {
             let startSetIndex = exerciseIndex == indexes.exercise ? indexes.set + 1 : 0
-            for setIndex in startSetIndex..<session.exercises[exerciseIndex].sets.count {
+            for setIndex in startSetIndex ..< session.exercises[exerciseIndex].sets.count {
                 let set = session.exercises[exerciseIndex].sets[setIndex]
                 if !set.isCompleted && !set.isSkipped {
                     session.currentExerciseId = session.exercises[exerciseIndex].id
@@ -608,9 +608,9 @@ final class MockActiveWorkoutRepository: ActiveWorkoutProviding {
     }
 
     private func hasPendingSet(after indexes: (exercise: Int, set: Int), in session: ActiveWorkoutSession) -> Bool {
-        for exerciseIndex in indexes.exercise..<session.exercises.count {
+        for exerciseIndex in indexes.exercise ..< session.exercises.count {
             let startSetIndex = exerciseIndex == indexes.exercise ? indexes.set + 1 : 0
-            for setIndex in startSetIndex..<session.exercises[exerciseIndex].sets.count {
+            for setIndex in startSetIndex ..< session.exercises[exerciseIndex].sets.count {
                 let set = session.exercises[exerciseIndex].sets[setIndex]
                 if !set.isCompleted && !set.isSkipped {
                     return true

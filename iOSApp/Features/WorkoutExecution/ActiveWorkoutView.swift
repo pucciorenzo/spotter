@@ -85,7 +85,6 @@ struct ActiveWorkoutView: View {
                         .padding(.bottom, 18)
                     }
                 }
-
             }
             .animation(reduceMotion ? nil : .easeInOut(duration: 0.24), value: isFocusMode)
             .navigationTitle(isFocusMode ? "Focus" : "Active Workout")
@@ -180,7 +179,7 @@ struct ActiveWorkoutView: View {
             "\(session.restStartedAt?.timeIntervalSince1970 ?? 0)",
             "\(session.lastAutosavedAt.timeIntervalSince1970)",
             "\(session.completedSetCount)",
-            "\(session.totalSetCount)"
+            "\(session.totalSetCount)",
         ].joined(separator: ":")
     }
 
@@ -1426,7 +1425,7 @@ private func format(_ value: Double) -> String {
         isFocusMode: .constant(false),
         close: {}
     )
-        .preferredColorScheme(.dark)
+    .preferredColorScheme(.dark)
 }
 
 private extension View {

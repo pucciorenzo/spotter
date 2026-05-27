@@ -197,7 +197,7 @@ struct MockSpotterRepository: SpotterDataProviding {
                 movementPattern: "Vertical Push",
                 trackingType: "Reps + Weight",
                 notes: "Use small jumps and keep reps crisp."
-            )
+            ),
         ]
 
         let pushDay = SpotterPlanDaySummary(
@@ -210,7 +210,7 @@ struct MockSpotterRepository: SpotterDataProviding {
                 SpotterPlannedExerciseSummary(id: UUID(), name: "Bench Press", target: "4 sets x 6-8 reps", load: "80 kg", rest: "150s"),
                 SpotterPlannedExerciseSummary(id: UUID(), name: "Overhead Press", target: "3 sets x 6-8 reps", load: "45 kg", rest: "120s"),
                 SpotterPlannedExerciseSummary(id: UUID(), name: "Incline Dumbbell Press", target: "3 sets x 8-10 reps", load: "28 kg", rest: "90s"),
-                SpotterPlannedExerciseSummary(id: UUID(), name: "Cable Pressdown", target: "3 sets x 10-12 reps", load: "32 kg", rest: "75s")
+                SpotterPlannedExerciseSummary(id: UUID(), name: "Cable Pressdown", target: "3 sets x 10-12 reps", load: "32 kg", rest: "75s"),
             ]
         )
 
@@ -224,7 +224,7 @@ struct MockSpotterRepository: SpotterDataProviding {
                 SpotterPlannedExerciseSummary(id: UUID(), name: "Pull-Up", target: "4 sets x 6-10 reps", load: "Bodyweight", rest: "120s"),
                 SpotterPlannedExerciseSummary(id: UUID(), name: "Chest-Supported Row", target: "3 sets x 8-10 reps", load: "34 kg", rest: "120s"),
                 SpotterPlannedExerciseSummary(id: UUID(), name: "Lat Pulldown", target: "3 sets x 10-12 reps", load: "68 kg", rest: "90s"),
-                SpotterPlannedExerciseSummary(id: UUID(), name: "Hammer Curl", target: "3 sets x 10-12 reps", load: "18 kg", rest: "75s")
+                SpotterPlannedExerciseSummary(id: UUID(), name: "Hammer Curl", target: "3 sets x 10-12 reps", load: "18 kg", rest: "75s"),
             ]
         )
 
@@ -238,7 +238,7 @@ struct MockSpotterRepository: SpotterDataProviding {
                 SpotterPlannedExerciseSummary(id: UUID(), name: "Back Squat", target: "4 sets x 5-7 reps", load: "120 kg", rest: "180s"),
                 SpotterPlannedExerciseSummary(id: UUID(), name: "Romanian Deadlift", target: "3 sets x 8 reps", load: "105 kg", rest: "150s"),
                 SpotterPlannedExerciseSummary(id: UUID(), name: "Leg Press", target: "3 sets x 10-12 reps", load: "180 kg", rest: "120s"),
-                SpotterPlannedExerciseSummary(id: UUID(), name: "Seated Calf Raise", target: "4 sets x 12-15 reps", load: "50 kg", rest: "60s")
+                SpotterPlannedExerciseSummary(id: UUID(), name: "Seated Calf Raise", target: "4 sets x 12-15 reps", load: "50 kg", rest: "60s"),
             ]
         )
 
@@ -256,12 +256,12 @@ struct MockSpotterRepository: SpotterDataProviding {
                 name: "Upper Lower Strength",
                 days: [
                     SpotterPlanDaySummary(id: UUID(), name: "Upper", focus: "Heavy press and row", exerciseCount: 5, estimatedDuration: "58 min", exercises: []),
-                    SpotterPlanDaySummary(id: UUID(), name: "Lower", focus: "Squat, hinge, calves", exerciseCount: 5, estimatedDuration: "62 min", exercises: [])
+                    SpotterPlanDaySummary(id: UUID(), name: "Lower", focus: "Squat, hinge, calves", exerciseCount: 5, estimatedDuration: "62 min", exercises: []),
                 ],
                 lastUsed: "Apr 28",
                 suggestedDay: "Upper",
                 isActive: false
-            )
+            ),
         ]
 
         today = SpotterTodaySnapshot(
@@ -282,12 +282,12 @@ struct MockSpotterRepository: SpotterDataProviding {
             recentWorkouts: [
                 SpotterRecentWorkout(id: UUID(), name: "Push Day", dateText: "Yesterday", duration: "54 min", volume: "8.4k kg"),
                 SpotterRecentWorkout(id: UUID(), name: "Legs Day", dateText: "Sat", duration: "66 min", volume: "12.1k kg"),
-                SpotterRecentWorkout(id: UUID(), name: "Pull Day", dateText: "Thu", duration: "51 min", volume: "7.9k kg")
+                SpotterRecentWorkout(id: UUID(), name: "Pull Day", dateText: "Thu", duration: "51 min", volume: "7.9k kg"),
             ],
             metrics: [
                 SpotterMetric(title: "Week", value: "3", caption: "sessions", systemImage: "calendar"),
                 SpotterMetric(title: "Volume", value: "28.4k", caption: "kg logged", systemImage: "chart.bar.fill"),
-                SpotterMetric(title: "Consistency", value: "86%", caption: "4 week pace", systemImage: "flame.fill")
+                SpotterMetric(title: "Consistency", value: "86%", caption: "4 week pace", systemImage: "flame.fill"),
             ],
             activeWorkout: nil
         )
@@ -296,12 +296,12 @@ struct MockSpotterRepository: SpotterDataProviding {
             headlineMetrics: [
                 SpotterMetric(title: "Sessions", value: "14", caption: "last 30 days", systemImage: "checkmark.circle.fill"),
                 SpotterMetric(title: "Avg Time", value: "57m", caption: "per workout", systemImage: "timer"),
-                SpotterMetric(title: "Volume", value: "112k", caption: "kg last 30 days", systemImage: "chart.bar.fill")
+                SpotterMetric(title: "Volume", value: "112k", caption: "kg last 30 days", systemImage: "chart.bar.fill"),
             ],
             exerciseTrends: [
                 SpotterExerciseTrend(id: UUID(), exerciseName: "Bench Press", bestSet: "82.5 kg x 8", totalVolume: "14.8k kg", frequency: "6 sessions", trend: "+2 reps vs last time"),
                 SpotterExerciseTrend(id: UUID(), exerciseName: "Back Squat", bestSet: "125 kg x 5", totalVolume: "18.2k kg", frequency: "5 sessions", trend: "same load, cleaner sets"),
-                SpotterExerciseTrend(id: UUID(), exerciseName: "Pull-Up", bestSet: "BW x 10", totalVolume: "86 reps", frequency: "7 sessions", trend: "+1 rep")
+                SpotterExerciseTrend(id: UUID(), exerciseName: "Pull-Up", bestSet: "BW x 10", totalVolume: "86 reps", frequency: "7 sessions", trend: "+1 rep"),
             ],
             planTrend: SpotterPlanTrend(
                 planName: "Push Pull Legs",
@@ -311,7 +311,7 @@ struct MockSpotterRepository: SpotterDataProviding {
                 distribution: [
                     SpotterMetric(title: "Push", value: "34%", caption: "sets", systemImage: "arrow.up.right"),
                     SpotterMetric(title: "Pull", value: "32%", caption: "sets", systemImage: "arrow.down.left"),
-                    SpotterMetric(title: "Legs", value: "34%", caption: "sets", systemImage: "figure.run")
+                    SpotterMetric(title: "Legs", value: "34%", caption: "sets", systemImage: "figure.run"),
                 ]
             )
         )
