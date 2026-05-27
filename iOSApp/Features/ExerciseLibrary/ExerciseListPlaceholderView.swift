@@ -328,6 +328,7 @@ private struct CreateExerciseView: View {
                     }
                 }
                 .padding(22)
+                .padding(.bottom, SpotterLayout.bottomScrollClearance)
             }
         }
         .navigationTitle("New Exercise")
