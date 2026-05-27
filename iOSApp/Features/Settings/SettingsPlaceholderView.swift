@@ -122,7 +122,7 @@ struct ProfileView: View {
                 }
                 .padding(.horizontal, 20)
                 .padding(.top, 8)
-                .padding(.bottom, SpotterLayout.bottomScrollClearance)
+                .spotterScrollableBottomPadding()
             }
             .onScrollGeometryChange(for: Bool.self) { geometry in
                 geometry.contentOffset.y > 24

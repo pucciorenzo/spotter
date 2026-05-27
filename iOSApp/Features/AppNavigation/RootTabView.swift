@@ -114,6 +114,7 @@ struct RootTabView: View {
                 Label("Profile", systemImage: "person.crop.circle")
             }
         }
+        .environment(\.spotterActiveWorkoutBarVisible, activeWorkoutRepository.session != nil)
         .safeAreaInset(edge: .bottom, spacing: 0) {
             if let session = activeWorkoutRepository.session {
                 ActiveWorkoutMiniBar(session: session) {
@@ -123,7 +124,7 @@ struct RootTabView: View {
                     }
                 }
                 .padding(.horizontal, 16)
-                .padding(.bottom, 64)
+                .padding(.bottom, SpotterLayout.activeWorkoutMiniBarBottomPadding)
                 .transition(.move(edge: .bottom).combined(with: .opacity))
             }
         }
@@ -333,7 +334,7 @@ private struct ActiveWorkoutMiniBar: View {
                     .foregroundStyle(SpotterPalette.textSecondary)
             }
             .padding(.horizontal, 14)
-            .frame(height: 58)
+            .frame(height: SpotterLayout.activeWorkoutMiniBarHeight)
             .background(Color.black.opacity(0.22), in: Capsule())
             .background(.ultraThinMaterial, in: Capsule())
             .overlay {

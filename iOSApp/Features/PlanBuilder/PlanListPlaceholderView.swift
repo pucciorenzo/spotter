@@ -90,7 +90,7 @@ struct PlanListView: View {
                 }
                 .padding(.horizontal, 20)
                 .padding(.top, 8)
-                .padding(.bottom, SpotterLayout.bottomScrollClearance)
+                .spotterScrollableBottomPadding()
             }
             .onScrollGeometryChange(for: Bool.self) { geometry in
                 geometry.contentOffset.y > 24
@@ -440,7 +440,7 @@ private struct PlanDetailView: View {
                 }
                 .padding(.horizontal, 20)
                 .padding(.top, 18)
-                .padding(.bottom, SpotterLayout.bottomScrollClearance)
+                .spotterScrollableBottomPadding()
             }
 
             Button {
@@ -452,7 +452,7 @@ private struct PlanDetailView: View {
             }
             .buttonStyle(.plain)
             .padding(.horizontal, 20)
-            .padding(.bottom, SpotterLayout.bottomPinnedActionClearance)
+            .spotterPinnedActionBottomPadding()
         }
         .navigationTitle(plan.name)
         .navigationBarTitleDisplayMode(.large)
@@ -572,7 +572,7 @@ private struct PlanDayDetailView: View {
                 }
                 .padding(.horizontal, 20)
                 .padding(.top, 18)
-                .padding(.bottom, SpotterLayout.bottomScrollClearance)
+                .spotterScrollableBottomPadding()
             }
 
             Button {
@@ -584,7 +584,7 @@ private struct PlanDayDetailView: View {
             }
             .buttonStyle(.plain)
             .padding(.horizontal, 20)
-            .padding(.bottom, SpotterLayout.bottomPinnedActionClearance)
+            .spotterPinnedActionBottomPadding()
         }
         .navigationTitle(day.name)
         .navigationBarTitleDisplayMode(.large)
@@ -1271,7 +1271,7 @@ private struct NewWorkoutPlanEditor: View {
                     }
                     .padding(.horizontal, 20)
                     .padding(.top, 12)
-                    .padding(.bottom, SpotterLayout.bottomScrollClearance)
+                    .spotterScrollableBottomPadding()
                 }
             }
             .frame(maxWidth: .infinity)

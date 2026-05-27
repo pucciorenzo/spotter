@@ -127,7 +127,7 @@ struct ExerciseListView: View {
                     }
                 }
                 .padding(.top, 8)
-                .padding(.bottom, SpotterLayout.bottomScrollClearance)
+                .spotterScrollableBottomPadding()
             }
             .onScrollGeometryChange(for: Bool.self) { geometry in
                 geometry.contentOffset.y > 24
@@ -264,7 +264,7 @@ private struct ExerciseDetailView: View {
                 }
                 .padding(.horizontal, 20)
                 .padding(.top, 18)
-                .padding(.bottom, SpotterLayout.bottomScrollClearance)
+                .spotterScrollableBottomPadding()
             }
         }
         .navigationTitle(exercise.name)
@@ -396,7 +396,7 @@ private struct CreateExerciseView: View {
                     }
                     .padding(.horizontal, 20)
                     .padding(.top, 12)
-                    .padding(.bottom, SpotterLayout.bottomScrollClearance)
+                    .spotterScrollableBottomPadding()
                 }
             }
             .frame(maxWidth: .infinity)
