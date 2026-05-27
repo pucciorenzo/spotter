@@ -1169,15 +1169,21 @@ private struct NewWorkoutPlanEditor: View {
 
             VStack(spacing: 0) {
                 HStack {
-                    Button("Cancel") {
+                    Button {
                         SpotterHaptics.impact(.light)
                         onCancel()
+                    } label: {
+                        Image(systemName: "xmark")
                     }
-                    .font(.callout.weight(.medium))
+                    .font(.headline.weight(.semibold))
+                    .symbolRenderingMode(.hierarchical)
                     .foregroundStyle(SpotterPalette.textSecondary)
-                    .padding(.horizontal, 12)
-                    .padding(.vertical, 8)
-                    .background(.white.opacity(0.07), in: Capsule())
+                    .frame(width: 40, height: 40)
+                    .background(.white.opacity(0.07), in: Circle())
+                    .overlay {
+                        Circle().strokeBorder(.white.opacity(0.12), lineWidth: 1)
+                    }
+                    .accessibilityLabel("Cancel")
 
                     Spacer()
 
@@ -1187,15 +1193,21 @@ private struct NewWorkoutPlanEditor: View {
 
                     Spacer()
 
-                    Button("Save") {
+                    Button {
                         save()
+                    } label: {
+                        Image(systemName: "checkmark")
                     }
-                    .font(.callout.weight(.semibold))
+                    .font(.headline.weight(.semibold))
+                    .symbolRenderingMode(.hierarchical)
                     .foregroundStyle(canSave ? SpotterPalette.textPrimary : SpotterPalette.textTertiary)
-                    .padding(.horizontal, 12)
-                    .padding(.vertical, 8)
-                    .background(canSave ? .white.opacity(0.12) : .white.opacity(0.04), in: Capsule())
+                    .frame(width: 40, height: 40)
+                    .background(canSave ? .white.opacity(0.12) : .white.opacity(0.04), in: Circle())
+                    .overlay {
+                        Circle().strokeBorder(canSave ? .white.opacity(0.18) : .white.opacity(0.08), lineWidth: 1)
+                    }
                     .disabled(!canSave)
+                    .accessibilityLabel("Save Workout Plan")
                 }
                 .padding(.horizontal, 12)
                 .frame(height: 64)
