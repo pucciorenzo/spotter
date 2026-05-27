@@ -326,22 +326,48 @@ private struct CreateExerciseView: View {
                                     .strokeBorder(SpotterPalette.glassStroke, lineWidth: 1)
                             }
                     }
-
-                    GlassButton(title: "Create Exercise", systemImage: "plus") {
-                        save()
-                    }
-                    .disabled(!canCreate)
                 }
                 .padding(22)
             }
         }
         .navigationTitle("New Exercise")
         .navigationBarTitleDisplayMode(.inline)
+        .navigationBarBackButtonHidden(true)
         .toolbar {
-            ToolbarItem(placement: .cancellationAction) {
-                Button("Cancel") {
+            ToolbarItem(placement: .topBarLeading) {
+                Button {
+                    SpotterHaptics.impact(.light)
                     dismiss()
+                } label: {
+                    Image(systemName: "xmark")
                 }
+                .font(.headline.weight(.semibold))
+                .symbolRenderingMode(.hierarchical)
+                .foregroundStyle(SpotterPalette.textSecondary)
+                .frame(width: 40, height: 40)
+                .background(.white.opacity(0.07), in: Circle())
+                .overlay {
+                    Circle().strokeBorder(.white.opacity(0.12), lineWidth: 1)
+                }
+                .accessibilityLabel("Cancel")
+            }
+
+            ToolbarItem(placement: .topBarTrailing) {
+                Button {
+                    save()
+                } label: {
+                    Image(systemName: "checkmark")
+                }
+                .font(.headline.weight(.semibold))
+                .symbolRenderingMode(.hierarchical)
+                .foregroundStyle(canCreate ? SpotterPalette.textPrimary : SpotterPalette.textTertiary)
+                .frame(width: 40, height: 40)
+                .background(canCreate ? .white.opacity(0.12) : .white.opacity(0.04), in: Circle())
+                .overlay {
+                    Circle().strokeBorder(canCreate ? .white.opacity(0.18) : .white.opacity(0.08), lineWidth: 1)
+                }
+                .disabled(!canCreate)
+                .accessibilityLabel("Create Exercise")
             }
         }
         .spotterScreenChrome()
