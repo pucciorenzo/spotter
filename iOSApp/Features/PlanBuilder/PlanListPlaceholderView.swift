@@ -92,7 +92,6 @@ struct PlanListView: View {
                 .padding(.top, 8)
                 .spotterScrollableBottomPadding()
             }
-            .spotterActiveWorkoutBarViewportPadding()
             .onScrollGeometryChange(for: Bool.self) { geometry in
                 geometry.contentOffset.y > 24
             } action: { _, isScrolled in
@@ -443,7 +442,6 @@ private struct PlanDetailView: View {
                 .padding(.top, 18)
                 .spotterScrollableBottomPadding()
             }
-            .spotterActiveWorkoutBarViewportPadding()
 
             Button {
                 SpotterHaptics.impact(.medium)
@@ -576,7 +574,6 @@ private struct PlanDayDetailView: View {
                 .padding(.top, 18)
                 .spotterScrollableBottomPadding()
             }
-            .spotterActiveWorkoutBarViewportPadding()
 
             Button {
                 SpotterHaptics.impact(.medium)
@@ -1276,7 +1273,6 @@ private struct NewWorkoutPlanEditor: View {
                     .padding(.top, 12)
                     .spotterScrollableBottomPadding()
                 }
-                .spotterActiveWorkoutBarViewportPadding()
             }
             .frame(maxWidth: .infinity)
             .frame(maxHeight: .infinity)

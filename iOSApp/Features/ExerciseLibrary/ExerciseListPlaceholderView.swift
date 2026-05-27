@@ -129,7 +129,6 @@ struct ExerciseListView: View {
                 .padding(.top, 8)
                 .spotterScrollableBottomPadding()
             }
-            .spotterActiveWorkoutBarViewportPadding()
             .onScrollGeometryChange(for: Bool.self) { geometry in
                 geometry.contentOffset.y > 24
             } action: { _, isScrolled in
@@ -267,7 +266,6 @@ private struct ExerciseDetailView: View {
                 .padding(.top, 18)
                 .spotterScrollableBottomPadding()
             }
-            .spotterActiveWorkoutBarViewportPadding()
         }
         .navigationTitle(exercise.name)
         .navigationBarTitleDisplayMode(.large)
@@ -400,7 +398,6 @@ private struct CreateExerciseView: View {
                     .padding(.top, 12)
                     .spotterScrollableBottomPadding()
                 }
-                .spotterActiveWorkoutBarViewportPadding()
             }
             .frame(maxWidth: .infinity)
             .frame(maxHeight: .infinity)

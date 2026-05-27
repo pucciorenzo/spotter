@@ -63,7 +63,6 @@ struct TodayView: View {
                 .padding(.top, 8)
                 .spotterScrollableBottomPadding()
             }
-            .spotterActiveWorkoutBarViewportPadding()
             .onScrollGeometryChange(for: Bool.self) { geometry in
                 geometry.contentOffset.y > 24
             } action: { _, isScrolled in
