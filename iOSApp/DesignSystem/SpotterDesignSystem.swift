@@ -17,7 +17,8 @@ enum SpotterPalette {
 enum SpotterLayout {
     static let activeWorkoutMiniBarHeight: CGFloat = 58
     static let activeWorkoutMiniBarBottomPadding: CGFloat = 64
-    static let bottomScrollClearance: CGFloat = 180
+    static let bottomScrollClearance: CGFloat = 28
+    static let activeWorkoutBottomScrollClearance: CGFloat = 76
     static let bottomPinnedActionClearance: CGFloat = 96
 
     static var activeWorkoutMiniBarReservedHeight: CGFloat {
@@ -25,7 +26,7 @@ enum SpotterLayout {
     }
 
     static func bottomScrollClearance(activeWorkoutBarVisible: Bool) -> CGFloat {
-        adjustedBottomClearance(bottomScrollClearance, activeWorkoutBarVisible: activeWorkoutBarVisible)
+        activeWorkoutBarVisible ? activeWorkoutBottomScrollClearance : bottomScrollClearance
     }
 
     static func bottomPinnedActionClearance(activeWorkoutBarVisible: Bool) -> CGFloat {
@@ -40,16 +41,6 @@ enum SpotterLayout {
         return activeWorkoutMiniBarReservedHeight
     }
 
-    private static func adjustedBottomClearance(
-        _ clearance: CGFloat,
-        activeWorkoutBarVisible: Bool
-    ) -> CGFloat {
-        guard activeWorkoutBarVisible else {
-            return clearance
-        }
-
-        return max(0, clearance - activeWorkoutMiniBarReservedHeight)
-    }
 }
 
 private struct SpotterActiveWorkoutBarVisibleKey: EnvironmentKey {
